@@ -1,10 +1,15 @@
+import time
+
 import pynput
 
+from Message import Message, MsgType
+from MouseController import MouseController
 from Server import UdpServer
 
-mouse = pynput.mouse.Controller()
+mouse = MouseController()
 udp_service = UdpServer(16667)
-
 while True:
-    data = udp_service.recv()
-    print(data)
+    data,addr = udp_service.recv()
+    msg = Message.from_bytes(data)
+    if msg.msg_type == MsgType.MOUSE_MOVE:
+        mouse.move(msg.data)
