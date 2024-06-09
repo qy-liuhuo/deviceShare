@@ -9,7 +9,7 @@ from Server import UdpServer
 mouse = MouseController()
 udp_service = UdpServer(16666)
 
-target = ('127.0.0.1',16667)
+target = ('192.168.3.109',16667)
 
 
 def on_click(x, y, button, pressed):
@@ -20,5 +20,6 @@ mouse_listener = mouse.mouse_listener(on_click)
 mouse_listener.start()
 
 while True:
+    time.sleep(0.02)
     msg = Message(MsgType.MOUSE_MOVE, mouse.get_position())
     udp_service.sendto(msg.to_bytes(), target)
