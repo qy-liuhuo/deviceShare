@@ -13,3 +13,6 @@ while True:
     msg = Message.from_bytes(data)
     if msg.msg_type == MsgType.MOUSE_MOVE:
         mouse.move(msg.data)
+    elif msg.msg_type == MsgType.MOUSE_CLICK:
+        print(msg.data[2],msg.data[3])
+        mouse.click(msg.data[2],msg.data[3])
