@@ -16,7 +16,6 @@ def on_click(x, y, button, pressed):
     msg = Message(MsgType.MOUSE_CLICK, f"{x},{y},{button},{pressed}")
     udp_service.sendto(msg.to_bytes(), target)
 
-
 mouse_listener = mouse.mouse_listener(on_click)
 mouse_listener.start()
 
