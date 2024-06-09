@@ -1,15 +1,17 @@
 import time
+import platform
 
 import pynput
 
 from Message import Message, MsgType
 from MouseController import MouseController
 from Server import UdpServer
-# 解决windows下缩放偏移问题
-import ctypes
-awareness = ctypes.c_int()
-ctypes.windll.shcore.SetProcessDpiAwareness(2)
 
+# 解决windows下缩放偏移问题
+if platform.system().lower() == 'windows':
+    import ctypes
+    awareness = ctypes.c_int()
+    ctypes.windll.shcore.SetProcessDpiAwareness(2)
 
 mouse = MouseController()
 udp_service = UdpServer(16667)
