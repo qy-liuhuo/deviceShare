@@ -8,8 +8,7 @@ class MouseController:
     def get_position(self):
         return f"{self.__mouse.position[0]}, {self.__mouse.position[1]}"
 
-    def move(self, position: tuple):
-        self.__mouse.move(position[0], position[1])
+    def move_to(self, position: tuple):
         self.__mouse.position = position
 
     def click(self, button, pressed):
