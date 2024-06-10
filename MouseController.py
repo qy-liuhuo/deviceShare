@@ -14,5 +14,5 @@ class MouseController:
     def click(self, button, pressed):
         self.__mouse.click(button, pressed)
 
-    def mouse_listener(self, on_click):
-        return pynput.mouse.Listener(on_click=on_click)
+    def mouse_listener(self, on_click,on_move):
+        return pynput.mouse.Listener(on_click=on_click,on_move=on_move)
