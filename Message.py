@@ -4,9 +4,12 @@ import pynput
 
 
 class MsgType(enum.IntEnum):
-    MOUSE_MOVE = 1
-    MOUSE_CLICK = 2
-    MOUSE_SCROLL = 3
+
+    DEVICE_UP = enum.auto()
+    STOP_BROADCAST = enum.auto()
+    MOUSE_MOVE = enum.auto()
+    MOUSE_CLICK = enum.auto()
+    MOUSE_SCROLL = enum.auto()
 
 
 def get_click_button(btn: str):
