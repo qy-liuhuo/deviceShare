@@ -22,8 +22,11 @@ class Server(Udp):
             if msg.msg_type == MsgType.DEVICE_JOIN and addr not in self.clients:
                 self.clients.append(addr)
                 self.cur_client = addr  # 临时测试
-                self.sendto(Message(MsgType.SUCCESS_JOIN, f'{socket.gethostbyname(socket.gethostname())},{self._port}').to_bytes(), addr)
+                self.sendto(Message(MsgType.SUCCESS_JOIN,
+                                    f'{socket.gethostbyname(socket.gethostname())},{self._port}').to_bytes(), addr)
                 print(f"client {addr} connected")
+            elif msg.msg_type == MsgType.MOUSE_BACK:
+                self._mouse.move_to((3840, msg.data[1]))
 
     def start_msg_listener(self):
         self.msg_listener = threading.Thread(target=self.msg_receiver)
@@ -41,7 +44,8 @@ class Server(Udp):
             msg = Message(MsgType.MOUSE_MOVE, f"{x - last_pos[0]},{y - last_pos[1]}")
             if self.cur_client:
                 self.sendto(msg.to_bytes(), self.cur_client)
-            if self._mouse.get_position()[0]<=20 or self._mouse.get_position()[1]<=20 or self._mouse.get_position()[0]>=3838 or self._mouse.get_position()[1]>=2158:
+            if self._mouse.get_position()[0] <= 20 or self._mouse.get_position()[1] <= 20 or self._mouse.get_position()[
+                0] >= 3838 or self._mouse.get_position()[1] >= 2158:
                 self._mouse.move_to((500, 500))
             self._mouse.update_last_position()
             if self._mouse.get_position() == (0, 0):

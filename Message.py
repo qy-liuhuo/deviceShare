@@ -7,6 +7,7 @@ class MsgType(enum.IntEnum):
 
     DEVICE_JOIN = enum.auto()
     SUCCESS_JOIN = enum.auto()
+    MOUSE_BACK = enum.auto()
     MOUSE_MOVE = enum.auto()
     MOUSE_MOVE_TO = enum.auto()
     MOUSE_CLICK = enum.auto()
@@ -47,7 +48,8 @@ class Message:
         elif int(msg_type) == MsgType.SUCCESS_JOIN:
             data = tuple(data.split(','))
             return Message(MsgType(int(msg_type)), data)
-
+        elif int(msg_type) == MsgType.MOUSE_BACK:
+            return Message(MsgType(int(msg_type)), tuple(map(int, data.split(','))))
         return Message(MsgType(int(msg_type)), data)
 
     # def __init__(self,byteData:bytes):

@@ -29,16 +29,26 @@ class Client(Udp):
             msg = Message.from_bytes(data)
             if msg.msg_type == MsgType.MOUSE_MOVE:
                 self._mouse.move(msg.data[0],msg.data[1])
-            elif msg.msg_type == MsgType.MOUSE_MOVE_TO:
+            elif msg.msg_type == MsgType.MOUSE_MOVE_TO: # 跨屏初始位置
                 self._mouse.move_to(msg.data)
+                threading.Thread(target=self.mouse_listener).start()
             elif msg.msg_type == MsgType.MOUSE_CLICK:
                 self._mouse.click(msg.data[2], msg.data[3])
             elif msg.msg_type == MsgType.MOUSE_SCROLL:
                 self._mouse.scroll(msg.data[0], msg.data[1])
             elif msg.msg_type == MsgType.SUCCESS_JOIN:
-                self.server_addr = msg.data
-                print(self.server_addr)
+                self.server_addr = addr
                 self.be_added = True
+
+    def mouse_listener(self):
+        while True:
+            data = self._mouse.get_position()
+            if self.be_added and self.server_addr and data[0]<=1:
+                msg = Message(MsgType.MOUSE_BACK, f"{data[0]},{data[1]}")
+                self.sendto(msg.to_bytes(), self.server_addr)
+                break
+            time.sleep(0.1)
+
 
     def start_msg_listener(self):
         self.msg_listener = threading.Thread(target=self.msg_receiver)
