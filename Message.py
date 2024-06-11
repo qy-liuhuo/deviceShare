@@ -8,6 +8,7 @@ class MsgType(enum.IntEnum):
     DEVICE_UP = enum.auto()
     STOP_BROADCAST = enum.auto()
     MOUSE_MOVE = enum.auto()
+    MOUSE_MOVE_TO = enum.auto()
     MOUSE_CLICK = enum.auto()
     MOUSE_SCROLL = enum.auto()
 
@@ -32,6 +33,8 @@ class Message:
     def from_bytes(byteData: bytes):
         msg_type, data = byteData.decode().split(Message.SPLITTER)
         if int(msg_type) == MsgType.MOUSE_MOVE:
+            return Message(MsgType(int(msg_type)), tuple(map(int, data.split(','))))
+        elif int(msg_type) == MsgType.MOUSE_MOVE_TO:
             return Message(MsgType(int(msg_type)), tuple(map(int, data.split(','))))
         elif int(msg_type) == MsgType.MOUSE_CLICK:
             data = data.split(',')

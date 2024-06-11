@@ -27,12 +27,12 @@ class Client(Udp):
             data, addr = self.recv()
             msg = Message.from_bytes(data)
             if msg.msg_type == MsgType.MOUSE_MOVE:
-                print(msg.data)
                 self._mouse.move(msg.data[0],msg.data[1])
+            elif msg.msg_type == MsgType.MOUSE_MOVE_TO:
+                self._mouse.move_to(msg.data)
             elif msg.msg_type == MsgType.MOUSE_CLICK:
                 self._mouse.click(msg.data[2], msg.data[3])
             elif msg.msg_type == MsgType.MOUSE_SCROLL:
-                print(msg.data)
                 self._mouse.scroll(msg.data[0], msg.data[1])
             elif msg.msg_type == MsgType.STOP_BROADCAST:
                 print("stop broadcast")
