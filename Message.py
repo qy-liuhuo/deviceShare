@@ -38,6 +38,8 @@ class Message:
             data[2] =  get_click_button(data[2].split('.')[1])
             data[3] = data[3] == 'True'
             return Message(MsgType(int(msg_type)), tuple(data))
+        elif int(msg_type) == MsgType.MOUSE_SCROLL:
+            return Message(MsgType(int(msg_type)), tuple(map(int, data.split(','))))
         return Message(MsgType(int(msg_type)), data)
 
     # def __init__(self,byteData:bytes):

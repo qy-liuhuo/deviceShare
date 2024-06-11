@@ -32,6 +32,7 @@ class Client(Udp):
             elif msg.msg_type == MsgType.MOUSE_CLICK:
                 self._mouse.click(msg.data[2], msg.data[3])
             elif msg.msg_type == MsgType.MOUSE_SCROLL:
+                print(msg.data)
                 self._mouse.scroll(msg.data[0], msg.data[1])
             elif msg.msg_type == MsgType.STOP_BROADCAST:
                 print("stop broadcast")
