@@ -39,6 +39,11 @@ class Server(Udp):
                 self.sendto(msg.to_bytes(), self.cur_client)
             self._mouse.update_last_position()
 
+        def on_scroll(x, y, dx, dy):
+            msg = Message(MsgType.MOUSE_SCROLL, f"{dx},{dy}")
+            if self.cur_client:
+                self.sendto(msg.to_bytes(), self.cur_client)
+
         mouse_listener = self._mouse.mouse_listener(on_click, on_move)
         mouse_listener.start()
         return mouse_listener
