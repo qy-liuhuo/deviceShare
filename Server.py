@@ -26,6 +26,7 @@ class Server(Udp):
                                     f'{socket.gethostbyname(socket.gethostname())},{self._port}').to_bytes(), addr)
                 print(f"client {addr} connected")
             elif msg.msg_type == MsgType.MOUSE_BACK:
+                self.cur_client = None
                 self._mouse.move_to((3840, msg.data[1]))
 
     def start_msg_listener(self):
@@ -47,7 +48,7 @@ class Server(Udp):
             if self._mouse.get_position()[0] <= 20 or self._mouse.get_position()[1] <= 20 or self._mouse.get_position()[0] >= 3838 or self._mouse.get_position()[1] >= 2158:
                 self._mouse.move_to((500, 500))
             self._mouse.update_last_position()
-            if self._mouse.get_position() == (0, 0):
+            if self.cur_client is None:
                 return False
 
         def on_scroll(x, y, dx, dy):
