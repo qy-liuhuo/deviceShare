@@ -10,6 +10,13 @@ class MouseController:
             awareness = ctypes.c_int()
             ctypes.windll.shcore.SetProcessDpiAwareness(2)
         self.__mouse = pynput.mouse.Controller()
+        self.last_position = self.__mouse.position
+
+    def update_last_position(self):
+        self.last_position = self.__mouse.position
+
+    def get_last_position(self):
+        return self.last_position
 
     def get_position(self):
         return self.__mouse.position

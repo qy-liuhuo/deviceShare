@@ -33,10 +33,11 @@ class Server(Udp):
                 self.sendto(msg.to_bytes(), self.cur_client)
 
         def on_move(x, y):
-            cur_pos = self._mouse.get_position()
-            msg = Message(MsgType.MOUSE_MOVE, f"{cur_pos[0]-x},{cur_pos[1]-y}")
+            last_pos = self._mouse.get_last_position()
+            msg = Message(MsgType.MOUSE_MOVE, f"{last_pos[0]-x},{last_pos[1]-y}")
             if self.cur_client:
                 self.sendto(msg.to_bytes(), self.cur_client)
+            self._mouse.update_last_position()
 
         mouse_listener = self._mouse.mouse_listener(on_click, on_move)
         mouse_listener.start()
