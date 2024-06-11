@@ -34,7 +34,7 @@ class Server(Udp):
 
         def on_move(x, y):
             last_pos = self._mouse.get_last_position()
-            msg = Message(MsgType.MOUSE_MOVE, f"{last_pos[0]-x},{last_pos[1]-y}")
+            msg = Message(MsgType.MOUSE_MOVE, f"{x-last_pos[0]},{y-last_pos[1]}")
             if self.cur_client:
                 self.sendto(msg.to_bytes(), self.cur_client)
             self._mouse.update_last_position()
