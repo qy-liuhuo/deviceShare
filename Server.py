@@ -44,8 +44,7 @@ class Server(Udp):
             msg = Message(MsgType.MOUSE_MOVE, f"{x - last_pos[0]},{y - last_pos[1]}")
             if self.cur_client:
                 self.sendto(msg.to_bytes(), self.cur_client)
-            if self._mouse.get_position()[0] <= 20 or self._mouse.get_position()[1] <= 20 or self._mouse.get_position()[
-                0] >= 3838 or self._mouse.get_position()[1] >= 2158:
+            if self._mouse.get_position()[0] <= 20 or self._mouse.get_position()[1] <= 20 or self._mouse.get_position()[0] >= 3838 or self._mouse.get_position()[1] >= 2158:
                 self._mouse.move_to((500, 500))
             self._mouse.update_last_position()
             if self._mouse.get_position() == (0, 0):

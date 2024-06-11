@@ -4,7 +4,6 @@ import pynput
 
 
 class MsgType(enum.IntEnum):
-
     DEVICE_JOIN = enum.auto()
     SUCCESS_JOIN = enum.auto()
     MOUSE_BACK = enum.auto()
@@ -25,7 +24,8 @@ def get_click_button(btn: str):
 
 
 class Message:
-    SPLITTER = "sPlItTeR"
+    SPLITTER = "@"
+
     def __init__(self, msg_type: MsgType, data):
         self.msg_type = msg_type
         self.data = data
