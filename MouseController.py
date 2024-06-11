@@ -12,10 +12,13 @@ class MouseController:
         self.__mouse = pynput.mouse.Controller()
 
     def get_position(self):
-        return f"{self.__mouse.position[0]}, {self.__mouse.position[1]}"
+        return self.__mouse.position
 
     def move_to(self, position: tuple):
         self.__mouse.position = position
+
+    def move(self, dx, dy):
+        self.__mouse.move(dx, dy)
 
     def click(self, button, pressed):
         self.__mouse.click(button, pressed)
