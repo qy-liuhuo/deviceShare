@@ -44,6 +44,6 @@ class Server(Udp):
             if self.cur_client:
                 self.sendto(msg.to_bytes(), self.cur_client)
 
-        mouse_listener = self._mouse.mouse_listener(on_click, on_move)
+        mouse_listener = self._mouse.mouse_listener(on_click, on_move,on_scroll)
         mouse_listener.start()
         return mouse_listener

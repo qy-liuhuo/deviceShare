@@ -36,5 +36,5 @@ class MouseController:
         else:
             self.__mouse.release(button)
 
-    def mouse_listener(self, on_click, on_move):
-        return pynput.mouse.Listener(on_click=on_click, on_move=on_move)
+    def mouse_listener(self, on_click, on_move,on_scroll):
+        return pynput.mouse.Listener(on_click=on_click, on_move=on_move, on_scroll=on_scroll)
