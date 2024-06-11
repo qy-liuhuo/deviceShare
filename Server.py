@@ -1,3 +1,4 @@
+import socket
 import threading
 
 import pynput
@@ -18,10 +19,10 @@ class Server(Udp):
         while True:
             data, addr = self.recv()
             msg = Message.from_bytes(data)
-            if msg.msg_type == MsgType.DEVICE_UP and addr not in self.clients:
+            if msg.msg_type == MsgType.DEVICE_JOIN and addr not in self.clients:
                 self.clients.append(addr)
                 self.cur_client = addr  # 临时测试
-                self.sendto(Message(MsgType.STOP_BROADCAST, None).to_bytes(), addr)
+                self.sendto(Message(MsgType.SUCCESS_JOIN, f'{socket.gethostbyname(socket.gethostname())},{self._port}').to_bytes(), addr)
                 print(f"client {addr} connected")
 
     def start_msg_listener(self):

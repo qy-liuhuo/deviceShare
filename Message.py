@@ -5,8 +5,8 @@ import pynput
 
 class MsgType(enum.IntEnum):
 
-    DEVICE_UP = enum.auto()
-    STOP_BROADCAST = enum.auto()
+    DEVICE_JOIN = enum.auto()
+    SUCCESS_JOIN = enum.auto()
     MOUSE_MOVE = enum.auto()
     MOUSE_MOVE_TO = enum.auto()
     MOUSE_CLICK = enum.auto()
@@ -35,14 +35,19 @@ class Message:
         if int(msg_type) == MsgType.MOUSE_MOVE:
             return Message(MsgType(int(msg_type)), tuple(map(int, data.split(','))))
         elif int(msg_type) == MsgType.MOUSE_MOVE_TO:
+            print(data)
             return Message(MsgType(int(msg_type)), tuple(map(int, data.split(','))))
         elif int(msg_type) == MsgType.MOUSE_CLICK:
             data = data.split(',')
-            data[2] =  get_click_button(data[2].split('.')[1])
+            data[2] = get_click_button(data[2].split('.')[1])
             data[3] = data[3] == 'True'
             return Message(MsgType(int(msg_type)), tuple(data))
         elif int(msg_type) == MsgType.MOUSE_SCROLL:
             return Message(MsgType(int(msg_type)), tuple(map(int, data.split(','))))
+        elif int(msg_type) == MsgType.SUCCESS_JOIN:
+            data = tuple(data.split(','))
+            return Message(MsgType(int(msg_type)), data)
+
         return Message(MsgType(int(msg_type)), data)
 
     # def __init__(self,byteData:bytes):

@@ -14,7 +14,8 @@ class Client(Udp):
         self._broadcast_thread = None
         self._ip = socket.gethostbyname(socket.gethostname())
         self._socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-        self._broadcast_data = Message(MsgType.DEVICE_UP, (self._ip, self._port)).to_bytes()
+        self._broadcast_data = Message(MsgType.DEVICE_JOIN, (self._ip, self._port)).to_bytes()
+        self.server_addr = None
 
     def broadcast_address(self):
         while not self.be_added:
@@ -34,8 +35,9 @@ class Client(Udp):
                 self._mouse.click(msg.data[2], msg.data[3])
             elif msg.msg_type == MsgType.MOUSE_SCROLL:
                 self._mouse.scroll(msg.data[0], msg.data[1])
-            elif msg.msg_type == MsgType.STOP_BROADCAST:
-                print("stop broadcast")
+            elif msg.msg_type == MsgType.SUCCESS_JOIN:
+                self.server_addr = msg.data
+                print(self.server_addr)
                 self.be_added = True
 
     def start_msg_listener(self):
