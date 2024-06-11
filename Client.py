@@ -31,6 +31,7 @@ class Client(Udp):
                 self._mouse.move(msg.data[0],msg.data[1])
             elif msg.msg_type == MsgType.MOUSE_MOVE_TO: # 跨屏初始位置
                 self._mouse.move_to(msg.data)
+                print("start mouse listener")
                 threading.Thread(target=self.mouse_listener).start()
             elif msg.msg_type == MsgType.MOUSE_CLICK:
                 self._mouse.click(msg.data[2], msg.data[3])
@@ -41,6 +42,7 @@ class Client(Udp):
                 self.be_added = True
 
     def mouse_listener(self):
+        time.sleep(1)
         while True:
             data = self._mouse.get_position()
             if self.be_added and self.server_addr and data[0]<=1:
