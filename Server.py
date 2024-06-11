@@ -40,6 +40,8 @@ class Server(Udp):
             msg = Message(MsgType.MOUSE_MOVE, f"{x - last_pos[0]},{y - last_pos[1]}")
             if self.cur_client:
                 self.sendto(msg.to_bytes(), self.cur_client)
+            if self._mouse.get_position()[0]<=20 or self._mouse.get_position()[1]<=20 or self._mouse.get_position()[0]>=3838 or self._mouse.get_position()[1]>=2158:
+                self._mouse.move_to((500, 500))
             self._mouse.update_last_position()
             if self._mouse.get_position() == (0, 0):
                 return False
@@ -59,10 +61,11 @@ class Server(Udp):
                 for event in events:
                     if isinstance(event, pynput.mouse.Events.Move):
                         x, y = event.x, event.y
-                        if x > 3840:
+                        if x > 3838:
                             self._mouse.focus = False
                             self.cur_client = self.clients[0]
-                            self.sendto(Message(MsgType.MOUSE_MOVE_TO, (x - 3840, y)).to_bytes(), self.cur_client)
+                            self.sendto(Message(MsgType.MOUSE_MOVE_TO, f'{x - 3838},{y}').to_bytes(), self.cur_client)
+                            self._mouse.move_to((500, 500))
                             break
             if not self._mouse.focus:
                 mouse_listener = self.add_mouse_listener()
