@@ -2,8 +2,9 @@ import threading
 import time
 from Message import Message, MsgType
 from MouseController import MouseController
-from MySocket import Udp, TcpClient,UDP_PORT,TCP_PORT
+from MySocket import Udp, TcpClient, UDP_PORT, TCP_PORT
 import socket
+import pyautogui
 
 
 class Client:
@@ -13,8 +14,9 @@ class Client:
         self.udp.allow_broadcast()
         self.be_added = False
         self._mouse = MouseController()
-        self._ip = socket.gethostbyname(socket.gethostname())
-        self._broadcast_data = Message(MsgType.DEVICE_JOIN, (self._ip, UDP_PORT)).to_bytes()
+        self.screen_size = pyautogui.size()
+        self._broadcast_data = Message(MsgType.DEVICE_ONLINE,
+                                       f'{self.screen_size.width}, {self.screen_size.height}').to_bytes()
         self.server_addr = None
         self.start_broadcast()
         self.start_msg_listener()
@@ -33,7 +35,6 @@ class Client:
                 self._mouse.move(msg.data[0], msg.data[1])
             elif msg.msg_type == MsgType.MOUSE_MOVE_TO:  # 跨屏初始位置
                 self._mouse.move_to(msg.data)
-                print("start mouse listener")
                 threading.Thread(target=self.mouse_listener).start()
             elif msg.msg_type == MsgType.MOUSE_CLICK:
                 self._mouse.click(msg.data[2], msg.data[3])
@@ -49,18 +50,18 @@ class Client:
             data = self._mouse.get_position()
             if self.be_added and self.server_addr and data[0] <= 1:
                 msg = Message(MsgType.MOUSE_BACK, f"{data[0]},{data[1]}")
-                tcp_client = TcpClient((self.server_addr[0],TCP_PORT))
+                tcp_client = TcpClient((self.server_addr[0], TCP_PORT))
                 tcp_client.send(msg.to_bytes())
                 tcp_client.close()
                 break
             time.sleep(0.1)
 
     def start_msg_listener(self):
-        self.msg_listener = threading.Thread(target=self.msg_receiver)
-        self.msg_listener.start()
-        return self.msg_listener
+        msg_listener = threading.Thread(target=self.msg_receiver)
+        msg_listener.start()
+        return msg_listener
 
     def start_broadcast(self):
-        self._broadcast_thread = threading.Thread(target=self.broadcast_address)
-        self._broadcast_thread.start()
-        return self._broadcast_thread
+        broadcast_thread = threading.Thread(target=self.broadcast_address)
+        broadcast_thread.start()
+        return broadcast_thread

@@ -4,7 +4,7 @@ import pynput
 
 
 class MsgType(enum.IntEnum):
-    DEVICE_JOIN = enum.auto()
+    DEVICE_ONLINE = enum.auto()
     SUCCESS_JOIN = enum.auto()
     MOUSE_BACK = enum.auto()
     MOUSE_MOVE = enum.auto()
@@ -36,7 +36,8 @@ class Message:
         if int(msg_type) == MsgType.MOUSE_MOVE:
             return Message(MsgType(int(msg_type)), tuple(map(int, data.split(','))))
         elif int(msg_type) == MsgType.MOUSE_MOVE_TO:
-            print(data)
+            return Message(MsgType(int(msg_type)), tuple(map(int, data.split(','))))
+        elif int(msg_type) == MsgType.DEVICE_ONLINE:
             return Message(MsgType(int(msg_type)), tuple(map(int, data.split(','))))
         elif int(msg_type) == MsgType.MOUSE_CLICK:
             data = data.split(',')
