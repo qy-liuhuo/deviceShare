@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk
 from PIL import Image, ImageTk
 import ttkbootstrap as ttkb
+import TipInfo
 
 
 class Client:
@@ -13,14 +14,14 @@ class Client:
 
 
 class DraggableImage(ttkb.Frame):
-    def __init__(self, master, image_path, image_id, other_image=None, center_image=False, *args, **kwargs):
+    def __init__(self, master, image_path, client, other_image=None, center_image=False, *args, **kwargs):
         super().__init__(master, *args, **kwargs)
         self.image_path = image_path
         self.image = Image.open(image_path)
         self.photo = ImageTk.PhotoImage(self.image)
         self.center_image = center_image
         self.other_image = other_image
-        self.image_id = image_id  # 图片编号
+        self.client = client  # 客户端
 
         self.label = ttkb.Label(self, image=self.photo)
         self.label.pack()
@@ -29,6 +30,9 @@ class DraggableImage(ttkb.Frame):
             self.label.bind('<Button-1>', self.start_move)
             self.label.bind('<B1-Motion>', self.do_move)
             self.label.bind('<ButtonRelease-1>', self.end_move)
+            TipInfo.create_tooltip(self, "拓展屏幕 ip:" + self.client.ip_addr)  # 鼠标悬停提示
+        if center_image:
+            TipInfo.create_tooltip(self, "主机屏幕")
 
         self.place(x=0, y=0)
         self.update_position()
@@ -100,16 +104,18 @@ def main():
 
     root.update_idletasks()  # Update window dimensions
 
-    center_image = DraggableImage(frame, 'resources/background.jpg', 0, center_image=True)
+    center_image = DraggableImage(frame, 'resources/background.jpg', None, center_image=True)
 
-    # 模拟 (后面删掉)
+    """
+    模拟 (后面删掉)
+    """
     client1 = Client(1, "192.168.200.130", 19999)
     client2 = Client(2, "192.168.200.131", 20000)
     client_list = [client1, client2]
 
     image_list = []
-    for idx in range(len(client_list)):
-        image_list.append(DraggableImage(frame, 'resources/background.jpg', idx + 1, other_image=center_image))
+    for client in client_list:
+        image_list.append(DraggableImage(frame, 'resources/background1.jpg', client, other_image=center_image))
 
     def on_done_click():
         for i in range(len(client_list)):
