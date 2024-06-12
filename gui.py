@@ -107,15 +107,14 @@ def main():
     client2 = Client(2, "192.168.200.131", 20000)
     client_list = [client1, client2]
 
-
-    image1 = DraggableImage(frame, 'resources/background.jpg', 1, other_image=center_image)
-    image2 = DraggableImage(frame, 'resources/background.jpg', 2, other_image=center_image)
+    image_list = []
+    for idx in range(len(client_list)):
+        image_list.append(DraggableImage(frame, 'resources/background.jpg', idx + 1, other_image=center_image))
 
     def on_done_click():
-        client_list[0].location = image1.get_relative_position()  # 更新位置
-        print("设备id:", client_list[0].id, "相对于主机的位置 ", client_list[0].location)
-        client_list[1].location = image2.get_relative_position()  # 更新位置
-        print("设备id:", client_list[1].id, "相对于主机的位置 ", client_list[1].location)
+        for i in range(len(client_list)):
+            client_list[i].location = image_list[i].get_relative_position()  # 更新位置
+            print("设备id:", client_list[i].id, "相对于主机的位置 ", client_list[i].location)
         root.destroy()
 
     # Done
