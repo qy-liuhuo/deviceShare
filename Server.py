@@ -6,6 +6,7 @@ import pynput
 from Message import Message, MsgType
 from MouseController import MouseController
 from Udp import Udp
+import tkinter as tk
 
 
 class Server(Udp):
@@ -75,3 +76,18 @@ class Server(Udp):
             if not self._mouse.focus:
                 mouse_listener = self.add_mouse_listener()
                 mouse_listener.join()
+
+    # 分辨率
+    def get_screen_resolution(self):
+        root = tk.Tk()
+
+        # 获取屏幕宽度和高度
+        screen_width = root.winfo_screenwidth()
+        screen_height = root.winfo_screenheight()
+
+        # 销毁根窗口
+        root.destroy()
+
+        return screen_width, screen_height
+
+
