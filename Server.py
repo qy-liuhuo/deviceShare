@@ -11,30 +11,34 @@ from Udp import Udp, Tcp
 
 class Server:
     def __init__(self, port=16666):
-        self.event_processor = None
-        self.msg_listener = None
         self.udp = Udp(port)
         self.tcp = Tcp(16667)
         self.clients = []
         self.cur_client = None
         self._mouse = MouseController()
         self.lock = threading.Lock()
+        self.start_event_processor()
+        self.start_msg_listener()
 
     def msg_receiver(self):
         while True:
+            print("msg_receiver")
             data, addr = self.udp.recv()
             msg = Message.from_bytes(data)
             if msg.msg_type == MsgType.DEVICE_JOIN and addr not in self.clients:
                 self.clients.append(addr)
                 # self.cur_client = addr  # 临时测试
                 self.udp.sendto(Message(MsgType.SUCCESS_JOIN,
-                                        f'{socket.gethostbyname(socket.gethostname())},{self._port}').to_bytes(), addr)
+                                        f'{socket.gethostbyname(socket.gethostname())},{16666}').to_bytes(), addr)
                 print(f"client {addr} connected")
 
     def event_processor(self):
         while True:
+            print("event_processor")
             data, addr = self.tcp.event_queue.get()
+            print(data)
             msg = Message.from_bytes(data)
+            print(msg)
             if msg.msg_type == MsgType.MOUSE_BACK:
                 self.lock.acquire()
                 self.cur_client = None
@@ -60,16 +64,17 @@ class Server:
         def on_move(x, y):
             last_pos = self._mouse.get_last_position()
             msg = Message(MsgType.MOUSE_MOVE, f"{x - last_pos[0]},{y - last_pos[1]}")
+            if self.cur_client is None:
+                return False
             if self.cur_client:
                 self.udp.sendto(msg.to_bytes(), self.cur_client)
             if self._mouse.get_position()[0] <= 20 or self._mouse.get_position()[1] <= 20 or self._mouse.get_position()[
                 0] >= 3838 or self._mouse.get_position()[1] >= 2158:
                 self.udp.sendto(msg.to_bytes(), self.cur_client)
-            if self._mouse.get_position()[0] <= 100 or self._mouse.get_position()[1] <= 100 or self._mouse.get_position()[0] >= 3740 or self._mouse.get_position()[1] >= 2060:
+            if self._mouse.get_position()[0] <= 100 or self._mouse.get_position()[1] <= 100 or \
+                    self._mouse.get_position()[0] >= 3740 or self._mouse.get_position()[1] >= 2060:
                 self._mouse.move_to((500, 500))
             self._mouse.update_last_position()
-            if self.cur_client is None:
-                return False
 
         def on_scroll(x, y, dx, dy):
             msg = Message(MsgType.MOUSE_SCROLL, f"{dx},{dy}")
@@ -90,7 +95,8 @@ class Server:
                             self._mouse.focus = False
                             self.lock.acquire()
                             self.cur_client = self.clients[0]
-                            self.udp.sendto(Message(MsgType.MOUSE_MOVE_TO, f'{x - 3838},{y}').to_bytes(), self.cur_client)
+                            self.udp.sendto(Message(MsgType.MOUSE_MOVE_TO, f'{x - 3838},{y}').to_bytes(),
+                                            self.cur_client)
                             self._mouse.move_to((500, 500))
                             self.lock.release()
                             break

@@ -8,15 +8,15 @@ import socket
 
 class Client:
     def __init__(self, port=16666):
-        self.msg_listener = None
         self.udp = Udp(port)
         self.udp.allow_broadcast()
         self.be_added = False
         self._mouse = MouseController()
-        self._broadcast_thread = None
         self._ip = socket.gethostbyname(socket.gethostname())
         self._broadcast_data = Message(MsgType.DEVICE_JOIN, (self._ip, port)).to_bytes()
         self.server_addr = None
+        self.start_broadcast()
+        self.start_msg_listener()
 
     def broadcast_address(self):
         while not self.be_added:
@@ -50,6 +50,7 @@ class Client:
                 msg = Message(MsgType.MOUSE_BACK, f"{data[0]},{data[1]}")
                 tcp_client = TcpClient((self.server_addr[0],16667))
                 tcp_client.send(msg.to_bytes())
+                tcp_client.close()
                 break
             time.sleep(0.1)
 

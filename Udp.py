@@ -16,6 +16,8 @@ class Udp:
         self._udp.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
 
     def sendto(self, data: bytes, target: tuple):
+        if target is None:
+            return
         self._udp.sendto(data, target)
 
     def recv(self):
