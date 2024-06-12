@@ -18,6 +18,7 @@ class Server:
         self.clients = []
         self.cur_client = None
         self._mouse = MouseController()
+        self.lock = threading.Lock()
 
     def msg_receiver(self):
         while True:
@@ -25,7 +26,7 @@ class Server:
             msg = Message.from_bytes(data)
             if msg.msg_type == MsgType.DEVICE_JOIN and addr not in self.clients:
                 self.clients.append(addr)
-                self.cur_client = addr  # 临时测试
+                # self.cur_client = addr  # 临时测试
                 self.udp.sendto(Message(MsgType.SUCCESS_JOIN,
                                         f'{socket.gethostbyname(socket.gethostname())},{self._port}').to_bytes(), addr)
                 print(f"client {addr} connected")
@@ -35,8 +36,10 @@ class Server:
             data, addr = self.tcp.event_queue.get()
             msg = Message.from_bytes(data)
             if msg.msg_type == MsgType.MOUSE_BACK:
+                self.lock.acquire()
                 self.cur_client = None
                 self._mouse.move_to((3840, msg.data[1]))
+                self.lock.release()
 
     def start_msg_listener(self):
         self.msg_listener = threading.Thread(target=self.msg_receiver)
@@ -61,6 +64,8 @@ class Server:
                 self.udp.sendto(msg.to_bytes(), self.cur_client)
             if self._mouse.get_position()[0] <= 20 or self._mouse.get_position()[1] <= 20 or self._mouse.get_position()[
                 0] >= 3838 or self._mouse.get_position()[1] >= 2158:
+                self.udp.sendto(msg.to_bytes(), self.cur_client)
+            if self._mouse.get_position()[0] <= 100 or self._mouse.get_position()[1] <= 100 or self._mouse.get_position()[0] >= 3740 or self._mouse.get_position()[1] >= 2060:
                 self._mouse.move_to((500, 500))
             self._mouse.update_last_position()
             if self.cur_client is None:
@@ -81,12 +86,16 @@ class Server:
                 for event in events:
                     if isinstance(event, pynput.mouse.Events.Move):
                         x, y = event.x, event.y
-                        if x > 3838:
+                        if x > 3838 and self.cur_client is None:
                             self._mouse.focus = False
+                            self.lock.acquire()
                             self.cur_client = self.clients[0]
                             self.udp.sendto(Message(MsgType.MOUSE_MOVE_TO, f'{x - 3838},{y}').to_bytes(), self.cur_client)
                             self._mouse.move_to((500, 500))
+                            self.lock.release()
                             break
+
             if not self._mouse.focus:
                 mouse_listener = self.add_mouse_listener()
                 mouse_listener.join()
+                self._mouse.focus = True
