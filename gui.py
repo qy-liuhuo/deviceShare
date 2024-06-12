@@ -127,7 +127,7 @@ def main():
     btn_done = ttk.Button(root, text="Done", command=on_done_click)
     btn_done.pack(side=tk.BOTTOM, padx=15, pady=15)
 
-    root.geometry('1230x800')
+    root.geometry('1200x800')
     root.update()
 
     center_image.update_position()
