@@ -1,4 +1,5 @@
 import enum
+import threading
 import time
 
 from MySocket import UDP_PORT
@@ -28,6 +29,7 @@ class Device:
         self.last_Heartbeat = time.time()
         self.expire_time = expire_time
 
+
     def update_heartbeat(self):
         self.last_Heartbeat = time.time()
 
@@ -45,10 +47,11 @@ class DeviceManager:
     def __init__(self):
         self.devices = []
         self.cur_device = None
+        threading.Thread(target=self.valid_checker).start()
 
     def refresh(self,ip,screen_width,screen_height,position=Position.NONE):
         for device in self.devices:
-            if device.device_ip.equals(ip):
+            if device.device_ip == ip:
                 device.update_heartbeat()
                 return
         self.add_device(Device(ip, Screen(screen_width, screen_height), position))
@@ -62,7 +65,7 @@ class DeviceManager:
 
     def change_position(self, ip, position):
         for device in self.devices:
-            if device.device_ip.equals(ip):
+            if device.device_ip == ip:
                 device.position = position
 
     def add_device(self, device: Device):
@@ -75,7 +78,7 @@ class DeviceManager:
 
     def get_device_by_ip(self, ip):
         for device in self.devices:
-            if device.device_ip.equals(ip):
+            if device.device_ip == ip:
                 return device
         return None
 

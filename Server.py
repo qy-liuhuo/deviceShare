@@ -1,6 +1,7 @@
 import queue
 import socket
 import threading
+import time
 
 import pyautogui
 import pynput
@@ -94,11 +95,13 @@ class Server:
                             self._mouse.focus = False
                             self.lock.acquire()
                             self.device_manager.cur_device = self.device_manager.get_device_by_position(Position.RIGHT)
-                            self.udp.sendto(Message(MsgType.MOUSE_MOVE_TO, f'{0},{y}').to_bytes(),
-                                            self.device_manager.cur_device.get_udp_address())
-                            self._mouse.move_to((int(self.screen_size.width/2), int(self.screen_size.height/2)))
-                            self.lock.release()
-                            break
+                            time.sleep(0.01) # 不加识别不到？
+                            if self.device_manager.cur_device is not None:
+                                self.udp.sendto(Message(MsgType.MOUSE_MOVE_TO, f'{0},{y}').to_bytes(),
+                                                self.device_manager.cur_device.get_udp_address())
+                                self._mouse.move_to((int(self.screen_size.width/2), int(self.screen_size.height/2)))
+                                self.lock.release()
+                                break
 
             if not self._mouse.focus:
                 mouse_listener = self.add_mouse_listener()
