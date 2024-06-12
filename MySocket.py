@@ -4,6 +4,8 @@ import threading
 
 from MouseController import MouseController
 
+UDP_PORT = 16666
+TCP_PORT = 16667
 
 class Udp:
     def __init__(self, port=16666):

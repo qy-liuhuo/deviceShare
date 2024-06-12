@@ -6,13 +6,13 @@ import pynput
 
 from Message import Message, MsgType
 from MouseController import MouseController
-from Udp import Udp, Tcp
+from MySocket import Udp, Tcp, UDP_PORT,TCP_PORT
 
 
 class Server:
-    def __init__(self, port=16666):
-        self.udp = Udp(port)
-        self.tcp = Tcp(16667)
+    def __init__(self):
+        self.udp = Udp(UDP_PORT)
+        self.tcp = Tcp(TCP_PORT)
         self.clients = []
         self.cur_client = None
         self._mouse = MouseController()
@@ -29,7 +29,7 @@ class Server:
                 self.clients.append(addr)
                 # self.cur_client = addr  # 临时测试
                 self.udp.sendto(Message(MsgType.SUCCESS_JOIN,
-                                        f'{socket.gethostbyname(socket.gethostname())},{16666}').to_bytes(), addr)
+                                        f'{socket.gethostbyname(socket.gethostname())},{UDP_PORT}').to_bytes(), addr)
                 print(f"client {addr} connected")
 
     def event_processor(self):

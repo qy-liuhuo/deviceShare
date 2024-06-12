@@ -2,18 +2,19 @@ import threading
 import time
 from Message import Message, MsgType
 from MouseController import MouseController
-from Udp import Udp, TcpClient
+from MySocket import Udp, TcpClient,UDP_PORT,TCP_PORT
 import socket
 
 
 class Client:
-    def __init__(self, port=16666):
-        self.udp = Udp(port)
+
+    def __init__(self):
+        self.udp = Udp(UDP_PORT)
         self.udp.allow_broadcast()
         self.be_added = False
         self._mouse = MouseController()
         self._ip = socket.gethostbyname(socket.gethostname())
-        self._broadcast_data = Message(MsgType.DEVICE_JOIN, (self._ip, port)).to_bytes()
+        self._broadcast_data = Message(MsgType.DEVICE_JOIN, (self._ip, UDP_PORT)).to_bytes()
         self.server_addr = None
         self.start_broadcast()
         self.start_msg_listener()
@@ -21,7 +22,7 @@ class Client:
     def broadcast_address(self):
         while not self.be_added:
             print("broadcast")
-            self.udp.sendto(self._broadcast_data, ('<broadcast>', 16666))  # 表示广播到16666端口
+            self.udp.sendto(self._broadcast_data, ('<broadcast>', UDP_PORT))  # 表示广播到16666端口
             time.sleep(2)
 
     def msg_receiver(self):
@@ -48,7 +49,7 @@ class Client:
             data = self._mouse.get_position()
             if self.be_added and self.server_addr and data[0] <= 1:
                 msg = Message(MsgType.MOUSE_BACK, f"{data[0]},{data[1]}")
-                tcp_client = TcpClient((self.server_addr[0],16667))
+                tcp_client = TcpClient((self.server_addr[0],TCP_PORT))
                 tcp_client.send(msg.to_bytes())
                 tcp_client.close()
                 break
