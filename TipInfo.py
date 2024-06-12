@@ -1,7 +1,4 @@
 import tkinter as tk
-from tkinter import Label
-from PIL import Image, ImageTk
-
 
 
 class ToolTip:
