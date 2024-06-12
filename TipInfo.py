@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import Label
 from PIL import Image, ImageTk
 
+
 class ToolTip:
     def __init__(self, widget):
         self.widget = widget
@@ -27,10 +28,13 @@ class ToolTip:
         if tw:
             tw.destroy()
 
+
 def create_tooltip(widget, text):
     tooltip = ToolTip(widget)
+
     def enter(event):
         tooltip.show_tip(text)
+        
     def leave(event):
         tooltip.hide_tip()
     widget.bind('<Enter>', enter)
