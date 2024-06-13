@@ -4,7 +4,6 @@ from Message import Message, MsgType
 from MouseController import MouseController
 from MySocket import Udp, TcpClient, UDP_PORT, TCP_PORT
 import pyautogui
-import Xlib.threaded
 
 class Client:
 
