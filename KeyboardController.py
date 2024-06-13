@@ -50,6 +50,7 @@ class KeyFactory:
 class KeyboardController:
     def __init__(self):
         self.__keyboard = pynput.keyboard.Controller()
+        self.keyFactory = KeyFactory()
 
     def press(self, key):
         self.__keyboard.press(key)
@@ -57,8 +58,8 @@ class KeyboardController:
     def release(self, key):
         self.__keyboard.release(key)
 
-    def click(self, click_type, key_code):
-        key = pynput.keyboard.KeyCode.from_vk(int(key_code))
+    def click(self, click_type, keyData):
+        key = self.keyFactory.outPut(keyData)
         if click_type == 'press':
             self.press(key)
         elif click_type == 'release':
