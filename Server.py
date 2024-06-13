@@ -146,5 +146,5 @@ class Server:
                 mouse_listener = self.add_mouse_listener()
                 keyboard_listener = self.add_keyboard_listener()
                 mouse_listener.join()
-                keyboard_listener.close() # 鼠标监听结束后关闭键盘监听
+                keyboard_listener.stop() # 鼠标监听结束后关闭键盘监听
                 self._mouse.focus = True
