@@ -59,6 +59,8 @@ class Client:
                 self._mouse.move_to(msg.data)
             elif msg.msg_type == MsgType.MOUSE_CLICK:
                 self._mouse.click(msg.data[2], msg.data[3])
+            elif msg.msg_type == MsgType.KEYBOARD_CLICK:
+                print(msg.data)
             elif msg.msg_type == MsgType.MOUSE_SCROLL:
                 self._mouse.scroll(msg.data[0], msg.data[1])
             elif msg.msg_type == MsgType.SUCCESS_JOIN:

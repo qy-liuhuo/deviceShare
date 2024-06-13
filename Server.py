@@ -7,6 +7,7 @@ import pyautogui
 import pynput
 
 from Device import DeviceManager, Position
+from KeyboardController import KeyboardController
 from Message import Message, MsgType
 from MouseController import MouseController
 from MySocket import Udp, Tcp, UDP_PORT,TCP_PORT
@@ -21,6 +22,7 @@ class Server:
         self.tcp = Tcp(TCP_PORT)
         self.device_manager = DeviceManager()
         self._mouse = MouseController()
+        self._keyboard = KeyboardController()
         self.lock = threading.Lock()
         self.start_event_processor()
         self.start_msg_listener()
@@ -104,6 +106,21 @@ class Server:
         mouse_listener.start()
         return mouse_listener
 
+    def add_keyboard_listener(self):
+        def on_press(key):
+            msg = Message(MsgType.KEYBOARD_CLICK, f"press,{key}")
+            if self.device_manager.cur_device:
+                self.udp.sendto(msg.to_bytes(), self.device_manager.cur_device.get_udp_address())
+
+        def on_release(key):
+            msg = Message(MsgType.KEYBOARD_CLICK, f"release,{key}")
+            if self.device_manager.cur_device:
+                self.udp.sendto(msg.to_bytes(), self.device_manager.cur_device.get_udp_address())
+
+        keyboard_listener = self._keyboard.keyboard_listener(on_press, on_release)
+        keyboard_listener.start()
+        return keyboard_listener
+
     def main_loop(self):
         while True:
             with pynput.mouse.Events() as events:
@@ -124,5 +141,7 @@ class Server:
 
             if not self._mouse.focus:
                 mouse_listener = self.add_mouse_listener()
+                keyboard_listener = self.add_keyboard_listener()
                 mouse_listener.join()
+                keyboard_listener.close() # 鼠标监听结束后关闭键盘监听
                 self._mouse.focus = True
