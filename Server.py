@@ -43,7 +43,7 @@ class Server:
             if msg.msg_type == MsgType.MOUSE_BACK:
                 self.lock.acquire()
                 self.device_manager.cur_device = None
-                self._mouse.move_to((self.screen_size.width, msg.data[1]))
+                self._mouse.move_to((self.screen_size.width-6, msg.data[1]))
                 self.lock.release()
 
     def start_msg_listener(self):
@@ -71,8 +71,8 @@ class Server:
                 self.udp.sendto(msg.to_bytes(), self.device_manager.cur_device.get_udp_address())
             # if self._mouse.get_position()[0] >= self.screen_size.width - 10: # 向右移出
             #     self.udp.sendto(msg.to_bytes(), self.device_manager.cur_device.get_udp_address())
-            if self._mouse.get_position()[0] <= 100 or self._mouse.get_position()[1] <= 100 or \
-                    self._mouse.get_position()[0] >= self.screen_size.width-100 or self._mouse.get_position()[1] >= self.screen_size.height-100:
+            if self._mouse.get_position()[0] <= 5 or self._mouse.get_position()[1] <= 5 or \
+                    self._mouse.get_position()[0] >= self.screen_size.width-5 or self._mouse.get_position()[1] >= self.screen_size.height-5:
                 self._mouse.move_to((int(self.screen_size.width/2), int(self.screen_size.height/2)))
             self._mouse.update_last_position()
 

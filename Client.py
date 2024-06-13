@@ -3,9 +3,8 @@ import time
 from Message import Message, MsgType
 from MouseController import MouseController
 from MySocket import Udp, TcpClient, UDP_PORT, TCP_PORT
-import socket
 import pyautogui
-
+import Xlib.threaded
 
 class Client:
 
@@ -14,16 +13,17 @@ class Client:
         self.udp.allow_broadcast()
         self.be_added = False
         self._mouse = MouseController()
+        self._mouse.focus = False
         self.screen_size = pyautogui.size()
         self._broadcast_data = Message(MsgType.DEVICE_ONLINE,
                                        f'{self.screen_size.width}, {self.screen_size.height}').to_bytes()
         self.server_addr = None
         self.start_broadcast()
         self.start_msg_listener()
+        # threading.Thread(target=self.mouse_listener).start()
 
     def broadcast_address(self):
         while True:
-            print("broadcast")
             self.udp.sendto(self._broadcast_data, ('<broadcast>', UDP_PORT))  # 表示广播到16666端口
             time.sleep(2)
 
@@ -32,10 +32,15 @@ class Client:
             data, addr = self.udp.recv()
             msg = Message.from_bytes(data)
             if msg.msg_type == MsgType.MOUSE_MOVE:
-                self._mouse.move(msg.data[0], msg.data[1])
+                position = self._mouse.move(msg.data[0], msg.data[1])
+                if position[0] <= 1 and self.be_added and self.server_addr:
+                    msg = Message(MsgType.MOUSE_BACK, f"{position[0]},{position[1]}")
+                    tcp_client = TcpClient((self.server_addr[0], TCP_PORT))
+                    tcp_client.send(msg.to_bytes())
+                    tcp_client.close()
+                    self._mouse.focus = False
             elif msg.msg_type == MsgType.MOUSE_MOVE_TO:  # 跨屏初始位置
                 self._mouse.move_to(msg.data)
-                threading.Thread(target=self.mouse_listener).start()
             elif msg.msg_type == MsgType.MOUSE_CLICK:
                 self._mouse.click(msg.data[2], msg.data[3])
             elif msg.msg_type == MsgType.MOUSE_SCROLL:
@@ -44,17 +49,6 @@ class Client:
                 self.server_addr = addr
                 self.be_added = True
 
-    def mouse_listener(self):
-        time.sleep(1)
-        while True:
-            data = self._mouse.get_position()
-            if self.be_added and self.server_addr and data[0] <= 1:
-                msg = Message(MsgType.MOUSE_BACK, f"{data[0]},{data[1]}")
-                tcp_client = TcpClient((self.server_addr[0], TCP_PORT))
-                tcp_client.send(msg.to_bytes())
-                tcp_client.close()
-                break
-            time.sleep(0.1)
 
     def start_msg_listener(self):
         msg_listener = threading.Thread(target=self.msg_receiver)

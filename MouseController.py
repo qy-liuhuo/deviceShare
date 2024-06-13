@@ -9,6 +9,8 @@ class MouseController:
             import ctypes
             awareness = ctypes.c_int()
             ctypes.windll.shcore.SetProcessDpiAwareness(2)
+        if platform.system().lower() == 'linux':
+            import Xlib.threaded
         self.__mouse = pynput.mouse.Controller()
         self.last_position = self.__mouse.position
         self.focus = True
@@ -28,6 +30,7 @@ class MouseController:
 
     def move(self, dx, dy):
         self.__mouse.move(dx, dy)
+        return self.__mouse.position
 
     def scroll(self, dx, dy):
         self.__mouse.scroll(dx, dy)
