@@ -66,7 +66,7 @@ class Server:
 
     def clipboard_listener(self):
         while True:
-            new_clip_text = pyperclip.copy()
+            new_clip_text = pyperclip.paste()
             if new_clip_text != '' and new_clip_text != self.last_clipboard_text:
                 self.last_clipboard_text = new_clip_text
                 self.broadcast_clipboard(new_clip_text)
