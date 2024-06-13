@@ -37,9 +37,8 @@ class Server:
                 # self.cur_client = addr  # 临时测试
                 self.udp.sendto(Message(MsgType.SUCCESS_JOIN,
                                         f'{socket.gethostbyname(socket.gethostname())},{UDP_PORT}').to_bytes(), addr)
-                print(f"client {addr} connected")
+
             elif msg.msg_type == MsgType.CLIPBOARD_UPDATE:
-                print('receive clipboard')
                 self.last_clipboard_text = msg.data
                 pyperclip.copy(msg.data)
 

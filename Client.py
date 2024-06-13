@@ -65,7 +65,6 @@ class Client:
                 self.server_addr = addr
                 self.be_added = True
             elif msg.msg_type == MsgType.CLIPBOARD_UPDATE:
-                print('receive clipboard')
                 self.last_clipboard_text = msg.data
                 pyperclip.copy(msg.data)
 

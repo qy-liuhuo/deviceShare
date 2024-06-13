@@ -55,6 +55,7 @@ class DeviceManager:
                 device.update_heartbeat()
                 return
         self.add_device(Device(ip, Screen(screen_width, screen_height), position))
+        print(f"client {ip} connected")
 
     def valid_checker(self):
         while True:
