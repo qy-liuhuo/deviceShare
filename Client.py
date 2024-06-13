@@ -1,7 +1,8 @@
 import threading
 import time
 
-from ClipBoardController import ClipBoardController, Content
+import pyperclip
+
 from Message import Message, MsgType
 from MouseController import MouseController
 from MySocket import Udp, TcpClient, UDP_PORT, TCP_PORT
@@ -22,17 +23,15 @@ class Client:
         self.server_addr = None
         self.start_broadcast()
         self.start_msg_listener()
-        self.clipboard = ClipBoardController()
+        self.last_clipboard_text = ''
         threading.Thread(target=self.clipboard_listener).start()
 
     def clipboard_listener(self):
         while True:
-            content_text = self.clipboard.paste()
-            if content_text != '' and content_text != self.clipboard.get_content().text:
-                if not self.clipboard.get_content().from_other:  # 本机更新剪切板，需发送给其他机器
-                    print('update clipboard')
-                    self.clipboard.content = Content(content_text, from_other=False)
-                    self.broadcast_clipboard(content_text)
+            new_clip_text = pyperclip.copy()
+            if new_clip_text != '' and new_clip_text != self.last_clipboard_text:
+                self.last_clipboard_text = new_clip_text
+                self.broadcast_clipboard(new_clip_text)
             time.sleep(1)
 
     def broadcast_clipboard(self, text):
@@ -67,8 +66,8 @@ class Client:
                 self.be_added = True
             elif msg.msg_type == MsgType.CLIPBOARD_UPDATE:
                 print('receive clipboard')
-                self.clipboard.content = Content(msg.data, from_other=True)
-                self.clipboard.copy(msg.data)
+                self.last_clipboard_text = msg.data
+                pyperclip.copy(msg.data)
 
     def start_msg_listener(self):
         msg_listener = threading.Thread(target=self.msg_receiver)
