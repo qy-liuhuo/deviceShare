@@ -7,7 +7,7 @@ import pyautogui
 import pynput
 
 from Device import DeviceManager, Position
-from KeyboardController import KeyboardController
+from KeyboardController import KeyboardController, KeyFactory
 from Message import Message, MsgType
 from MouseController import MouseController
 from MySocket import Udp, Tcp, UDP_PORT,TCP_PORT
@@ -23,6 +23,7 @@ class Server:
         self.device_manager = DeviceManager()
         self._mouse = MouseController()
         self._keyboard = KeyboardController()
+        self._keyboard_factory = KeyFactory()
         self.lock = threading.Lock()
         self.start_event_processor()
         self.start_msg_listener()
@@ -108,12 +109,14 @@ class Server:
 
     def add_keyboard_listener(self):
         def on_press(key):
-            msg = Message(MsgType.KEYBOARD_CLICK, f"press,{key.vk}")
+            data = self._keyboard_factory.input(key)
+            msg = Message(MsgType.KEYBOARD_CLICK, f"press,{data[0]},{data[1]}")
             if self.device_manager.cur_device:
                 self.udp.sendto(msg.to_bytes(), self.device_manager.cur_device.get_udp_address())
 
         def on_release(key):
-            msg = Message(MsgType.KEYBOARD_CLICK, f"release,{key.vk}")
+            data = self._keyboard_factory.input(key)
+            msg = Message(MsgType.KEYBOARD_CLICK, f"release,{data[0]},{data[1]}")
             if self.device_manager.cur_device:
                 self.udp.sendto(msg.to_bytes(), self.device_manager.cur_device.get_udp_address())
 
