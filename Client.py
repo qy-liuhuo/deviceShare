@@ -3,6 +3,7 @@ import time
 
 import pyperclip
 
+from KeyboardController import KeyboardController
 from Message import Message, MsgType
 from MouseController import MouseController
 from MySocket import Udp, TcpClient, UDP_PORT, TCP_PORT
@@ -17,6 +18,7 @@ class Client:
         self.be_added = False
         self._mouse = MouseController()
         self._mouse.focus = False
+        self._keyboard = KeyboardController()
         self.screen_size = pyautogui.size()
         self._broadcast_data = Message(MsgType.DEVICE_ONLINE,
                                        f'{self.screen_size.width}, {self.screen_size.height}').to_bytes()
@@ -60,7 +62,7 @@ class Client:
             elif msg.msg_type == MsgType.MOUSE_CLICK:
                 self._mouse.click(msg.data[2], msg.data[3])
             elif msg.msg_type == MsgType.KEYBOARD_CLICK:
-                print(msg.data)
+                self._keyboard.click(msg.data[0], msg.data[1])
             elif msg.msg_type == MsgType.MOUSE_SCROLL:
                 self._mouse.scroll(msg.data[0], msg.data[1])
             elif msg.msg_type == MsgType.SUCCESS_JOIN:

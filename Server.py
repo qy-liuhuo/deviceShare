@@ -108,12 +108,12 @@ class Server:
 
     def add_keyboard_listener(self):
         def on_press(key):
-            msg = Message(MsgType.KEYBOARD_CLICK, f"press,{key}")
+            msg = Message(MsgType.KEYBOARD_CLICK, f"press,{key.vk}")
             if self.device_manager.cur_device:
                 self.udp.sendto(msg.to_bytes(), self.device_manager.cur_device.get_udp_address())
 
         def on_release(key):
-            msg = Message(MsgType.KEYBOARD_CLICK, f"release,{key}")
+            msg = Message(MsgType.KEYBOARD_CLICK, f"release,{key.vk}")
             if self.device_manager.cur_device:
                 self.udp.sendto(msg.to_bytes(), self.device_manager.cur_device.get_udp_address())
 

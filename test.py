@@ -1,3 +1,3 @@
-import pyperclip
+import pynput
 
-print(pyperclip.paste()=='')
+print(pynput.keyboard.KeyCode.from_vk(65).vk)
