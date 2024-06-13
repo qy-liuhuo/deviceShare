@@ -66,4 +66,5 @@ class KeyboardController:
             self.release(key)
 
     def keyboard_listener(self, on_press, on_release):
+        
         return pynput.keyboard.Listener(suppress=True,on_press=on_press, on_release=on_release)
