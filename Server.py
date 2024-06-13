@@ -6,6 +6,7 @@ import time
 import pyautogui
 import pynput
 
+from ClipBoardController import ClipBoardController, Content
 from Device import DeviceManager, Position
 from Message import Message, MsgType
 from MouseController import MouseController
@@ -17,6 +18,7 @@ from MySocket import Udp, Tcp, UDP_PORT,TCP_PORT
 class Server:
     def __init__(self):
         self.udp = Udp(UDP_PORT)
+        self.udp.allow_broadcast()
         self.tcp = Tcp(TCP_PORT)
         self.device_manager = DeviceManager()
         self._mouse = MouseController()
@@ -24,6 +26,8 @@ class Server:
         self.start_event_processor()
         self.start_msg_listener()
         self.screen_size = pyautogui.size()
+        self.clipboard = ClipBoardController()
+        threading.Thread(target=self.clipboard_listener).start()
 
     def msg_receiver(self):
         while True:
@@ -35,6 +39,10 @@ class Server:
                 self.udp.sendto(Message(MsgType.SUCCESS_JOIN,
                                         f'{socket.gethostbyname(socket.gethostname())},{UDP_PORT}').to_bytes(), addr)
                 print(f"client {addr} connected")
+            elif msg.msg_type == MsgType.CLIPBOARD_UPDATE:
+                print('receive clipboard')
+                self.clipboard.content = Content(msg.data, from_other=True)
+                self.clipboard.copy(msg.data)
 
     def event_processor(self):
         while True:
@@ -46,6 +54,7 @@ class Server:
                 self._mouse.move_to((self.screen_size.width-6, msg.data[1]))
                 self.lock.release()
 
+
     def start_msg_listener(self):
         msg_listener = threading.Thread(target=self.msg_receiver)
         msg_listener.start()
@@ -55,6 +64,21 @@ class Server:
         event_processor = threading.Thread(target=self.event_processor)
         event_processor.start()
         return event_processor
+
+    def clipboard_listener(self):
+        while True:
+            content_text = self.clipboard.paste()
+            print(content_text)
+            if content_text != '' and content_text != self.clipboard.get_content().text:
+                if not self.clipboard.get_content().from_other:  # 本机更新剪切板，需发送给其他机器
+                    print('update clipboard')
+                    self.clipboard.content = Content(content_text, from_other=False)
+                    self.broadcast_clipboard(content_text)
+            time.sleep(1)
+
+    def broadcast_clipboard(self, text):
+        msg = Message(MsgType.CLIPBOARD_UPDATE, text)
+        self.udp.sendto(msg.to_bytes(), ('<broadcast>', UDP_PORT))
 
     def add_mouse_listener(self):
         def on_click(x, y, button, pressed):

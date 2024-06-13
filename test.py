@@ -1,4 +1,3 @@
-import queue
+import pyperclip
 
-q = queue.Queue(100)
-print(q.get())
+print(pyperclip.paste()=='')

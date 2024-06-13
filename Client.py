@@ -1,9 +1,12 @@
 import threading
 import time
+
+from ClipBoardController import ClipBoardController, Content
 from Message import Message, MsgType
 from MouseController import MouseController
 from MySocket import Udp, TcpClient, UDP_PORT, TCP_PORT
 import pyautogui
+
 
 class Client:
 
@@ -19,7 +22,22 @@ class Client:
         self.server_addr = None
         self.start_broadcast()
         self.start_msg_listener()
-        # threading.Thread(target=self.mouse_listener).start()
+        self.clipboard = ClipBoardController()
+        threading.Thread(target=self.clipboard_listener).start()
+
+    def clipboard_listener(self):
+        while True:
+            content_text = self.clipboard.paste()
+            if content_text != '' and content_text != self.clipboard.get_content().text:
+                if not self.clipboard.get_content().from_other:  # 本机更新剪切板，需发送给其他机器
+                    print('update clipboard')
+                    self.clipboard.content = Content(content_text, from_other=False)
+                    self.broadcast_clipboard(content_text)
+            time.sleep(1)
+
+    def broadcast_clipboard(self, text):
+        msg = Message(MsgType.CLIPBOARD_UPDATE, text)
+        self.udp.sendto(msg.to_bytes(), ('<broadcast>', UDP_PORT))
 
     def broadcast_address(self):
         while True:
@@ -47,7 +65,10 @@ class Client:
             elif msg.msg_type == MsgType.SUCCESS_JOIN:
                 self.server_addr = addr
                 self.be_added = True
-
+            elif msg.msg_type == MsgType.CLIPBOARD_UPDATE:
+                print('receive clipboard')
+                self.clipboard.content = Content(msg.data, from_other=True)
+                self.clipboard.copy(msg.data)
 
     def start_msg_listener(self):
         msg_listener = threading.Thread(target=self.msg_receiver)
