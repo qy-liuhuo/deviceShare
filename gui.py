@@ -1,3 +1,4 @@
+import json
 import tkinter as tk
 from tkinter import ttk
 from PIL import Image, ImageTk
@@ -6,10 +7,9 @@ import TipInfo
 
 
 class Client:
-    def __init__(self, id, ip_addr, port):
+    def __init__(self, id, ip_addr):
         self.id = id  # 设备编号
         self.ip_addr = ip_addr
-        self.port = port
         self.location = None  # 相对于主机的位置
 
 
@@ -62,10 +62,10 @@ class DraggableImage(ttkb.Frame):
 
             # Calculate positions for top, bottom, left, right
             positions = {
-                'top': (ox + (ow - iw) // 2, oy - ih),
-                'bottom': (ox + (ow - iw) // 2, oy + oh),
-                'left': (ox - iw, oy + (oh - ih) // 2),
-                'right': (ox + ow, oy + (oh - ih) // 2)
+                'TOP': (ox + (ow - iw) // 2, oy - ih),
+                'BOTTOM': (ox + (ow - iw) // 2, oy + oh),
+                'LEFT': (ox - iw, oy + (oh - ih) // 2),
+                'RIGHT': (ox + ow, oy + (oh - ih) // 2)
             }
 
             # Find the nearest position
@@ -77,7 +77,6 @@ class DraggableImage(ttkb.Frame):
                     min_distance = distance
                     nearest_position = pos
 
-            # Place the image at the nearest position
             self.place(x=nearest_position[0], y=nearest_position[1])
 
     def get_relative_position(self):
@@ -85,14 +84,23 @@ class DraggableImage(ttkb.Frame):
         x, y = self.winfo_x(), self.winfo_y()
 
         if y < oy:
-            return "top"
+            return "TOP"
         elif y > oy:
-            return "bottom"
+            return "BOTTOM"
         elif x < ox:
-            return "left"
+            return "LEFT"
         elif x > ox:
-            return "right"
-        return "unknown"
+            return "RIGHT"
+        return "NONE"
+
+
+def rewrite(path, client_list):
+    with open(path, 'r', encoding='utf-8') as f:
+        device_dict = json.load(f)
+    for client in client_list:
+        device_dict[client.ip_addr][2] = "Position." + client.location
+    with open(path, 'w', encoding='utf-8') as f:
+        json.dump(device_dict, f, indent=4)
 
 
 def main():
@@ -102,16 +110,20 @@ def main():
     frame = ttkb.Frame(root)
     frame.pack(fill=tk.BOTH, expand=True)
 
-    root.update_idletasks()  # Update window dimensions
+    root.update_idletasks()
 
     center_image = DraggableImage(frame, 'resources/background.jpg', None, center_image=True)
 
-    """
-    模拟 (后面删掉)
-    """
-    client1 = Client(1, "192.168.200.130", 19999)
-    client2 = Client(2, "192.168.200.131", 20000)
-    client_list = [client1, client2]
+    # 从配置文件中读取
+    device_dict = {}
+    with open("config/config.json", "r", encoding="utf-8") as f:
+        device_dict = json.load(f)
+    client_list = []
+    idx = 1
+    for device_ip in device_dict:
+        client = Client(idx, device_ip)
+        idx = idx + 1
+        client_list.append(client)
 
     image_list = []
     for client in client_list:
@@ -121,6 +133,8 @@ def main():
         for i in range(len(client_list)):
             client_list[i].location = image_list[i].get_relative_position()  # 更新位置
             print("设备id:", client_list[i].id, "相对于主机的位置 ", client_list[i].location)
+        # 将位置location写回配置文件
+        rewrite("config/config.json", client_list)
         root.destroy()
 
     # Done
