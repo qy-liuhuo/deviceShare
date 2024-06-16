@@ -42,6 +42,7 @@ class Client:
 
     def broadcast_address(self):
         while True:
+            print("broadcasting")
             self.udp.sendto(self._broadcast_data, ('<broadcast>', UDP_PORT))  # 表示广播到16666端口
             time.sleep(2)
 

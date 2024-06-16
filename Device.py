@@ -81,7 +81,7 @@ class DeviceManager:
     def write_file(self):
         device_info_dict = {}
         for device in self.devices:
-            device_info_dict[device.device_ip] = (device.screen.screen_width, device.screen.screen_height, device.position)
+            device_info_dict[device.device_ip] = (device.screen.screen_width, device.screen.screen_height, str(device.position))
         with open("devices.json", "w") as f:
             json.dump(device_info_dict, f)
 
