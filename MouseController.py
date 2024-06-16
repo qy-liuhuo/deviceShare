@@ -28,6 +28,7 @@ class MouseController:
 
     def move(self, dx, dy):
         self.__mouse.move(dx, dy)
+        return self.__mouse.position
 
     def scroll(self, dx, dy):
         self.__mouse.scroll(dx, dy)
