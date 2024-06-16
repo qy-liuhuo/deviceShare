@@ -1,4 +1,5 @@
 import enum
+import json
 import threading
 import time
 
@@ -71,11 +72,18 @@ class DeviceManager:
 
     def add_device(self, device: Device):
         self.devices.append(device)
-
+        self.write_file()
     def remove_device(self, device: Device):
         if self.cur_device == device:
             self.cur_device = None
         self.devices.remove(device)
+        self.write_file()
+    def write_file(self):
+        device_info_dict = {}
+        for device in self.devices:
+            device_info_dict[device.device_ip] = (device.screen.screen_width, device.screen.screen_height, device.position)
+        with open("devices.json", "w") as f:
+            json.dump(device_info_dict, f)
 
     def get_device_by_ip(self, ip):
         for device in self.devices:

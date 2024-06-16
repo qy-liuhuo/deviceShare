@@ -30,6 +30,7 @@ class Server:
         self.screen_size = pyautogui.size()
         self.last_clipboard_text = ''
         threading.Thread(target=self.clipboard_listener).start()
+        threading.Thread(target=self.main_loop).start()
 
     def msg_receiver(self):
         while True:
