@@ -52,15 +52,17 @@ class Server:
             if msg.msg_type == MsgType.MOUSE_BACK:
                 self.lock.acquire()
                 if self.device_manager.cur_device is not None:
-                    if self.device_manager.cur_device.position == Position.RIGHT:
-                        self._mouse.move_to((self.screen_size.width - 6, msg.data[1]))
-                    elif self.device_manager.cur_device.position == Position.LEFT:
-                        self._mouse.move_to((6, msg.data[1]))
-                    elif self.device_manager.cur_device.position == Position.TOP:
-                        self._mouse.move_to((msg.data[0], 6))
-                    elif self.device_manager.cur_device.position == Position.BOTTOM:
-                        self._mouse.move_to((msg.data[0], self.screen_size.height - 6))
-                self.device_manager.cur_device = None
+                    device_position = self.device_manager.cur_device.position
+                    self.device_manager.cur_device = None
+                    self._mouse.focus = True
+                    if device_position == Position.RIGHT:
+                        self._mouse.move_to((self.screen_size.width - 30, msg.data[1]))
+                    elif device_position == Position.LEFT:
+                        self._mouse.move_to((30, msg.data[1]))
+                    elif device_position == Position.TOP:
+                        self._mouse.move_to((msg.data[0], 30))
+                    elif device_position == Position.BOTTOM:
+                        self._mouse.move_to((msg.data[0], self.screen_size.height - 30))
                 self.lock.release()
 
     def start_msg_listener(self):
@@ -100,9 +102,9 @@ class Server:
                 self.udp.sendto(msg.to_bytes(), self.device_manager.cur_device.get_udp_address())
             # if self._mouse.get_position()[0] >= self.screen_size.width - 10: # 向右移出
             #     self.udp.sendto(msg.to_bytes(), self.device_manager.cur_device.get_udp_address())
-            if self._mouse.get_position()[0] <= 5 or self._mouse.get_position()[1] <= 5 or \
-                    self._mouse.get_position()[0] >= self.screen_size.width - 5 or self._mouse.get_position()[
-                1] >= self.screen_size.height - 5:
+            if not self._mouse.focus and self._mouse.get_position()[0] <= 200 or self._mouse.get_position()[1] <= 200 or \
+                    self._mouse.get_position()[0] >= self.screen_size.width - 200 or self._mouse.get_position()[
+                1] >= self.screen_size.height - 200:
                 self._mouse.move_to((int(self.screen_size.width / 2), int(self.screen_size.height / 2)))
             self._mouse.update_last_position()
 
@@ -157,16 +159,16 @@ class Server:
                             time.sleep(0.01)  # 不加识别不到？
                             if self.device_manager.cur_device is not None:
                                 if move_out == Position.LEFT:
-                                    self.udp.sendto(Message(MsgType.MOUSE_MOVE_TO, f'{self.device_manager.cur_device.screen.screen_width-10},{y}').to_bytes(),
+                                    self.udp.sendto(Message(MsgType.MOUSE_MOVE_TO, f'{self.device_manager.cur_device.screen.screen_width-30},{y}').to_bytes(),
                                                     self.device_manager.cur_device.get_udp_address())
                                 elif move_out == Position.RIGHT:
-                                    self.udp.sendto(Message(MsgType.MOUSE_MOVE_TO, f'{10},{y}').to_bytes(),
+                                    self.udp.sendto(Message(MsgType.MOUSE_MOVE_TO, f'{30},{y}').to_bytes(),
                                                     self.device_manager.cur_device.get_udp_address())
                                 elif move_out == Position.TOP:
-                                    self.udp.sendto(Message(MsgType.MOUSE_MOVE_TO, f'{x},{self.device_manager.cur_device.screen.screen_height-10}').to_bytes(),
+                                    self.udp.sendto(Message(MsgType.MOUSE_MOVE_TO, f'{x},{self.device_manager.cur_device.screen.screen_height-30}').to_bytes(),
                                                     self.device_manager.cur_device.get_udp_address())
                                 elif move_out == Position.BOTTOM:
-                                    self.udp.sendto(Message(MsgType.MOUSE_MOVE_TO, f'{x},{10}').to_bytes(),
+                                    self.udp.sendto(Message(MsgType.MOUSE_MOVE_TO, f'{x},{30}').to_bytes(),
                                                     self.device_manager.cur_device.get_udp_address())
                                 self._mouse.move_to((int(self.screen_size.width / 2), int(self.screen_size.height / 2)))
                                 self.lock.release()

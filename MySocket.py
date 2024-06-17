@@ -47,6 +47,7 @@ class Tcp:
                 if not data:
                     break
                 self.event_queue.put((data, addr))
+                conn.send(b'OK')
         self._tcp.close()
 
     def close(self):
