@@ -10,9 +10,8 @@ from Device import DeviceManager, Position
 from KeyboardController import KeyboardController, KeyFactory
 from Message import Message, MsgType
 from MouseController import MouseController
-from MySocket import Udp, Tcp, UDP_PORT,TCP_PORT
+from MySocket import Udp, Tcp, UDP_PORT, TCP_PORT
 import pyperclip
-
 
 
 class Server:
@@ -36,11 +35,11 @@ class Server:
         while True:
             data, addr = self.udp.recv()
             msg = Message.from_bytes(data)
-            if msg.msg_type == MsgType.DEVICE_ONLINE: # 客户端上线及心跳
-                self.device_manager.refresh(ip=addr[0], screen_width=msg.data[0], screen_height=msg.data[1] ,position=Position.RIGHT) # 临时测试
+            if msg.msg_type == MsgType.DEVICE_ONLINE:  # 客户端上线及心跳
+                position = self.device_manager.refresh(ip=addr[0], screen_width=msg.data[0], screen_height=msg.data[1])  # 临时测试
                 # self.cur_client = addr  # 临时测试
                 self.udp.sendto(Message(MsgType.SUCCESS_JOIN,
-                                        f'{socket.gethostbyname(socket.gethostname())},{UDP_PORT}').to_bytes(), addr)
+                                        f'{socket.gethostbyname(socket.gethostname())},{UDP_PORT},{position}').to_bytes(), addr)
 
             elif msg.msg_type == MsgType.CLIPBOARD_UPDATE:
                 self.last_clipboard_text = msg.data
@@ -52,10 +51,17 @@ class Server:
             msg = Message.from_bytes(data)
             if msg.msg_type == MsgType.MOUSE_BACK:
                 self.lock.acquire()
+                if self.device_manager.cur_device is not None:
+                    if self.device_manager.cur_device.position == Position.RIGHT:
+                        self._mouse.move_to((self.screen_size.width - 6, msg.data[1]))
+                    elif self.device_manager.cur_device.position == Position.LEFT:
+                        self._mouse.move_to((6, msg.data[1]))
+                    elif self.device_manager.cur_device.position == Position.TOP:
+                        self._mouse.move_to((msg.data[0], 6))
+                    elif self.device_manager.cur_device.position == Position.BOTTOM:
+                        self._mouse.move_to((msg.data[0], self.screen_size.height - 6))
                 self.device_manager.cur_device = None
-                self._mouse.move_to((self.screen_size.width-6, msg.data[1]))
                 self.lock.release()
-
 
     def start_msg_listener(self):
         msg_listener = threading.Thread(target=self.msg_receiver)
@@ -95,8 +101,9 @@ class Server:
             # if self._mouse.get_position()[0] >= self.screen_size.width - 10: # 向右移出
             #     self.udp.sendto(msg.to_bytes(), self.device_manager.cur_device.get_udp_address())
             if self._mouse.get_position()[0] <= 5 or self._mouse.get_position()[1] <= 5 or \
-                    self._mouse.get_position()[0] >= self.screen_size.width-5 or self._mouse.get_position()[1] >= self.screen_size.height-5:
-                self._mouse.move_to((int(self.screen_size.width/2), int(self.screen_size.height/2)))
+                    self._mouse.get_position()[0] >= self.screen_size.width - 5 or self._mouse.get_position()[
+                1] >= self.screen_size.height - 5:
+                self._mouse.move_to((int(self.screen_size.width / 2), int(self.screen_size.height / 2)))
             self._mouse.update_last_position()
 
         def on_scroll(x, y, dx, dy):
@@ -125,21 +132,33 @@ class Server:
         keyboard_listener.start()
         return keyboard_listener
 
+    def judge_move_out(self, x, y):
+        if x <= 5:
+            return Position.LEFT
+        if y <= 5:
+            return Position.TOP
+        if x >= self.screen_size.width - 5:
+            return Position.RIGHT
+        if y >= self.screen_size.height - 5:
+            return Position.BOTTOM
+        return False
+
     def main_loop(self):
         while True:
             with pynput.mouse.Events() as events:
                 for event in events:
                     if isinstance(event, pynput.mouse.Events.Move):
                         x, y = event.x, event.y
-                        if x > self.screen_size.width-10 and self.device_manager.cur_device is None:
+                        move_out = self.judge_move_out(x, y)
+                        if move_out and self.device_manager.cur_device is None:
                             self._mouse.focus = False
                             self.lock.acquire()
-                            self.device_manager.cur_device = self.device_manager.get_device_by_position(Position.RIGHT)
-                            time.sleep(0.01) # 不加识别不到？
+                            self.device_manager.cur_device = self.device_manager.get_device_by_position(move_out)
+                            time.sleep(0.01)  # 不加识别不到？
                             if self.device_manager.cur_device is not None:
                                 self.udp.sendto(Message(MsgType.MOUSE_MOVE_TO, f'{0},{y}').to_bytes(),
                                                 self.device_manager.cur_device.get_udp_address())
-                                self._mouse.move_to((int(self.screen_size.width/2), int(self.screen_size.height/2)))
+                                self._mouse.move_to((int(self.screen_size.width / 2), int(self.screen_size.height / 2)))
                                 self.lock.release()
                                 break
 
@@ -147,5 +166,5 @@ class Server:
                 mouse_listener = self.add_mouse_listener()
                 keyboard_listener = self.add_keyboard_listener()
                 mouse_listener.join()
-                keyboard_listener.stop() # 鼠标监听结束后关闭键盘监听
+                keyboard_listener.stop()  # 鼠标监听结束后关闭键盘监听
                 self._mouse.focus = True

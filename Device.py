@@ -22,7 +22,7 @@ class Position(enum.Enum):
 
 class Device:
 
-    def __init__(self, device_ip: str, screen: Screen, position: Position, expire_time=5):
+    def __init__(self, device_ip: str, screen: Screen, position=Position.NONE, expire_time=5):
         self.device_ip = device_ip
         self.screen = screen
         self.position = position
@@ -47,6 +47,7 @@ class Device:
 class DeviceManager:
     def __init__(self):
         self.devices = []
+        self.position_list = [None, None, None, None]
         self.cur_device = None
         threading.Thread(target=self.valid_checker).start()
 
@@ -54,9 +55,9 @@ class DeviceManager:
         for device in self.devices:
             if device.device_ip == ip:
                 device.update_heartbeat()
-                return
+                return device.position
         self.add_device(Device(ip, Screen(screen_width, screen_height), position))
-        print(f"client {ip} connected")
+        return self.get_device_by_ip(ip).position
 
     def valid_checker(self):
         while True:
@@ -71,12 +72,20 @@ class DeviceManager:
                 device.position = position
 
     def add_device(self, device: Device):
+        if device.position == Position.NONE:
+            for p in range(4):
+                if self.position_list[p] is None:
+                    self.position_list[p] = device
+                    device.position = Position(p+1)
+                    break
         self.devices.append(device)
         self.write_file()
     def remove_device(self, device: Device):
         if self.cur_device == device:
             self.cur_device = None
         self.devices.remove(device)
+        if device.position is not None:
+            self.position_list[device.position.value-1] = None
         self.write_file()
     def write_file(self):
         device_info_dict = {}
@@ -92,10 +101,15 @@ class DeviceManager:
         return None
 
     def get_device_by_position(self, position):
-        for device in self.devices:
-            if device.position == position:
-                return device
-        return None
+        # for device in self.devices:
+        #     if device.position == position:
+        #         return device
+        # return None
+        if self.position_list[position.value-1] is None:
+            return None
+        return self.position_list[position.value-1]
+
 
     def get_devices(self):
         return self.devices
+

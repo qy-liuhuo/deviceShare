@@ -116,7 +116,7 @@ def main():
 
     # 从配置文件中读取
     device_dict = {}
-    with open("config/config.json", "r", encoding="utf-8") as f:
+    with open("./devices.json", "r", encoding="utf-8") as f:
         device_dict = json.load(f)
     client_list = []
     idx = 1

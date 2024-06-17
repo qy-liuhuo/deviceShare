@@ -3,6 +3,7 @@ import time
 
 import pyperclip
 
+from Device import Position
 from KeyboardController import KeyboardController
 from Message import Message, MsgType
 from MouseController import MouseController
@@ -13,6 +14,7 @@ import pyautogui
 class Client:
 
     def __init__(self):
+        self.position = None
         self.udp = Udp(UDP_PORT)
         self.udp.allow_broadcast()
         self.be_added = False
@@ -26,6 +28,7 @@ class Client:
         self.start_broadcast()
         self.start_msg_listener()
         self.last_clipboard_text = ''
+
         threading.Thread(target=self.clipboard_listener).start()
 
     def clipboard_listener(self):
@@ -42,9 +45,19 @@ class Client:
 
     def broadcast_address(self):
         while True:
-            print("broadcasting")
             self.udp.sendto(self._broadcast_data, ('<broadcast>', UDP_PORT))  # 表示广播到16666端口
             time.sleep(2)
+
+    def judge_move_out(self, x,y):
+        if x <= 1 and self.position == Position.RIGHT:
+            return True
+        elif x >= self.screen_size.width - 1 and self.position == Position.LEFT:
+            return True
+        elif y <= 1 and self.position == Position.BOTTOM:
+            return True
+        elif y >= self.screen_size.height - 1 and self.position == Position.TOP:
+            return True
+        return False
 
     def msg_receiver(self):
         while True:
@@ -52,7 +65,7 @@ class Client:
             msg = Message.from_bytes(data)
             if msg.msg_type == MsgType.MOUSE_MOVE:
                 position = self._mouse.move(msg.data[0], msg.data[1])
-                if position[0] <= 1 and self.be_added and self.server_addr:
+                if self.judge_move_out(position[0],position[1]) and self.be_added and self.server_addr:
                     msg = Message(MsgType.MOUSE_BACK, f"{position[0]},{position[1]}")
                     tcp_client = TcpClient((self.server_addr[0], TCP_PORT))
                     tcp_client.send(msg.to_bytes())
@@ -69,6 +82,7 @@ class Client:
             elif msg.msg_type == MsgType.SUCCESS_JOIN:
                 self.server_addr = addr
                 self.be_added = True
+                self.position = msg.data[2]
             elif msg.msg_type == MsgType.CLIPBOARD_UPDATE:
                 self.last_clipboard_text = msg.data
                 pyperclip.copy(msg.data)
