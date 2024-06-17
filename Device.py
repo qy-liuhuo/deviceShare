@@ -12,7 +12,7 @@ class Screen:
         self.screen_height = screen_height
 
 
-class Position(enum.Enum):
+class Position(enum.IntEnum):
     LEFT = enum.auto()
     RIGHT = enum.auto()
     TOP = enum.auto()
