@@ -49,13 +49,13 @@ class Client:
             time.sleep(2)
 
     def judge_move_out(self, x,y):
-        if x <= 1 and self.position == Position.RIGHT:
+        if x <= 5 and self.position == Position.RIGHT:
             return True
-        elif x >= self.screen_size.width - 1 and self.position == Position.LEFT:
+        elif x >= self.screen_size.width - 5 and self.position == Position.LEFT:
             return True
-        elif y <= 1 and self.position == Position.BOTTOM:
+        elif y <= 5 and self.position == Position.BOTTOM:
             return True
-        elif y >= self.screen_size.height - 1 and self.position == Position.TOP:
+        elif y >= self.screen_size.height - 5 and self.position == Position.TOP:
             return True
         return False
 
@@ -82,7 +82,7 @@ class Client:
             elif msg.msg_type == MsgType.SUCCESS_JOIN:
                 self.server_addr = addr
                 self.be_added = True
-                self.position = msg.data[2]
+                self.position = Position(int(msg.data[2]))
             elif msg.msg_type == MsgType.CLIPBOARD_UPDATE:
                 self.last_clipboard_text = msg.data
                 pyperclip.copy(msg.data)
