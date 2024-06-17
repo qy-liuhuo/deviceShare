@@ -65,3 +65,6 @@ class TcpClient:
 
     def close(self):
         self._tcp.close()
+
+    def recv(self):
+        return self._tcp.recv(1024)
