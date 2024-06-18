@@ -3,3 +3,4 @@
 ./devices.json
 /dist/
 /build/
+*.spec

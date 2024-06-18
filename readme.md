@@ -20,9 +20,17 @@ https://github.com/qy-liuhuo/deviceShare/assets/60374114/6e126292-22e0-4d91-bab9
 
 
 ## 使用说明
-优先考虑使用打包好的可执行程序运行，若无法运行，可自行打包运行。
+针对x86架构的Windows、Kylin、Debian操作系统以及MacOS系统，我们打包构建了可执行程序，可在Github Release界面下载合适的版本。 
 
-（待完善）
+若构建的版本无法支持目标机器，可选择源码运行或自行打包。该方案需具备Python3 环境，具体步骤如下：
+1. 获取项目代码
+2. 使用pip install -r requirements.txt命令安装依赖
+3. 选择执行run_server.py 或 run_client.py
+4. 安装pyinstaller
+5. 使用pyinstaller打包目标程序
+
+6. 注意Kylin操作系统在安装python的evdev依赖时可能出现错误，请选择安装预编译版本evdev-binary，参考 https://python-evdev.readthedocs.io/en/latest/install.html
+
 
 ## 系统架构
 
