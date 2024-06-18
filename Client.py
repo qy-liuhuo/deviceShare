@@ -52,7 +52,7 @@ class Client:
     def judge_move_out(self, x,y):
         if x <= 5 and self.position == Position.RIGHT:
             return True
-        elif x >= self.screen_size_height - 5 and self.position == Position.LEFT:
+        elif x >= self.screen_size_width - 5 and self.position == Position.LEFT:
             return True
         elif y <= 5 and self.position == Position.BOTTOM:
             return True
