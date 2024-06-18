@@ -3,11 +3,12 @@ import time
 
 import pyperclip
 
-from Device import Position
-from KeyboardController import KeyboardController
-from Message import Message, MsgType
-from MouseController import MouseController
-from MySocket import Udp, TcpClient, UDP_PORT, TCP_PORT
+
+from src.controller.keyboard_controller import KeyboardController
+from src.screen_manager.position import Position
+from src.my_socket.message import Message, MsgType
+from src.controller.mouse_controller import MouseController
+from src.my_socket.my_socket import Udp, TcpClient, UDP_PORT, TCP_PORT
 from screeninfo import get_monitors
 
 class Client:

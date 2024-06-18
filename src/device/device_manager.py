@@ -1,47 +1,10 @@
-import enum
 import json
 import threading
 import time
 
-from MySocket import UDP_PORT
-
-
-class Screen:
-    def __init__(self, screen_width, screen_height):
-        self.screen_width = screen_width
-        self.screen_height = screen_height
-
-
-class Position(enum.IntEnum):
-    LEFT = enum.auto()
-    RIGHT = enum.auto()
-    TOP = enum.auto()
-    BOTTOM = enum.auto()
-    NONE = enum.auto()
-
-
-class Device:
-
-    def __init__(self, device_ip: str, screen: Screen, position=Position.NONE, expire_time=5):
-        self.device_ip = device_ip
-        self.screen = screen
-        self.position = position
-        self.focus = False
-        self.last_Heartbeat = time.time()
-        self.expire_time = expire_time
-
-
-    def update_heartbeat(self):
-        self.last_Heartbeat = time.time()
-
-    def check_valid(self):
-        return time.time() - self.last_Heartbeat < self.expire_time
-
-    def equals(self, ip: str):
-        return self.device_ip == ip
-
-    def get_udp_address(self):
-        return (self.device_ip, UDP_PORT)
+from src.device.device import Device
+from src.screen_manager.position import Position
+from src.screen_manager.screen import Screen
 
 
 class DeviceManager:
@@ -112,4 +75,3 @@ class DeviceManager:
 
     def get_devices(self):
         return self.devices
-

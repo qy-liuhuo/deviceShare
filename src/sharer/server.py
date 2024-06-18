@@ -1,17 +1,17 @@
-import queue
 import socket
 import threading
 import time
 
-import pyautogui
 from screeninfo import get_monitors
 import pynput
 
-from Device import DeviceManager, Position
-from KeyboardController import KeyboardController, KeyFactory
-from Message import Message, MsgType
-from MouseController import MouseController
-from MySocket import Udp, Tcp, UDP_PORT, TCP_PORT
+
+from src.controller.keyboard_controller import KeyboardController, KeyFactory
+from src.device.device_manager import DeviceManager
+from src.screen_manager.position import Position
+from src.my_socket.message import Message, MsgType
+from src.controller.mouse_controller import MouseController
+from src.my_socket.my_socket import Udp, Tcp, UDP_PORT, TCP_PORT
 import pyperclip
 
 

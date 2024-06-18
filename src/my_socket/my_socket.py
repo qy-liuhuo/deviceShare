@@ -2,8 +2,6 @@ import queue
 import socket
 import threading
 
-from MouseController import MouseController
-
 UDP_PORT = 16666
 TCP_PORT = 16667
 
