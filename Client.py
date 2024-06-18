@@ -8,8 +8,7 @@ from KeyboardController import KeyboardController
 from Message import Message, MsgType
 from MouseController import MouseController
 from MySocket import Udp, TcpClient, UDP_PORT, TCP_PORT
-import pyautogui
-
+from screeninfo import get_monitors
 
 class Client:
 
@@ -21,9 +20,11 @@ class Client:
         self._mouse = MouseController()
         self._mouse.focus = False
         self._keyboard = KeyboardController()
-        self.screen_size = pyautogui.size()
+        monitors = get_monitors()
+        self.screen_size_width = monitors[0].width
+        self.screen_size_height = monitors[0].height
         self._broadcast_data = Message(MsgType.DEVICE_ONLINE,
-                                       f'{self.screen_size.width}, {self.screen_size.height}').to_bytes()
+                                       f'{self.screen_size_width}, {self.screen_size_height}').to_bytes()
         self.server_addr = None
         self.start_broadcast()
         self.start_msg_listener()
@@ -51,11 +52,11 @@ class Client:
     def judge_move_out(self, x,y):
         if x <= 5 and self.position == Position.RIGHT:
             return True
-        elif x >= self.screen_size.width - 5 and self.position == Position.LEFT:
+        elif x >= self.screen_size_height - 5 and self.position == Position.LEFT:
             return True
         elif y <= 5 and self.position == Position.BOTTOM:
             return True
-        elif y >= self.screen_size.height - 5 and self.position == Position.TOP:
+        elif y >= self.screen_size_height - 5 and self.position == Position.TOP:
             return True
         return False
 

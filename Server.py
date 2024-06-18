@@ -4,6 +4,7 @@ import threading
 import time
 
 import pyautogui
+from screeninfo import get_monitors
 import pynput
 
 from Device import DeviceManager, Position
@@ -26,7 +27,9 @@ class Server:
         self.lock = threading.Lock()
         self.start_event_processor()
         self.start_msg_listener()
-        self.screen_size = pyautogui.size()
+        monitors = get_monitors()
+        self.screen_size_width = monitors[0].width
+        self.screen_size_height = monitors[0].height
         self.last_clipboard_text = ''
         threading.Thread(target=self.clipboard_listener).start()
         threading.Thread(target=self.main_loop).start()
@@ -56,13 +59,13 @@ class Server:
                     self.device_manager.cur_device = None
                     self._mouse.focus = True
                     if device_position == Position.RIGHT:
-                        self._mouse.move_to((self.screen_size.width - 30, msg.data[1]))
+                        self._mouse.move_to((self.screen_size_width - 30, msg.data[1]))
                     elif device_position == Position.LEFT:
                         self._mouse.move_to((30, msg.data[1]))
                     elif device_position == Position.TOP:
                         self._mouse.move_to((msg.data[0], 30))
                     elif device_position == Position.BOTTOM:
-                        self._mouse.move_to((msg.data[0], self.screen_size.height - 30))
+                        self._mouse.move_to((msg.data[0], self.screen_size_height - 30))
                 self.lock.release()
 
     def start_msg_listener(self):
@@ -103,9 +106,9 @@ class Server:
             # if self._mouse.get_position()[0] >= self.screen_size.width - 10: # 向右移出
             #     self.udp.sendto(msg.to_bytes(), self.device_manager.cur_device.get_udp_address())
             if not self._mouse.focus and self._mouse.get_position()[0] <= 200 or self._mouse.get_position()[1] <= 200 or \
-                    self._mouse.get_position()[0] >= self.screen_size.width - 200 or self._mouse.get_position()[
-                1] >= self.screen_size.height - 200:
-                self._mouse.move_to((int(self.screen_size.width / 2), int(self.screen_size.height / 2)))
+                    self._mouse.get_position()[0] >= self.screen_size_width - 200 or self._mouse.get_position()[
+                1] >= self.screen_size_height - 200:
+                self._mouse.move_to((int(self.screen_size_width / 2), int(self.screen_size_height / 2)))
             self._mouse.update_last_position()
 
         def on_scroll(x, y, dx, dy):
@@ -139,9 +142,9 @@ class Server:
             return Position.LEFT
         if y <= 5:
             return Position.TOP
-        if x >= self.screen_size.width - 5:
+        if x >= self.screen_size_width - 5:
             return Position.RIGHT
-        if y >= self.screen_size.height - 5:
+        if y >= self.screen_size_height - 5:
             return Position.BOTTOM
         return False
 
@@ -170,7 +173,7 @@ class Server:
                                 elif move_out == Position.BOTTOM:
                                     self.udp.sendto(Message(MsgType.MOUSE_MOVE_TO, f'{x},{30}').to_bytes(),
                                                     self.device_manager.cur_device.get_udp_address())
-                                self._mouse.move_to((int(self.screen_size.width / 2), int(self.screen_size.height / 2)))
+                                self._mouse.move_to((int(self.screen_size_width / 2), int(self.screen_size_height / 2)))
                                 self.lock.release()
                                 break
 
