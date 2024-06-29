@@ -80,7 +80,7 @@ class DeviceManager:
             device_info_dict = json.load(f)
         for ip, info in device_info_dict.items():
             if self.get_device_by_ip(ip) is None:
-                self.add_device(Device(ip, Screen(info[0], info[1]), Position[info[2]]))
+                self.add_device(Device(ip, Screen(info[0], info[1]), Position(info[2])))
 
     def get_devices(self):
         return self.devices

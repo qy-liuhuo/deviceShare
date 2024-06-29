@@ -159,7 +159,7 @@ def rewrite(path, client_list):
 
 class Gui:
 
-    def __init__(self):
+    def __init__(self,update_func=None):
         self.client_list = []
         self.image_list = []
         self.create_systray_icon()
@@ -178,6 +178,7 @@ class Gui:
                 print("设备id:", self.client_list[i].id, "相对于主机的位置 ", self.client_list[i].location)
             # 将位置location写回配置文件
             rewrite("./devices.json", self.client_list)
+            update_func()
             self.hide()
 
         # Done
