@@ -42,6 +42,7 @@ class DeviceManager:
                     device.position = Position(p+1)
                     break
         self.devices.append(device)
+        self.position_list[device.position.value-1] = device
         self.write_file()
     def remove_device(self, device: Device):
         if self.cur_device == device:
@@ -53,7 +54,7 @@ class DeviceManager:
     def write_file(self):
         device_info_dict = {}
         for device in self.devices:
-            device_info_dict[device.device_ip] = (device.screen.screen_width, device.screen.screen_height, str(device.position))
+            device_info_dict[device.device_ip] = (device.screen.screen_width, device.screen.screen_height, int(device.position))
         with open("devices.json", "w") as f:
             json.dump(device_info_dict, f)
 
@@ -72,6 +73,14 @@ class DeviceManager:
             return None
         return self.position_list[position.value-1]
 
+    def update_device_by_file(self):
+        self.devices = []
+        self.cur_device = None
+        with open("devices.json", "r") as f:
+            device_info_dict = json.load(f)
+        for ip, info in device_info_dict.items():
+            if self.get_device_by_ip(ip) is None:
+                self.add_device(Device(ip, Screen(info[0], info[1]), Position[info[2]]))
 
     def get_devices(self):
         return self.devices

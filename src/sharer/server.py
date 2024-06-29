@@ -34,6 +34,8 @@ class Server:
         threading.Thread(target=self.clipboard_listener).start()
         threading.Thread(target=self.main_loop).start()
 
+
+
     def msg_receiver(self):
         while True:
             data, addr = self.udp.recv()
@@ -147,6 +149,12 @@ class Server:
         if y >= self.screen_size_height - 5:
             return Position.BOTTOM
         return False
+
+    def update_position(self):
+        self.device_manager.update_device_by_file()
+        for device in self.device_manager.devices:
+            self.udp.sendto(Message(MsgType.POSITION_CHANGE, f'{int(device.position)}').to_bytes(),
+                            device.get_udp_address())
 
     def main_loop(self):
         while True:

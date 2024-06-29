@@ -13,6 +13,7 @@ class MsgType(enum.IntEnum):
     MOUSE_SCROLL = enum.auto()
     KEYBOARD_CLICK = enum.auto()
     CLIPBOARD_UPDATE = enum.auto()
+    POSITION_CHANGE = enum.auto()
 
 
 def get_click_button(btn: str):
@@ -51,6 +52,9 @@ class Message:
         elif int(msg_type) == MsgType.MOUSE_SCROLL:
             return Message(MsgType(int(msg_type)), tuple(map(int, data.split(','))))
         elif int(msg_type) == MsgType.SUCCESS_JOIN:
+            data = tuple(data.split(','))
+            return Message(MsgType(int(msg_type)), data)
+        elif int(msg_type) == MsgType.POSITION_CHANGE:
             data = tuple(data.split(','))
             return Message(MsgType(int(msg_type)), data)
         elif int(msg_type) == MsgType.MOUSE_BACK:
