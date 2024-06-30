@@ -42,7 +42,6 @@ class Tcp:
             conn, addr = self._tcp.accept()
             while True:
                 data = conn.recv(1024)
-                print(data)
                 if not data:
                     break
                 self.event_queue.put((data, addr))
