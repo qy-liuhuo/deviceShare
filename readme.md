@@ -15,8 +15,15 @@ DeviceShare 是一款跨平台的多主机输入设备共享工具，支持 Wind
 6. **屏幕位置配置**：支持配置屏幕位置，方便多台主机之间的切换。
 
 
+**双机演示**
 
 https://github.com/qy-liuhuo/deviceShare/assets/60374114/6e126292-22e0-4d91-bab9-272470689ecd
+
+
+**三机演示**
+
+https://github.com/qy-liuhuo/deviceShare/assets/60374114/1b911b8a-976f-4128-9518-9c64c73a7a39
+
 
 
 ## 使用说明
