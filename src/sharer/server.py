@@ -155,6 +155,7 @@ class Server:
         for device in self.device_manager.devices:
             self.udp.sendto(Message(MsgType.POSITION_CHANGE, f'{int(device.position)}').to_bytes(),
                             device.get_udp_address())
+            print(f'{device.device_ip} position is {device.position}')
 
     def main_loop(self):
         while True:

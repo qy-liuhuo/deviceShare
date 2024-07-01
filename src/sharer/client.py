@@ -68,7 +68,7 @@ class Client:
             if msg.msg_type == MsgType.MOUSE_MOVE:
                 position = self._mouse.move(msg.data[0], msg.data[1])
                 if self.judge_move_out(position[0],position[1]) and self.be_added and self.server_addr and self._mouse.focus:
-                    msg = Message(MsgType.MOUSE_BACK, f"{position[0]},{position[1]}")
+                    msg = Message(MsgType.MOUSE_BACK, f"{int(position[0])},{int(position[1])}")
                     tcp_client = TcpClient((self.server_addr[0], TCP_PORT))
                     tcp_client.send(msg.to_bytes())
                     tcp_client.close()
