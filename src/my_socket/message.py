@@ -1,4 +1,5 @@
 import enum
+import time
 
 import pynput
 
@@ -35,7 +36,8 @@ class Message:
 
     @staticmethod
     def from_bytes(byteData: bytes):
-        msg_type, data = byteData.decode().split(Message.SPLITTER)
+        msg_type, data, send_time = byteData.decode().split(Message.SPLITTER)
+        print(time.time() - float(send_time))
         if int(msg_type) == MsgType.MOUSE_MOVE:
             return Message(MsgType(int(msg_type)), tuple(map(int, data.split(','))))
         elif int(msg_type) == MsgType.MOUSE_MOVE_TO:
@@ -67,7 +69,7 @@ class Message:
     #     self.msg_type,self.data = byteData.split(self.SPLITTER)
 
     def to_bytes(self):
-        return bytes(f"{int(self.msg_type)}{self.SPLITTER}{self.data}".encode())
+        return bytes(f"{int(self.msg_type)}{self.SPLITTER}{self.data}{self.SPLITTER}{time.time()}".encode())
 
     def __str__(self):
         return f"Message({self.msg_type},{self.data})"
