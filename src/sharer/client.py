@@ -91,7 +91,6 @@ class Client:
                 pyperclip.copy(msg.data)
             elif msg.msg_type == MsgType.POSITION_CHANGE:
                 self.position = Position(int(msg.data[0]))
-                print(self.position)
 
     def start_msg_listener(self):
         msg_listener = threading.Thread(target=self.msg_receiver)
