@@ -43,19 +43,19 @@ class Client:
 
     def request_access(self):
         tcp_client = TcpClient((self.server_addr[0], TCP_PORT))
-        msg = Message(MsgType.SEND_PUBKEY, f'{self.device_id}, {self.rsa_util.public_key.save_pkcs1().decode()}')
+        msg = Message(MsgType.SEND_PUBKEY, {"device_id":self.device_id,'public_key':self.rsa_util.public_key.save_pkcs1().decode()})
         tcp_client.send(msg.to_bytes())
         data = tcp_client.recv()
         msg = Message.from_bytes(data)
         if msg.msg_type == MsgType.KEY_CHECK:
-            decrypt_key = decrypt(self.rsa_util.private_key, msg.data[0].encode())
-            msg = Message(MsgType.KEY_CHECK_RESPONSE, f'{decrypt_key.decode()}')
+            decrypt_key = decrypt(self.rsa_util.private_key, msg.data['key'].encode())
+            msg = Message(MsgType.KEY_CHECK_RESPONSE, {'key': decrypt_key, 'device_id': self.device_id, 'screen_width': self.screen_size_width, 'screen_height': self.screen_size_height})
             tcp_client.send(msg.to_bytes())
             data = tcp_client.recv()
             msg = Message.from_bytes(data)
             if msg.msg_type == MsgType.ACCESS_ALLOW:
                 self.be_added = True
-                self.position = Position(int(msg.data[0]))
+                self.position = Position(int(msg.data['position']))
             elif msg.msg_type == MsgType.ACCESS_DENY:
                 print('Access denied')
         tcp_client.close()
@@ -108,14 +108,14 @@ class Client:
             elif msg.msg_type == MsgType.KEYBOARD_CLICK:
                 self._keyboard.click(msg.data['type'],msg.data['keyData'])
             elif msg.msg_type == MsgType.MOUSE_SCROLL:
-                self._mouse.scroll(msg.data[0], msg.data[1])
+                self._mouse.scroll(msg.data['dx'], msg.data['dy'])
             # elif msg.msg_type == MsgType.SUCCESS_JOIN:
             #     self.server_addr = addr
             #     self.be_added = True
             #     self.position = Position(int(msg.data[2]))
             elif msg.msg_type == MsgType.CLIPBOARD_UPDATE:
                 self.last_clipboard_text = msg.data['text']
-                pyperclip.copy(msg.data)
+                pyperclip.copy( self.last_clipboard_text)
             elif msg.msg_type == MsgType.POSITION_CHANGE:
                 self.position = Position(int(msg.data['position']))
 

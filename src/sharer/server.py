@@ -57,15 +57,15 @@ class Server:
         while True:
             data, addr = self.udp.recv()
             msg = Message.from_bytes(data)
-            if msg.msg_type == MsgType.DEVICE_ONLINE:  # 客户端上线及心跳
-                position = self.device_manager.refresh(ip=addr[0], screen_width=msg.data[0],
-                                                       screen_height=msg.data[1])  # 临时测试
-                # self.cur_client = addr  # 临时测试
-                self.udp.sendto(Message(MsgType.SUCCESS_JOIN,{'ip':get_local_ip(),'port':UDP_PORT,'position':int(position)}).to_bytes(), addr)
+            # if msg.msg_type == MsgType.DEVICE_ONLINE:  # 客户端上线及心跳
+            #     position = self.device_manager.refresh(ip=addr[0], screen_width=msg.data[0],
+            #                                            screen_height=msg.data[1])  # 临时测试
+            #     # self.cur_client = addr  # 临时测试
+            #     self.udp.sendto(Message(MsgType.SUCCESS_JOIN,{'ip':get_local_ip(),'port':UDP_PORT,'position':int(position)}).to_bytes(), addr)
 
-            elif msg.msg_type == MsgType.CLIPBOARD_UPDATE:
-                self.last_clipboard_text = msg.data
-                pyperclip.copy(msg.data)
+            if msg.msg_type == MsgType.CLIPBOARD_UPDATE:
+                self.last_clipboard_text = msg.data['text']
+                pyperclip.copy(msg.data['text'])
 
     def tcp_listener(self):
         client, addr = self.tcp_server.accept()
@@ -87,17 +87,18 @@ class Server:
                         self.device_manager.cur_device = None
                         self._mouse.focus = True
                         if device_position == Position.RIGHT:
-                            self._mouse.move_to((self.screen_size_width - 30, msg.data[1]))
+                            self._mouse.move_to((self.screen_size_width - 30, msg.data['y']))
                         elif device_position == Position.LEFT:
-                            self._mouse.move_to((30, msg.data[1]))
+                            self._mouse.move_to((30, msg.data['y']))
                         elif device_position == Position.TOP:
-                            self._mouse.move_to((msg.data[0], 30))
+                            self._mouse.move_to((msg.data['x'], 30))
                         elif device_position == Position.BOTTOM:
-                            self._mouse.move_to((msg.data[0], self.screen_size_height - 30))
+                            self._mouse.move_to((msg.data['x'], self.screen_size_height - 30))
                     self.lock.release()
                     client_socket.send(Message(MsgType.TCP_ECHO).to_bytes())
                 elif msg.msg_type == MsgType.SEND_PUBKEY and state == ClientState.WAITING_FOR_KEY:
-                    client_id, public_key = msg.data
+                    client_id= msg.data['device_id']
+                    public_key = msg.data['public_key']
                     temp = self.keys_manager.get_key(client_id)
                     if temp is None or temp != public_key:
                         # 后续增加ui交互
@@ -112,7 +113,9 @@ class Server:
                     state = ClientState.WAITING_FOR_CHECK
                 elif msg.msg_type == MsgType.KEY_CHECK_RESPONSE and state == ClientState.WAITING_FOR_CHECK:
                     if msg.data == random_key:
-                        client_socket.send(Message(MsgType.ACCESS_ALLOW, {}).to_bytes())
+                        position = self.device_manager.refresh(ip=addr[0], screen_width=msg.data['screen_width'],
+                                                               screen_height=msg.data['screen_height'])  # 临时测试
+                        client_socket.send(Message(MsgType.ACCESS_ALLOW, {'position': int(position)}).to_bytes())
                         state = ClientState.CONNECT
                     else:
                         client_socket.send(Message(MsgType.ACCESS_DENY, {'result':'access_deny'}).to_bytes())
