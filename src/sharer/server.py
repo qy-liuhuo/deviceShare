@@ -14,20 +14,29 @@ from src.controller.mouse_controller import MouseController
 from src.my_socket.my_socket import Udp, Tcp, UDP_PORT, TCP_PORT
 import pyperclip
 
+from src.sharer.client_state import ClientState
+from src.utils.keys_manager import KeysManager
 from src.utils.net import get_local_ip
+from src.utils.rsautil import encrypt
 
 
 class Server:
     def __init__(self):
-        self.udp = Udp(UDP_PORT)
-        self.udp.allow_broadcast()
-        self.tcp = Tcp(TCP_PORT)
         self.device_manager = DeviceManager()
         self._mouse = MouseController()
         self._keyboard = KeyboardController()
         self._keyboard_factory = KeyFactory()
+        self.keys_manager = KeysManager()
         self.lock = threading.Lock()
-        self.start_event_processor()
+        self.udp = Udp(UDP_PORT)
+        self.udp.allow_broadcast()
+        # self.tcp = Tcp(TCP_PORT)
+        self.tcp_server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.tcp_server.bind(("0.0.0.0", TCP_PORT))
+        self.tcp_server.listen(10)
+
+
+        #self.start_event_processor()
         self.start_msg_listener()
         monitors = get_monitors()
         self.screen_size_width = monitors[0].width
@@ -60,35 +69,69 @@ class Server:
                 self.last_clipboard_text = msg.data
                 pyperclip.copy(msg.data)
 
-    def event_processor(self):
+    def tcp_listener(self):
+        client, addr = self.tcp_server.accept()
+        client_handler = threading.Thread(target=self.handle_client, args=(client, addr))
+
+    def handle_client(self,client_socket,addr):
+        state = ClientState.WAITING_FOR_KEY
+        random_key = None
         while True:
-            data, addr = self.tcp.event_queue.get()
-            msg = Message.from_bytes(data)
-            if msg.msg_type == MsgType.MOUSE_BACK:
-                self.lock.acquire()
-                if self.device_manager.cur_device is not None:
-                    device_position = self.device_manager.cur_device.position
-                    self.device_manager.cur_device = None
-                    self._mouse.focus = True
-                    if device_position == Position.RIGHT:
-                        self._mouse.move_to((self.screen_size_width - 30, msg.data[1]))
-                    elif device_position == Position.LEFT:
-                        self._mouse.move_to((30, msg.data[1]))
-                    elif device_position == Position.TOP:
-                        self._mouse.move_to((msg.data[0], 30))
-                    elif device_position == Position.BOTTOM:
-                        self._mouse.move_to((msg.data[0], self.screen_size_height - 30))
-                self.lock.release()
+            try:
+                data = client_socket.recv(1024)
+                if not data:
+                    break
+                msg = Message.from_bytes(data)
+                if msg.msg_type == MsgType.MOUSE_BACK:
+                    self.lock.acquire()
+                    if self.device_manager.cur_device is not None:
+                        device_position = self.device_manager.cur_device.position
+                        self.device_manager.cur_device = None
+                        self._mouse.focus = True
+                        if device_position == Position.RIGHT:
+                            self._mouse.move_to((self.screen_size_width - 30, msg.data[1]))
+                        elif device_position == Position.LEFT:
+                            self._mouse.move_to((30, msg.data[1]))
+                        elif device_position == Position.TOP:
+                            self._mouse.move_to((msg.data[0], 30))
+                        elif device_position == Position.BOTTOM:
+                            self._mouse.move_to((msg.data[0], self.screen_size_height - 30))
+                    self.lock.release()
+                    client_socket.send(Message(MsgType.TCP_ECHO, "OK").to_bytes())
+                elif msg.msg_type == MsgType.SEND_PUBKEY and state == ClientState.WAITING_FOR_KEY:
+                    client_id, public_key = msg.data
+                    temp = self.keys_manager.get_key(client_id)
+                    if temp is None or temp != public_key:
+                        # 后续增加ui交互
+                        res = input("请确认是否接受该客户端的公钥: y/n")
+                        if res == 'y':
+                            self.keys_manager.set_key(client_id, public_key)
+                        else:
+                            client_socket.send(Message(MsgType.ACCESS_DENY, "access_deny").to_bytes())
+                            continue
+                    random_key = encrypt(public_key, random_key)
+                    client_socket.send(Message(MsgType.KEY_CHECK, f"{random_key}").to_bytes())
+                    state = ClientState.WAITING_FOR_CHECK
+                elif msg.msg_type == MsgType.KEY_CHECK_RESPONSE and state == ClientState.WAITING_FOR_CHECK:
+                    if msg.data == random_key:
+                        client_socket.send(Message(MsgType.ACCESS_ALLOW, f"{}").to_bytes())
+                        state = ClientState.CONNECT
+                    else:
+                        client_socket.send(Message(MsgType.ACCESS_DENY, "access_deny").to_bytes())
+                        state = ClientState.WAITING_FOR_KEY
+            except ConnectionResetError:
+                break
+        client_socket.close()
 
     def start_msg_listener(self):
         msg_listener = threading.Thread(target=self.msg_receiver)
         msg_listener.start()
         return msg_listener
 
-    def start_event_processor(self):
-        event_processor = threading.Thread(target=self.event_processor)
-        event_processor.start()
-        return event_processor
+    # def start_event_processor(self):
+    #     event_processor = threading.Thread(target=self.event_processor)
+    #     event_processor.start()
+    #     return event_processor
 
     def clipboard_listener(self):
         while True:

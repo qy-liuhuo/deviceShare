@@ -15,6 +15,12 @@ class MsgType(enum.IntEnum):
     KEYBOARD_CLICK = enum.auto()
     CLIPBOARD_UPDATE = enum.auto()
     POSITION_CHANGE = enum.auto()
+    SEND_PUBKEY = enum.auto()
+    TCP_ECHO = enum.auto()
+    KEY_CHECK = enum.auto()
+    KEY_CHECK_RESPONSE = enum.auto()
+    ACCESS_DENY = enum.auto()
+    ACCESS_ALLOW = enum.auto()
 
 
 def get_click_button(btn: str):
@@ -60,6 +66,9 @@ class Message:
         elif int(msg_type) == MsgType.MOUSE_BACK:
             return Message(MsgType(int(msg_type)), tuple(map(int, data.split(','))))
         elif int(msg_type) == MsgType.CLIPBOARD_UPDATE:
+            return Message(MsgType(int(msg_type)), data)
+        elif int(msg_type) == MsgType.SEND_PUBKEY:
+            data = tuple(data.split(','))
             return Message(MsgType(int(msg_type)), data)
         return Message(MsgType(int(msg_type)), data)
 
