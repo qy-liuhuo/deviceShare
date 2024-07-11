@@ -1,16 +1,15 @@
+import socket
 import threading
 import time
-
 import pyperclip
-
-
+from zeroconf import Zeroconf, ServiceBrowser
 from src.controller.keyboard_controller import KeyboardController
 from src.screen_manager.position import Position
 from src.my_socket.message import Message, MsgType
 from src.controller.mouse_controller import MouseController
 from src.my_socket.my_socket import Udp, TcpClient, UDP_PORT, TCP_PORT
 from screeninfo import get_monitors
-
+from src.utils.service_listener import ServiceListener
 class Client:
 
     def __init__(self):
@@ -27,11 +26,16 @@ class Client:
         self._broadcast_data = Message(MsgType.DEVICE_ONLINE,
                                        f'{self.screen_size_width}, {self.screen_size_height}').to_bytes()
         self.server_addr = None
+        self.zeroconf = Zeroconf()
+        ServiceBrowser(self.zeroconf, "_deviceShare._tcp.local.", ServiceListener(self))
+        while self.server_addr is None:
+            time.sleep(1)
         self.start_broadcast()
         self.start_msg_listener()
         self.last_clipboard_text = ''
 
         threading.Thread(target=self.clipboard_listener).start()
+
 
     def clipboard_listener(self):
         while True:
@@ -82,10 +86,10 @@ class Client:
                 self._keyboard.click(msg.data[0],(msg.data[1],msg.data[2]))
             elif msg.msg_type == MsgType.MOUSE_SCROLL:
                 self._mouse.scroll(msg.data[0], msg.data[1])
-            elif msg.msg_type == MsgType.SUCCESS_JOIN:
-                self.server_addr = addr
-                self.be_added = True
-                self.position = Position(int(msg.data[2]))
+            # elif msg.msg_type == MsgType.SUCCESS_JOIN:
+            #     self.server_addr = addr
+            #     self.be_added = True
+            #     self.position = Position(int(msg.data[2]))
             elif msg.msg_type == MsgType.CLIPBOARD_UPDATE:
                 self.last_clipboard_text = msg.data
                 pyperclip.copy(msg.data)
