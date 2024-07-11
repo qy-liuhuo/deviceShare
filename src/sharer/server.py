@@ -4,7 +4,7 @@ import time
 
 from screeninfo import get_monitors
 import pynput
-
+from zeroconf import ServiceInfo, Zeroconf
 
 from src.controller.keyboard_controller import KeyboardController, KeyFactory
 from src.device.device_manager import DeviceManager
@@ -13,6 +13,8 @@ from src.my_socket.message import Message, MsgType
 from src.controller.mouse_controller import MouseController
 from src.my_socket.my_socket import Udp, Tcp, UDP_PORT, TCP_PORT
 import pyperclip
+
+from src.utils.net import get_local_ip
 
 
 class Server:
@@ -31,20 +33,28 @@ class Server:
         self.screen_size_width = monitors[0].width
         self.screen_size_height = monitors[0].height
         self.last_clipboard_text = ''
+        self.service_register()
         threading.Thread(target=self.clipboard_listener).start()
         threading.Thread(target=self.main_loop).start()
 
-
+    def service_register(self):
+        info = ServiceInfo(type_="_deviceShare._tcp.local.", name="_deviceShare._tcp.local.",
+                           addresses=[socket.inet_aton(get_local_ip())], port=UDP_PORT, weight=0, priority=0,
+                           properties={"tcp_port": str(TCP_PORT), "udp_port": str(UDP_PORT)})
+        self.zeroconf = Zeroconf()
+        self.zeroconf.register_service(info)
 
     def msg_receiver(self):
         while True:
             data, addr = self.udp.recv()
             msg = Message.from_bytes(data)
             if msg.msg_type == MsgType.DEVICE_ONLINE:  # 客户端上线及心跳
-                position = self.device_manager.refresh(ip=addr[0], screen_width=msg.data[0], screen_height=msg.data[1])  # 临时测试
+                position = self.device_manager.refresh(ip=addr[0], screen_width=msg.data[0],
+                                                       screen_height=msg.data[1])  # 临时测试
                 # self.cur_client = addr  # 临时测试
                 self.udp.sendto(Message(MsgType.SUCCESS_JOIN,
-                                        f'{socket.gethostbyname(socket.gethostname())},{UDP_PORT},{int(position)}').to_bytes(), addr)
+                                        f'{socket.gethostbyname(socket.gethostname())},{UDP_PORT},{int(position)}').to_bytes(),
+                                addr)
 
             elif msg.msg_type == MsgType.CLIPBOARD_UPDATE:
                 self.last_clipboard_text = msg.data
@@ -171,13 +181,15 @@ class Server:
                             time.sleep(0.01)  # 不加识别不到？
                             if self.device_manager.cur_device is not None:
                                 if move_out == Position.LEFT:
-                                    self.udp.sendto(Message(MsgType.MOUSE_MOVE_TO, f'{self.device_manager.cur_device.screen.screen_width-30},{y}').to_bytes(),
+                                    self.udp.sendto(Message(MsgType.MOUSE_MOVE_TO,
+                                                            f'{self.device_manager.cur_device.screen.screen_width - 30},{y}').to_bytes(),
                                                     self.device_manager.cur_device.get_udp_address())
                                 elif move_out == Position.RIGHT:
                                     self.udp.sendto(Message(MsgType.MOUSE_MOVE_TO, f'{30},{y}').to_bytes(),
                                                     self.device_manager.cur_device.get_udp_address())
                                 elif move_out == Position.TOP:
-                                    self.udp.sendto(Message(MsgType.MOUSE_MOVE_TO, f'{x},{self.device_manager.cur_device.screen.screen_height-30}').to_bytes(),
+                                    self.udp.sendto(Message(MsgType.MOUSE_MOVE_TO,
+                                                            f'{x},{self.device_manager.cur_device.screen.screen_height - 30}').to_bytes(),
                                                     self.device_manager.cur_device.get_udp_address())
                                 elif move_out == Position.BOTTOM:
                                     self.udp.sendto(Message(MsgType.MOUSE_MOVE_TO, f'{x},{30}').to_bytes(),
@@ -192,3 +204,9 @@ class Server:
                 mouse_listener.join()
                 keyboard_listener.stop()  # 鼠标监听结束后关闭键盘监听
                 self._mouse.focus = True
+
+    def close(self):
+        self.udp.close()
+        self.tcp.close()
+        self.zeroconf.unregister_all_services()
+        self.zeroconf.close()
