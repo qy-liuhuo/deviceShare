@@ -61,9 +61,7 @@ class Server:
                 position = self.device_manager.refresh(ip=addr[0], screen_width=msg.data[0],
                                                        screen_height=msg.data[1])  # 临时测试
                 # self.cur_client = addr  # 临时测试
-                self.udp.sendto(Message(MsgType.SUCCESS_JOIN,
-                                        f'{socket.gethostbyname(socket.gethostname())},{UDP_PORT},{int(position)}').to_bytes(),
-                                addr)
+                self.udp.sendto(Message(MsgType.SUCCESS_JOIN,{'ip':get_local_ip(),'port':UDP_PORT,'position':int(position)}).to_bytes(), addr)
 
             elif msg.msg_type == MsgType.CLIPBOARD_UPDATE:
                 self.last_clipboard_text = msg.data
@@ -97,7 +95,7 @@ class Server:
                         elif device_position == Position.BOTTOM:
                             self._mouse.move_to((msg.data[0], self.screen_size_height - 30))
                     self.lock.release()
-                    client_socket.send(Message(MsgType.TCP_ECHO, "OK").to_bytes())
+                    client_socket.send(Message(MsgType.TCP_ECHO).to_bytes())
                 elif msg.msg_type == MsgType.SEND_PUBKEY and state == ClientState.WAITING_FOR_KEY:
                     client_id, public_key = msg.data
                     temp = self.keys_manager.get_key(client_id)
@@ -107,17 +105,17 @@ class Server:
                         if res == 'y':
                             self.keys_manager.set_key(client_id, public_key)
                         else:
-                            client_socket.send(Message(MsgType.ACCESS_DENY, "access_deny").to_bytes())
+                            client_socket.send(Message(MsgType.ACCESS_DENY, {'result':'access_deny'}).to_bytes())
                             continue
                     random_key = encrypt(public_key, random_key)
-                    client_socket.send(Message(MsgType.KEY_CHECK, f"{random_key}").to_bytes())
+                    client_socket.send(Message(MsgType.KEY_CHECK, {'key':random_key}).to_bytes())
                     state = ClientState.WAITING_FOR_CHECK
                 elif msg.msg_type == MsgType.KEY_CHECK_RESPONSE and state == ClientState.WAITING_FOR_CHECK:
                     if msg.data == random_key:
-                        client_socket.send(Message(MsgType.ACCESS_ALLOW, f"{}").to_bytes())
+                        client_socket.send(Message(MsgType.ACCESS_ALLOW, {}).to_bytes())
                         state = ClientState.CONNECT
                     else:
-                        client_socket.send(Message(MsgType.ACCESS_DENY, "access_deny").to_bytes())
+                        client_socket.send(Message(MsgType.ACCESS_DENY, {'result':'access_deny'}).to_bytes())
                         state = ClientState.WAITING_FOR_KEY
             except ConnectionResetError:
                 break
@@ -142,18 +140,18 @@ class Server:
             time.sleep(1)
 
     def broadcast_clipboard(self, text):
-        msg = Message(MsgType.CLIPBOARD_UPDATE, text)
+        msg = Message(MsgType.CLIPBOARD_UPDATE, {'text':text})
         self.udp.sendto(msg.to_bytes(), ('<broadcast>', UDP_PORT))
 
     def add_mouse_listener(self):
         def on_click(x, y, button, pressed):
-            msg = Message(MsgType.MOUSE_CLICK, f"{x},{y},{button},{pressed}")
+            msg = Message(MsgType.MOUSE_CLICK, {'x':x,'y':y,'button':button,'pressed':pressed})
             if self.device_manager.cur_device:
                 self.udp.sendto(msg.to_bytes(), self.device_manager.cur_device.get_udp_address())
 
         def on_move(x, y):
             last_pos = self._mouse.get_last_position()
-            msg = Message(MsgType.MOUSE_MOVE, f"{x - last_pos[0]},{y - last_pos[1]}")
+            msg = Message(MsgType.MOUSE_MOVE, {'x':x - last_pos[0],'y':y - last_pos[1]})
             if self.device_manager.cur_device is None:
                 return False
             if self.device_manager.cur_device:
@@ -167,7 +165,7 @@ class Server:
             self._mouse.update_last_position()
 
         def on_scroll(x, y, dx, dy):
-            msg = Message(MsgType.MOUSE_SCROLL, f"{dx},{dy}")
+            msg = Message(MsgType.MOUSE_SCROLL, {'dx':dx,'dy':dy})
             if self.device_manager.cur_device:
                 self.udp.sendto(msg.to_bytes(), self.device_manager.cur_device.get_udp_address())
 
@@ -178,13 +176,13 @@ class Server:
     def add_keyboard_listener(self):
         def on_press(key):
             data = self._keyboard_factory.input(key)
-            msg = Message(MsgType.KEYBOARD_CLICK, f"press,{data[0]},{data[1]}")
+            msg = Message(MsgType.KEYBOARD_CLICK, {'type':"press","keyData":(data[0],data[1])})
             if self.device_manager.cur_device:
                 self.udp.sendto(msg.to_bytes(), self.device_manager.cur_device.get_udp_address())
 
         def on_release(key):
             data = self._keyboard_factory.input(key)
-            msg = Message(MsgType.KEYBOARD_CLICK, f"release,{data[0]},{data[1]}")
+            msg = Message(MsgType.KEYBOARD_CLICK, {'type':"release","keyData":(data[0],data[1])})
             if self.device_manager.cur_device:
                 self.udp.sendto(msg.to_bytes(), self.device_manager.cur_device.get_udp_address())
 
@@ -206,7 +204,7 @@ class Server:
     def update_position(self):
         self.device_manager.update_device_by_file()
         for device in self.device_manager.devices:
-            self.udp.sendto(Message(MsgType.POSITION_CHANGE, f'{int(device.position)}').to_bytes(),
+            self.udp.sendto(Message(MsgType.POSITION_CHANGE, {'position':device.position}).to_bytes(),
                             device.get_udp_address())
             print(f'{device.device_ip} position is {device.position}')
 
@@ -224,18 +222,18 @@ class Server:
                             time.sleep(0.01)  # 不加识别不到？
                             if self.device_manager.cur_device is not None:
                                 if move_out == Position.LEFT:
-                                    self.udp.sendto(Message(MsgType.MOUSE_MOVE_TO,
-                                                            f'{self.device_manager.cur_device.screen.screen_width - 30},{y}').to_bytes(),
+                                    self.udp.sendto(Message(MsgType.MOUSE_MOVE_TO,{'x':self.device_manager.cur_device.screen.screen_width - 30,'y':y}).to_bytes(),
                                                     self.device_manager.cur_device.get_udp_address())
                                 elif move_out == Position.RIGHT:
-                                    self.udp.sendto(Message(MsgType.MOUSE_MOVE_TO, f'{30},{y}').to_bytes(),
+                                    self.udp.sendto(Message(MsgType.MOUSE_MOVE_TO, {'x':30,'y':y}).to_bytes(),
                                                     self.device_manager.cur_device.get_udp_address())
                                 elif move_out == Position.TOP:
                                     self.udp.sendto(Message(MsgType.MOUSE_MOVE_TO,
-                                                            f'{x},{self.device_manager.cur_device.screen.screen_height - 30}').to_bytes(),
+                                                            {'x':x,'y':self.device_manager.cur_device.screen.screen_height - 30}).to_bytes(),
                                                     self.device_manager.cur_device.get_udp_address())
                                 elif move_out == Position.BOTTOM:
-                                    self.udp.sendto(Message(MsgType.MOUSE_MOVE_TO, f'{x},{30}').to_bytes(),
+                                    self.udp.sendto(Message(MsgType.MOUSE_MOVE_TO,
+                                                            {'x':x,'y':30}).to_bytes(),
                                                     self.device_manager.cur_device.get_udp_address())
                                 self._mouse.move_to((int(self.screen_size_width / 2), int(self.screen_size_height / 2)))
                                 self.lock.release()
@@ -250,6 +248,6 @@ class Server:
 
     def close(self):
         self.udp.close()
-        self.tcp.close()
+        #self.tcp.close()
         self.zeroconf.unregister_all_services()
         self.zeroconf.close()

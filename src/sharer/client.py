@@ -93,7 +93,7 @@ class Client:
             data, addr = self.udp.recv()
             msg = Message.from_bytes(data)
             if msg.msg_type == MsgType.MOUSE_MOVE:
-                position = self._mouse.move(msg.data[0], msg.data[1])
+                position = self._mouse.move(msg.data['x'], msg.data['y'])
                 if self.judge_move_out(position[0],position[1]) and self.be_added and self.server_addr and self._mouse.focus:
                     msg = Message(MsgType.MOUSE_BACK, f"{int(position[0])},{int(position[1])}")
                     tcp_client = TcpClient((self.server_addr[0], TCP_PORT))
@@ -102,11 +102,11 @@ class Client:
                     self._mouse.focus = False
             elif msg.msg_type == MsgType.MOUSE_MOVE_TO:  # 跨屏初始位置
                 self._mouse.focus = True
-                self._mouse.move_to(msg.data)
+                self._mouse.move_to((msg.data['x'],msg.data['y']))
             elif msg.msg_type == MsgType.MOUSE_CLICK:
-                self._mouse.click(msg.data[2], msg.data[3])
+                self._mouse.click(msg.data['button'], msg.data['pressed'])
             elif msg.msg_type == MsgType.KEYBOARD_CLICK:
-                self._keyboard.click(msg.data[0],(msg.data[1],msg.data[2]))
+                self._keyboard.click(msg.data['type'],msg.data['keyData'])
             elif msg.msg_type == MsgType.MOUSE_SCROLL:
                 self._mouse.scroll(msg.data[0], msg.data[1])
             # elif msg.msg_type == MsgType.SUCCESS_JOIN:
@@ -114,10 +114,10 @@ class Client:
             #     self.be_added = True
             #     self.position = Position(int(msg.data[2]))
             elif msg.msg_type == MsgType.CLIPBOARD_UPDATE:
-                self.last_clipboard_text = msg.data
+                self.last_clipboard_text = msg.data['text']
                 pyperclip.copy(msg.data)
             elif msg.msg_type == MsgType.POSITION_CHANGE:
-                self.position = Position(int(msg.data[0]))
+                self.position = Position(int(msg.data['position']))
 
     def start_msg_listener(self):
         msg_listener = threading.Thread(target=self.msg_receiver)
