@@ -50,7 +50,6 @@ class Client:
         data = tcp_client.recv()
         msg = Message.from_bytes(data)
         if msg.msg_type == MsgType.KEY_CHECK:
-            print(bytes.fromhex(msg.data['key']))
             decrypt_key = self.rsa_util.decrypt(bytes.fromhex(msg.data['key']))
             msg = Message(MsgType.KEY_CHECK_RESPONSE,
                           {'key': decrypt_key.hex(), 'device_id': self.device_id, 'screen_width': self.screen_size_width,
@@ -103,7 +102,7 @@ class Client:
                 position = self._mouse.move(msg.data['x'], msg.data['y'])
                 if self.judge_move_out(position[0],
                                        position[1]) and self.be_added and self.server_ip and self._mouse.focus:
-                    msg = Message(MsgType.MOUSE_BACK, f"{int(position[0])},{int(position[1])}")
+                    msg = Message(MsgType.MOUSE_BACK, {"x": position[0], "y": position[1]})
                     tcp_client = TcpClient((self.server_ip, TCP_PORT))
                     tcp_client.send(msg.to_bytes())
                     tcp_client.close()
@@ -112,7 +111,6 @@ class Client:
                 self._mouse.focus = True
                 self._mouse.move_to((msg.data['x'], msg.data['y']))
             elif msg.msg_type == MsgType.MOUSE_CLICK:
-                print(msg.data['button'], msg.data['pressed'])
                 self._mouse.click(get_click_button(msg.data['button']), msg.data['pressed'])
             elif msg.msg_type == MsgType.KEYBOARD_CLICK:
                 self._keyboard.click(msg.data['type'], msg.data['keyData'])
