@@ -5,6 +5,7 @@ import threading
 UDP_PORT = 16666
 TCP_PORT = 16667
 
+
 class Udp:
     def __init__(self, port=16666):
         self.msg_listener = None
@@ -21,7 +22,10 @@ class Udp:
         self._udp.sendto(data, target)
 
     def recv(self):
-        return self._udp.recvfrom(1024)
+        try:
+            return self._udp.recvfrom(1024)
+        except Exception as e:
+            return None
 
     def close(self):
         self._udp.close()
@@ -65,4 +69,7 @@ class TcpClient:
         self._tcp.close()
 
     def recv(self):
-        return self._tcp.recv(1024)
+        try:
+            return self._tcp.recvfrom(1024)
+        except Exception as e:
+            return None
