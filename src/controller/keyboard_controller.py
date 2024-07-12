@@ -68,3 +68,12 @@ class KeyboardController:
     def keyboard_listener(self, on_press, on_release):
         
         return pynput.keyboard.Listener(suppress=True,on_press=on_press, on_release=on_release)
+
+def get_click_button(btn: str):
+    if btn == 'left':
+        return pynput.mouse.Button.left
+    elif btn == 'right':
+        return pynput.mouse.Button.right
+    elif btn == 'middle':
+        return pynput.mouse.Button.middle
+    return pynput.mouse.Button.unknown

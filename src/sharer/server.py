@@ -1,6 +1,8 @@
 import socket
 import threading
 import time
+import uuid
+
 from screeninfo import get_monitors
 import pynput
 from zeroconf import ServiceInfo, Zeroconf
@@ -23,7 +25,6 @@ class Server:
         self._mouse = MouseController()
         self._keyboard = KeyboardController()
         self._keyboard_factory = KeyFactory()
-        self.keys_manager = KeysManager()
         self.lock = threading.Lock()
         self.udp = Udp(UDP_PORT)
         self.udp.allow_broadcast()
@@ -31,8 +32,7 @@ class Server:
         self.tcp_server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.tcp_server.bind(("0.0.0.0", TCP_PORT))
         self.tcp_server.listen(10)
-
-
+        threading.Thread(target=self.tcp_listener).start()
         #self.start_event_processor()
         self.start_msg_listener()
         monitors = get_monitors()
@@ -65,10 +65,13 @@ class Server:
                 pyperclip.copy(msg.data['text'])
 
     def tcp_listener(self):
-        client, addr = self.tcp_server.accept()
-        client_handler = threading.Thread(target=self.handle_client, args=(client, addr))
+        while True:
+            client, addr = self.tcp_server.accept()
+            client_handler = threading.Thread(target=self.handle_client, args=(client, addr))
+            client_handler.start()
 
     def handle_client(self,client_socket,addr):
+        keys_manager = KeysManager()
         state = ClientState.WAITING_FOR_KEY
         random_key = None
         while True:
@@ -96,20 +99,20 @@ class Server:
                 elif msg.msg_type == MsgType.SEND_PUBKEY and state == ClientState.WAITING_FOR_KEY:
                     client_id= msg.data['device_id']
                     public_key = msg.data['public_key']
-                    temp = self.keys_manager.get_key(client_id)
+                    temp = keys_manager.get_key(client_id)
                     if temp is None or temp != public_key:
                         # 后续增加ui交互
                         res = input("请确认是否接受该客户端的公钥: y/n")
                         if res == 'y':
-                            self.keys_manager.set_key(client_id, public_key)
+                            keys_manager.set_key(client_id, public_key)
                         else:
                             client_socket.send(Message(MsgType.ACCESS_DENY, {'result':'access_deny'}).to_bytes())
                             continue
-                    random_key = encrypt(public_key, random_key)
-                    client_socket.send(Message(MsgType.KEY_CHECK, {'key':random_key}).to_bytes())
+                    random_key = uuid.uuid1().bytes
+                    client_socket.send(Message(MsgType.KEY_CHECK, {'key':encrypt(public_key, random_key).hex()}).to_bytes())
                     state = ClientState.WAITING_FOR_CHECK
                 elif msg.msg_type == MsgType.KEY_CHECK_RESPONSE and state == ClientState.WAITING_FOR_CHECK:
-                    if msg.data == random_key:
+                    if msg.data['key'] == random_key.hex():
                         position = self.device_manager.refresh(ip=addr[0], screen_width=msg.data['screen_width'],
                                                                screen_height=msg.data['screen_height'])  # 临时测试
                         client_socket.send(Message(MsgType.ACCESS_ALLOW, {'position': int(position)}).to_bytes())
@@ -145,7 +148,7 @@ class Server:
 
     def add_mouse_listener(self):
         def on_click(x, y, button, pressed):
-            msg = Message(MsgType.MOUSE_CLICK, {'x':x,'y':y,'button':button,'pressed':pressed})
+            msg = Message(MsgType.MOUSE_CLICK, {'x':x,'y':y,'button':str(button),'pressed':pressed})
             if self.device_manager.cur_device:
                 self.udp.sendto(msg.to_bytes(), self.device_manager.cur_device.get_udp_address())
 

@@ -23,16 +23,6 @@ class MsgType(enum.IntEnum):
     ACCESS_ALLOW = enum.auto()
 
 
-def get_click_button(btn: str):
-    if btn == 'left':
-        return pynput.mouse.Button.left
-    elif btn == 'right':
-        return pynput.mouse.Button.right
-    elif btn == 'middle':
-        return pynput.mouse.Button.middle
-    return pynput.mouse.Button.unknown
-
-
 class Message:
     SPLITTER = "@"
 
