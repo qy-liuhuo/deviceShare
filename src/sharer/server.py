@@ -1,11 +1,9 @@
 import socket
 import threading
 import time
-
 from screeninfo import get_monitors
 import pynput
 from zeroconf import ServiceInfo, Zeroconf
-
 from src.controller.keyboard_controller import KeyboardController, KeyFactory
 from src.device.device_manager import DeviceManager
 from src.screen_manager.position import Position
@@ -13,7 +11,6 @@ from src.my_socket.message import Message, MsgType
 from src.controller.mouse_controller import MouseController
 from src.my_socket.my_socket import Udp, Tcp, UDP_PORT, TCP_PORT
 import pyperclip
-
 from src.sharer.client_state import ClientState
 from src.utils.keys_manager import KeysManager
 from src.utils.net import get_local_ip

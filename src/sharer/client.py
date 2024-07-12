@@ -14,6 +14,8 @@ from screeninfo import get_monitors
 from src.utils.device_name import get_device_name
 from src.utils.rsautil import RsaUtil, decrypt
 from src.utils.service_listener import ServiceListener
+
+
 class Client:
 
     def __init__(self):
@@ -43,17 +45,21 @@ class Client:
 
     def request_access(self):
         tcp_client = TcpClient((self.server_addr[0], TCP_PORT))
-        msg = Message(MsgType.SEND_PUBKEY, {"device_id":self.device_id,'public_key':self.rsa_util.public_key.save_pkcs1().decode()})
+        msg = Message(MsgType.SEND_PUBKEY,
+                      {"device_id": self.device_id, 'public_key': self.rsa_util.public_key.save_pkcs1().decode()})
         tcp_client.send(msg.to_bytes())
         data = tcp_client.recv()
         msg = Message.from_bytes(data)
         if msg.msg_type == MsgType.KEY_CHECK:
             decrypt_key = decrypt(self.rsa_util.private_key, msg.data['key'].encode())
-            msg = Message(MsgType.KEY_CHECK_RESPONSE, {'key': decrypt_key, 'device_id': self.device_id, 'screen_width': self.screen_size_width, 'screen_height': self.screen_size_height})
+            msg = Message(MsgType.KEY_CHECK_RESPONSE,
+                          {'key': decrypt_key, 'device_id': self.device_id, 'screen_width': self.screen_size_width,
+                           'screen_height': self.screen_size_height})
             tcp_client.send(msg.to_bytes())
             data = tcp_client.recv()
             msg = Message.from_bytes(data)
             if msg.msg_type == MsgType.ACCESS_ALLOW:
+                print('Access allow')
                 self.be_added = True
                 self.position = Position(int(msg.data['position']))
             elif msg.msg_type == MsgType.ACCESS_DENY:
@@ -77,7 +83,7 @@ class Client:
             self.udp.sendto(self._broadcast_data, ('<broadcast>', UDP_PORT))  # 表示广播到16666端口
             time.sleep(2)
 
-    def judge_move_out(self, x,y):
+    def judge_move_out(self, x, y):
         if x <= 5 and self.position == Position.RIGHT:
             return True
         elif x >= self.screen_size_width - 5 and self.position == Position.LEFT:
@@ -94,7 +100,8 @@ class Client:
             msg = Message.from_bytes(data)
             if msg.msg_type == MsgType.MOUSE_MOVE:
                 position = self._mouse.move(msg.data['x'], msg.data['y'])
-                if self.judge_move_out(position[0],position[1]) and self.be_added and self.server_addr and self._mouse.focus:
+                if self.judge_move_out(position[0],
+                                       position[1]) and self.be_added and self.server_addr and self._mouse.focus:
                     msg = Message(MsgType.MOUSE_BACK, f"{int(position[0])},{int(position[1])}")
                     tcp_client = TcpClient((self.server_addr[0], TCP_PORT))
                     tcp_client.send(msg.to_bytes())
@@ -102,11 +109,11 @@ class Client:
                     self._mouse.focus = False
             elif msg.msg_type == MsgType.MOUSE_MOVE_TO:  # 跨屏初始位置
                 self._mouse.focus = True
-                self._mouse.move_to((msg.data['x'],msg.data['y']))
+                self._mouse.move_to((msg.data['x'], msg.data['y']))
             elif msg.msg_type == MsgType.MOUSE_CLICK:
                 self._mouse.click(msg.data['button'], msg.data['pressed'])
             elif msg.msg_type == MsgType.KEYBOARD_CLICK:
-                self._keyboard.click(msg.data['type'],msg.data['keyData'])
+                self._keyboard.click(msg.data['type'], msg.data['keyData'])
             elif msg.msg_type == MsgType.MOUSE_SCROLL:
                 self._mouse.scroll(msg.data['dx'], msg.data['dy'])
             # elif msg.msg_type == MsgType.SUCCESS_JOIN:
@@ -115,7 +122,7 @@ class Client:
             #     self.position = Position(int(msg.data[2]))
             elif msg.msg_type == MsgType.CLIPBOARD_UPDATE:
                 self.last_clipboard_text = msg.data['text']
-                pyperclip.copy( self.last_clipboard_text)
+                pyperclip.copy(self.last_clipboard_text)
             elif msg.msg_type == MsgType.POSITION_CHANGE:
                 self.position = Position(int(msg.data['position']))
 
