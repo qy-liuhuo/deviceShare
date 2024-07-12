@@ -38,6 +38,7 @@ class Client:
         ServiceBrowser(self.zeroconf, "_deviceShare._tcp.local.", ServiceListener(self))
         while self.server_addr is None:
             time.sleep(1)
+        self.request_access()
         self.start_broadcast()
         self.start_msg_listener()
         self.last_clipboard_text = ''
@@ -51,9 +52,10 @@ class Client:
         data = tcp_client.recv()
         msg = Message.from_bytes(data)
         if msg.msg_type == MsgType.KEY_CHECK:
-            decrypt_key = decrypt(self.rsa_util.private_key, msg.data['key'].encode())
+            print(bytes.fromhex(msg.data['key']))
+            decrypt_key = self.rsa_util.decrypt(bytes.fromhex(msg.data['key']))
             msg = Message(MsgType.KEY_CHECK_RESPONSE,
-                          {'key': decrypt_key, 'device_id': self.device_id, 'screen_width': self.screen_size_width,
+                          {'key': decrypt_key.hex(), 'device_id': self.device_id, 'screen_width': self.screen_size_width,
                            'screen_height': self.screen_size_height})
             tcp_client.send(msg.to_bytes())
             data = tcp_client.recv()
@@ -75,7 +77,7 @@ class Client:
             time.sleep(1)
 
     def broadcast_clipboard(self, text):
-        msg = Message(MsgType.CLIPBOARD_UPDATE, text)
+        msg = Message(MsgType.CLIPBOARD_UPDATE, {'text': text})
         self.udp.sendto(msg.to_bytes(), ('<broadcast>', UDP_PORT))
 
     def broadcast_address(self):
