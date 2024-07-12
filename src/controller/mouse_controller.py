@@ -41,3 +41,12 @@ class MouseController:
 
     def mouse_listener(self, on_click, on_move,on_scroll,suppress=False):
         return pynput.mouse.Listener(on_click=on_click, on_move=on_move, on_scroll=on_scroll,suppress=suppress)
+
+def get_click_button(btn: str):
+    if btn == 'Button.left':
+        return pynput.mouse.Button.left
+    elif btn == 'Button.right':
+        return pynput.mouse.Button.right
+    elif btn == 'Button.middle':
+        return pynput.mouse.Button.middle
+    return pynput.mouse.Button.unknown

@@ -7,7 +7,7 @@ from zeroconf import Zeroconf, ServiceBrowser
 from src.controller.keyboard_controller import KeyboardController
 from src.screen_manager.position import Position
 from src.my_socket.message import Message, MsgType
-from src.controller.mouse_controller import MouseController
+from src.controller.mouse_controller import MouseController, get_click_button
 from src.my_socket.my_socket import Udp, TcpClient, UDP_PORT, TCP_PORT
 from screeninfo import get_monitors
 
@@ -113,7 +113,8 @@ class Client:
                 self._mouse.focus = True
                 self._mouse.move_to((msg.data['x'], msg.data['y']))
             elif msg.msg_type == MsgType.MOUSE_CLICK:
-                self._mouse.click(msg.data['button'], msg.data['pressed'])
+                print(msg.data['button'], msg.data['pressed'])
+                self._mouse.click(get_click_button(msg.data['button']), msg.data['pressed'])
             elif msg.msg_type == MsgType.KEYBOARD_CLICK:
                 self._keyboard.click(msg.data['type'], msg.data['keyData'])
             elif msg.msg_type == MsgType.MOUSE_SCROLL:
