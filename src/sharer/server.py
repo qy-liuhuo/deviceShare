@@ -51,7 +51,10 @@ class Server:
 
     def msg_receiver(self):
         while True:
-            data, addr = self.udp.recv()
+            recv_data = self.udp.recv()
+            if recv_data is None:
+                continue
+            data, addr = recv_data
             msg = Message.from_bytes(data)
             # if msg.msg_type == MsgType.DEVICE_ONLINE:  # 客户端上线及心跳
             #     position = self.device_manager.refresh(ip=addr[0], screen_width=msg.data[0],

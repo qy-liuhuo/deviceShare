@@ -96,7 +96,10 @@ class Client:
 
     def msg_receiver(self):
         while True:
-            data, addr = self.udp.recv()
+            msg_data = self.udp.recv()
+            if msg_data is None:
+                continue
+            data, addr = msg_data
             msg = Message.from_bytes(data)
             if msg.msg_type == MsgType.MOUSE_MOVE:
                 position = self._mouse.move(msg.data['x'], msg.data['y'])
