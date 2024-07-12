@@ -19,6 +19,7 @@ from src.utils.service_listener import ServiceListener
 class Client:
 
     def __init__(self):
+        self.last_clipboard_text = ''
         self.device_id = get_device_name()
         self.position = None
         self.udp = Udp(UDP_PORT)
@@ -30,22 +31,19 @@ class Client:
         monitors = get_monitors()
         self.screen_size_width = monitors[0].width
         self.screen_size_height = monitors[0].height
-        self._broadcast_data = Message(MsgType.DEVICE_ONLINE,
-                                       f'{self.screen_size_width}, {self.screen_size_height}').to_bytes()
         self.rsa_util = RsaUtil()
-        self.server_addr = None
+        self.server_ip = None
         self.zeroconf = Zeroconf()
         ServiceBrowser(self.zeroconf, "_deviceShare._tcp.local.", ServiceListener(self))
-        while self.server_addr is None:
+        while self.server_ip is None:
             time.sleep(1)
         self.request_access()
-        self.start_broadcast()
-        self.start_msg_listener()
-        self.last_clipboard_text = ''
-        threading.Thread(target=self.clipboard_listener).start()
+        threading.Thread(target=self.heartbeat).start() #心跳机制
+        threading.Thread(target=self.msg_receiver).start() # 消息接收
+        threading.Thread(target=self.clipboard_listener).start() # 剪切板监听
 
     def request_access(self):
-        tcp_client = TcpClient((self.server_addr[0], TCP_PORT))
+        tcp_client = TcpClient((self.server_ip, TCP_PORT))
         msg = Message(MsgType.SEND_PUBKEY,
                       {"device_id": self.device_id, 'public_key': self.rsa_util.public_key.save_pkcs1().decode()})
         tcp_client.send(msg.to_bytes())
@@ -80,9 +78,10 @@ class Client:
         msg = Message(MsgType.CLIPBOARD_UPDATE, {'text': text})
         self.udp.sendto(msg.to_bytes(), ('<broadcast>', UDP_PORT))
 
-    def broadcast_address(self):
+    def heartbeat(self):
+        broadcast_data = Message(MsgType.CLIENT_HEARTBEAT,{}).to_bytes()
         while True:
-            self.udp.sendto(self._broadcast_data, ('<broadcast>', UDP_PORT))  # 表示广播到16666端口
+            self.udp.sendto(broadcast_data, (self.server_ip, UDP_PORT))
             time.sleep(2)
 
     def judge_move_out(self, x, y):
@@ -103,9 +102,9 @@ class Client:
             if msg.msg_type == MsgType.MOUSE_MOVE:
                 position = self._mouse.move(msg.data['x'], msg.data['y'])
                 if self.judge_move_out(position[0],
-                                       position[1]) and self.be_added and self.server_addr and self._mouse.focus:
+                                       position[1]) and self.be_added and self.server_ip and self._mouse.focus:
                     msg = Message(MsgType.MOUSE_BACK, f"{int(position[0])},{int(position[1])}")
-                    tcp_client = TcpClient((self.server_addr[0], TCP_PORT))
+                    tcp_client = TcpClient((self.server_ip, TCP_PORT))
                     tcp_client.send(msg.to_bytes())
                     tcp_client.close()
                     self._mouse.focus = False
@@ -119,22 +118,8 @@ class Client:
                 self._keyboard.click(msg.data['type'], msg.data['keyData'])
             elif msg.msg_type == MsgType.MOUSE_SCROLL:
                 self._mouse.scroll(msg.data['dx'], msg.data['dy'])
-            # elif msg.msg_type == MsgType.SUCCESS_JOIN:
-            #     self.server_addr = addr
-            #     self.be_added = True
-            #     self.position = Position(int(msg.data[2]))
             elif msg.msg_type == MsgType.CLIPBOARD_UPDATE:
                 self.last_clipboard_text = msg.data['text']
                 pyperclip.copy(self.last_clipboard_text)
             elif msg.msg_type == MsgType.POSITION_CHANGE:
                 self.position = Position(int(msg.data['position']))
-
-    def start_msg_listener(self):
-        msg_listener = threading.Thread(target=self.msg_receiver)
-        msg_listener.start()
-        return msg_listener
-
-    def start_broadcast(self):
-        broadcast_thread = threading.Thread(target=self.broadcast_address)
-        broadcast_thread.start()
-        return broadcast_thread

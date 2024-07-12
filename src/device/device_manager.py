@@ -14,13 +14,19 @@ class DeviceManager:
         self.cur_device = None
         threading.Thread(target=self.valid_checker).start()
 
-    def refresh(self,ip,screen_width,screen_height,position=Position.NONE):
+    def add_or_update(self,ip,screen_width,screen_height,position=Position.NONE):
         for device in self.devices:
             if device.device_ip == ip:
                 device.update_heartbeat()
                 return device.position
         self.add_device(Device(ip, Screen(screen_width, screen_height), position))
         return self.get_device_by_ip(ip).position
+
+    def update_heartbeat(self, ip):
+        for device in self.devices:
+            if device.device_ip == ip:
+                device.update_heartbeat()
+                break
 
     def valid_checker(self):
         while True:

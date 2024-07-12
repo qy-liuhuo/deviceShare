@@ -5,7 +5,7 @@ import pynput
 
 
 class MsgType(enum.IntEnum):
-    DEVICE_ONLINE = enum.auto()
+    CLIENT_HEARTBEAT = enum.auto()
     SUCCESS_JOIN = enum.auto()
     MOUSE_BACK = enum.auto()
     MOUSE_MOVE = enum.auto()

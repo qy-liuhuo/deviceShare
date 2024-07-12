@@ -12,7 +12,7 @@ class ServiceListener:
             port = info.port
             properties = info.properties
             print(f"Service {name} added, address: {address}:{port}, properties: {properties}")
-            self.client.server_addr = (address, port)
+            self.client.server_addr = address
 
     def update_service(self, zeroconf, service_type, name):
         print(f"Service {name} updated")
