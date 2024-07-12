@@ -6,3 +6,5 @@
 *.spec
 **/*.key
 **/*.pyc
+**/*.db
+.DS_Store
