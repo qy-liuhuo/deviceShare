@@ -2,12 +2,14 @@ import socket
 import threading
 import time
 import uuid
+from queue import Queue
 
 from screeninfo import get_monitors
 import pynput
 from zeroconf import ServiceInfo, Zeroconf
 from src.controller.keyboard_controller import KeyboardController, KeyFactory
 from src.device.device_manager import DeviceManager
+from src.screen_manager.gui import Gui, GuiMessage
 from src.screen_manager.position import Position
 from src.my_socket.message import Message, MsgType
 from src.controller.mouse_controller import MouseController
@@ -21,10 +23,14 @@ from src.utils.rsautil import encrypt
 
 class Server:
     def __init__(self):
+        self.server_queue = Queue()
+        self.gui_queue = Queue()
+        self.manager_gui = Gui(update_func=self.update_position, gui_queue=self.gui_queue,server_queue=self.server_queue)
         self.device_manager = DeviceManager()
         self._mouse = MouseController()
         self._keyboard = KeyboardController()
         self._keyboard_factory = KeyFactory()
+
         self.lock = threading.Lock()
         self.udp = Udp(UDP_PORT)
         self.udp.allow_broadcast()
@@ -41,6 +47,8 @@ class Server:
         self.service_register()
         threading.Thread(target=self.clipboard_listener).start()
         threading.Thread(target=self.main_loop).start()
+        self.manager_gui.run()
+
 
     def service_register(self):
         info = ServiceInfo(type_="_deviceShare._tcp.local.", name="_deviceShare._tcp.local.",
@@ -70,6 +78,7 @@ class Server:
     def tcp_listener(self):
         while True:
             client, addr = self.tcp_server.accept()
+            print(f"Connection from {addr}")
             client_handler = threading.Thread(target=self.handle_client, args=(client, addr))
             client_handler.start()
 
@@ -104,16 +113,16 @@ class Server:
                     public_key = msg.data['public_key']
                     temp = keys_manager.get_key(client_id)
                     if temp is None or temp != public_key:
-                        # 后续增加ui交互
-                        res = input("请确认是否接受该客户端的公钥: y/n")
-                        if res == 'y':
+                        # self.manager_gui.notify("新设备请求连接", f"设备{client_id}请求连接")
+                        self.manager_gui.gui_queue.put(GuiMessage(GuiMessage.MessageType.ACCESS_REQUIRE, {"device_id": client_id}))
+                        msg = self.server_queue.get()
+                        if msg.data:
                             keys_manager.set_key(client_id, public_key)
                         else:
                             client_socket.send(Message(MsgType.ACCESS_DENY, {'result': 'access_deny'}).to_bytes())
                             continue
                     random_key = uuid.uuid1().bytes
-                    client_socket.send(
-                        Message(MsgType.KEY_CHECK, {'key': encrypt(public_key, random_key).hex()}).to_bytes())
+                    client_socket.send(Message(MsgType.KEY_CHECK, {'key': encrypt(public_key, random_key).hex()}).to_bytes())
                     state = ClientState.WAITING_FOR_CHECK
                 elif msg.msg_type == MsgType.KEY_CHECK_RESPONSE and state == ClientState.WAITING_FOR_CHECK:
                     if msg.data['key'] == random_key.hex():
@@ -125,6 +134,7 @@ class Server:
                         client_socket.send(Message(MsgType.ACCESS_DENY, {'result': 'access_deny'}).to_bytes())
                         state = ClientState.WAITING_FOR_KEY
             except ConnectionResetError:
+                print(f"Connection from {addr} closed")
                 break
         client_socket.close()
 

@@ -64,6 +64,8 @@ class Client:
                 self.position = Position(int(msg.data['position']))
             elif msg.msg_type == MsgType.ACCESS_DENY:
                 print('Access denied')
+        elif msg.msg_type == MsgType.ACCESS_DENY:
+            print('Access denied')
         tcp_client.close()
 
     def clipboard_listener(self):

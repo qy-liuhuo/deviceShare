@@ -1,1 +1,2 @@
-data, _ =  None
+import pystray
+

@@ -1,11 +1,13 @@
+import enum
 import json
 import threading
 import tkinter as tk
+from queue import Queue
 from tkinter import ttk
-
 import pystray
 from PIL import Image, ImageTk
 import ttkbootstrap as ttkb
+from ttkbootstrap.dialogs import MessageDialog
 
 from src.screen_manager.position import Position
 
@@ -53,7 +55,7 @@ class Client:
     def __init__(self, id, ip_addr, location=Position.NONE):
         self.id = id  # 设备编号
         self.ip_addr = ip_addr
-        self.location =location  # 相对于主机的位置
+        self.location = location  # 相对于主机的位置
 
 
 class DraggableImage(ttkb.Frame):
@@ -97,7 +99,6 @@ class DraggableImage(ttkb.Frame):
                 Position.RIGHT: (ox + ow, oy + (oh - ih) // 2)
             }
             self.place(x=positions[self.client.location][0], y=positions[self.client.location][1])
-
 
     def start_move(self, event):
         self._x = event.x
@@ -157,13 +158,23 @@ def rewrite(path, client_list):
         json.dump(device_dict, f, indent=4)
 
 
-class Gui:
+class GuiMessage:
+    class MessageType(enum.IntEnum):
+        ACCESS_REQUIRE = enum.auto()
+        ACCESS_RESPONSE = enum.auto()
+    def __init__(self, msg_type, data):
+        self.msg_type = msg_type
+        self.data = data
 
-    def __init__(self,update_func=None):
+
+class Gui:
+    def __init__(self, update_func=None, gui_queue=None, server_queue=None):
+        self.gui_queue = gui_queue
+        self.server_queue = server_queue
         self.client_list = []
         self.image_list = []
-        self.create_systray_icon()
         self.icon = None
+        self.create_systray_icon()
         self.root = ttkb.Window(themename="superhero")
         self.root.title("主机屏幕排列")
         self.root.geometry('1200x800')
@@ -172,6 +183,7 @@ class Gui:
         self.frame = ttkb.Frame(self.root)
         self.frame.pack(fill=tk.BOTH, expand=True)
         self.center_image = DraggableImage(self.frame, './resources/background.jpg', None, center_image=True)
+
         def on_done_click():
             for i in range(len(self.client_list)):
                 self.client_list[i].location = self.image_list[i].get_relative_position()  # 更新位置
@@ -186,7 +198,31 @@ class Gui:
         btn_done.pack(side=tk.BOTTOM, padx=15, pady=15)
         self.update()
         self.hide()
-        self.root.mainloop()
+        self.check_queue()
+
+    def check_queue(self):
+        if not self.gui_queue.empty():
+            msg = self.gui_queue.get()
+            if isinstance(msg, GuiMessage):
+                if msg.msg_type == GuiMessage.MessageType.ACCESS_REQUIRE:
+                    self.server_queue.put(GuiMessage(GuiMessage.MessageType.ACCESS_RESPONSE,self.ask_access(msg.data['device_id'])))
+        self.root.after(100, self.check_queue)
+
+    def ask_access(self, device_id):
+        self.show()
+        dialog = MessageDialog(
+            title="设备连接请求",
+            message="是否允许新设备(" + device_id + ")连接",
+            parent=None,
+            alert=False,
+            buttons=["拒绝:secondary", "允许:primary"],
+            localize=True,
+        )
+        dialog.show(None)
+        return dialog.result == "允许"
+
+    def notify(self, title, message):
+        self.icon.notify(title, message)
 
     def update(self):
         for widget in self.frame.winfo_children():
@@ -203,7 +239,7 @@ class Gui:
             print("读取配置文件失败", e)
         idx = 1
         for device_ip in device_dict:
-            client = Client(idx, device_ip,Position(device_dict[device_ip][2]))
+            client = Client(idx, device_ip, Position(device_dict[device_ip][2]))
             idx = idx + 1
             self.client_list.append(client)
         for client in self.client_list:
@@ -235,6 +271,9 @@ class Gui:
         # self.icon.stop()
         self.root.quit()
         self.root.destroy()
+
+    def run(self):
+        self.root.mainloop()
 
 
 if __name__ == '__main__':
