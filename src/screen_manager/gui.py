@@ -148,6 +148,23 @@ class DraggableImage(ttkb.Frame):
             return Position.RIGHT
         return Position.NONE
 
+class ClientList(ttkb.Frame):
+    def __init__(self, master):
+        style = ttkb.Style()
+        style.configure('Custom.TFrame', background='black')  # 设置背景颜色
+        super().__init__(width=master.winfo_width() * 0.2, height=master.winfo_height(), style='Custom.TFrame')
+        self.clientList = ttk.Treeview(master=self)
+        self.clientList["columns"] = ('address')
+        self.clientList.column("#0", width=0, stretch=tk.NO)
+        self.clientList.column("address", anchor=ttkb.CENTER, width=self.winfo_width())
+        self.clientList.heading("address", text="客户机列表")
+        self.clientList.tag_configure("itemTag", background="black")
+        row = self.clientList.insert(parent='', index='end', iid=0, text='',
+                                     values=('192.168.3.108'))
+        # self.clientList.item(row, tags="itemTag")
+        self.place(x=0, y=0)
+        self.clientList.place(relwidth=1, relheight=1)
+
 
 def rewrite(path, client_list):
     with open(path, 'r', encoding='utf-8') as f:
@@ -182,7 +199,24 @@ class Gui:
         self.root.protocol('WM_DELETE_WINDOW', self.hide)
         self.frame = ttkb.Frame(self.root)
         self.frame.pack(fill=tk.BOTH, expand=True)
-        self.center_image = DraggableImage(self.frame, './resources/background.jpg', None, center_image=True)
+        self.root.update()
+        self.clientList = ClientList(self.frame)
+        # ttkb.Style().configure('Custom.TFrame', background='red')  # 设置背景颜色
+        self.layout_interface = ttkb.Frame(master=self.frame, width=self.frame.winfo_width() * 0.8,
+                                           height=self.frame.winfo_height())
+        self.layout_interface.place(x=self.frame.winfo_width() * 0.2)
+        self.root.update()
+        self.center_image = DraggableImage(self.layout_interface, './resources/background.jpg', None, center_image=True)
+        self.layout_interface.update()
+        self.center_image.update_position()
+        style = ttkb.Style()
+        style.configure('Custom.TFrame', background='black')  # 设置背景颜色
+        # self.top_frame = ttkb.Frame(self.layout_interface, width=image_size["width"], height=image_size["height"], style="Custom.TFrame")
+        # self.top_frame.place(x=self.center_image.winfo_x(), y=self.center_image.winfo_y() - image_size["height"])
+
+        self.popup = self.newPopup()
+        self.popup.withdraw()
+        self.root.mainloop()
 
         def on_done_click():
             for i in range(len(self.client_list)):
@@ -271,6 +305,86 @@ class Gui:
         # self.icon.stop()
         self.root.quit()
         self.root.destroy()
+
+    def newPopup(self):
+        popup = tk.Toplevel()
+        popupWidth = 450
+        popupHeight = 300
+        popupX = self.root.winfo_screenwidth() - popupWidth - 30
+        popupY = self.root.winfo_screenheight() - popupHeight - 50
+        popup.update_idletasks()
+
+        popup.geometry(f"{popupWidth}x{popupHeight}+{popupX}+{popupY}")
+        popup.overrideredirect(True)
+        popup.attributes("-topmost", True)
+
+        popup.config(bg="white", bd=2, relief="solid")
+
+        ttk.Style().configure("title.TFrame", background="#CAE1FF")
+        title_frame = ttk.Frame(popup, width=popupWidth, height=popupHeight * 0.2)
+        title_frame.configure(style="title.TFrame")
+        title_frame.pack()
+        titleLabel = ttk.Label(title_frame, text="主机接入认证", foreground="black", background="#CAE1FF",
+                               font=tk.font.Font(size=12, family="Microsoft YaHei UI"))
+        titleLabel.place(x=30, y=10)
+
+        label = ttk.Label(popup, text="message", background="white",
+                          font=tk.font.Font(size=12, family="Microsoft YaHei UI"))
+        # label = ttk.Label(popup, text="message", background="white")
+        # ttk.Style().configure("labelStyle", font=("Arial", 12))
+        label.configure(foreground="black")
+        # label.pack(pady=10)
+        label.place(x=25, y=95)
+        ttk.Style().configure("ButtonFrame.TFrame", background="white")
+        button_frame = ttk.Frame(popup, style="ButtonFrame.TFrame")
+        button_frame.configure(style="ButtonFrame.TFrame")
+        button_frame.place(x=115, y=175)
+        # button_frame.place_forget()
+        # Microsoft YaHei UI
+
+        ttk.Style().configure("Popup.TButton", background="white", foreground="black", highlightcolor="black", height=35,
+                              font=("Microsoft YaHei UI", 12), relief="solid")
+
+        ignore_button = ttk.Button(button_frame, text="忽略", command=popup.destroy)
+        ignore_button.configure(style="Popup.TButton")
+        ignore_button.pack(side=tk.RIGHT, padx=10)
+
+        authenticate_button = ttk.Button(button_frame, text="认证", command=lambda: authenticate(popup))
+        authenticate_button.configure(style="Popup.TButton")
+        authenticate_button.pack(side=tk.RIGHT, padx=10)
+        # ok_button.place(x=10, y=5)
+
+        # todo: access authenticate
+        def authenticate(popup):
+            popup.destroy()
+
+        return popup
+
+    def showJoinPopup(self, ip="192.168.3.108"):
+        title = self.popup.nametowidget(".!toplevel.!frame.!label")
+        title["text"] = "主机接入认证"
+        label = self.popup.nametowidget(f".{self.popup.winfo_name()}.!label")
+        label["text"] = "主机" + ip + "请求加入"
+        buttonFrame = self.popup.nametowidget(".!toplevel.!frame2")
+        authenticate_button = self.popup.nametowidget(".!toplevel.!frame2.!button2")
+        authenticate_button.pack(side=tk.RIGHT, padx=10)
+        buttonFrame.place(x=115)
+        self.popup.deiconify()
+
+    def showOnlinePopup(self, ip="192.168.3.108"):
+        title = self.popup.nametowidget(".!toplevel.!frame.!label")
+        title["text"] = "主机上线通知"
+        label = self.popup.nametowidget(f".{self.popup.winfo_name()}.!label")
+        label["text"] = "主机" + ip + "已上线"
+        buttonFrame = self.popup.nametowidget(".!toplevel.!frame2")
+        authenticate_button = self.popup.nametowidget(".!toplevel.!frame2.!button2")
+        authenticate_button.pack_forget()
+        ok_button = self.popup.nametowidget(".!toplevel.!frame2.!button")
+        ok_button["text"] = "确认"
+        buttonFrame.place(x=145)
+        self.popup.deiconify()
+
+
 
     def run(self):
         self.root.mainloop()
