@@ -1,5 +1,6 @@
 import os
 import tkinter as tk
+from threading import Thread
 from tkinter import ttk
 from tkinterdnd2 import DND_FILES, TkinterDnD
 from PIL import Image, ImageTk
@@ -7,10 +8,11 @@ import platform
 import shutil
 from src.file_manager.toolstip import create_tooltip
 from fileDto import fileDto
+from queue import Queue
 
 
 class FileDrag(TkinterDnD.Tk):
-    def __init__(self):
+    def __init__(self, shared_queue):
         super().__init__()
         self.title("File Drag")
         self.geometry("280x150")
@@ -23,6 +25,10 @@ class FileDrag(TkinterDnD.Tk):
 
         self.file_list = []  # 保存文件路径
         self.dtos = []  # 数据传输对象
+        self.shared_queue = shared_queue
+
+        self.update_thread = Thread(target=self.listen_for_updates, daemon=True)
+        self.update_thread.start()
 
     def on_drop(self, event):
         file_list = list(self.tk.splitlist(event.data))
@@ -53,6 +59,7 @@ class FileDrag(TkinterDnD.Tk):
         elif os_type == "Linux":
             # Linux icon handling can be very diverse depending on the environment.
             # Here we just use a placeholder approach.
+            icon_path = None
             if os.path.isfile(file_path):
                 icon_path = "/usr/share/icons/gnome/256x256/mimetypes/text-x-generic.png"
             elif os.path.isdir(file_path):
@@ -110,7 +117,16 @@ class FileDrag(TkinterDnD.Tk):
         global_y = event.widget.winfo_rooty() - event.widget._drag_start_y + event.y
 
         # 获取桌面路径 MacOs
-        desktop_path = os.path.join(os.path.expanduser("~"), "Desktop")
+        desktop_path = None
+        os_type = platform.system()
+        if os_type == "Darwin":  # macOS
+            desktop_path = os.path.join(os.path.expanduser("~"), "Desktop")
+        elif os_type == "Windows":
+            desktop_path = os.path.join(os.path.join(os.environ['USERPROFILE']), 'Desktop')
+        elif os_type == "Linux":
+            desktop_path = os.path.join(os.path.expanduser("~"), "Desktop")
+        else:
+            raise Exception("Unsupported operating system")
 
         print("executed on_icon_release")
         print("global_x: ", global_x, "global_y: ", global_y)
@@ -125,7 +141,13 @@ class FileDrag(TkinterDnD.Tk):
                 print(f"File already exists on desktop: {dst_path}")
             print(f"File copied to desktop: {dst_path}")
 
+    def listen_for_updates(self):
+        while True:
+            file_dto = self.shared_queue.get()
+            if file_dto:
+                self.display_file_icon(file_dto.file_path)
+
 
 if __name__ == "__main__":
-    app = FileDrag()
+    app = FileDrag(Queue())
     app.mainloop()
