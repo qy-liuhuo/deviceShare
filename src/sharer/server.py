@@ -1,4 +1,5 @@
 import socket
+import sys
 import threading
 import time
 import uuid
@@ -10,6 +11,7 @@ from zeroconf import ServiceInfo, Zeroconf
 from src.controller.keyboard_controller import KeyboardController, KeyFactory
 from src.device.device_manager import DeviceManager
 from src.screen_manager.gui import Gui, GuiMessage
+from src.screen_manager.gui2 import Gui2
 from src.screen_manager.position import Position
 from src.my_socket.message import Message, MsgType
 from src.controller.mouse_controller import MouseController
@@ -23,14 +25,17 @@ from src.utils.rsautil import encrypt
 
 class Server:
     def __init__(self):
+        self.init_screen_info()
         self.server_queue = Queue()
-        self.gui_queue = Queue()
-        self.manager_gui = Gui(update_func=self.update_position, gui_queue=self.gui_queue,server_queue=self.server_queue)
-        self.device_manager = DeviceManager()
+        self.request_queue = Queue()
+        self.response_queue = Queue()
+        self.thread_list = []
+        self.manager_gui = Gui2(update_func=self.update_position, request_queue=self.request_queue,
+                                response_queue=self.response_queue)
+        self.device_manager = DeviceManager(device_offline_callback=self.manager_gui.device_offline_notify)
         self._mouse = MouseController()
         self._keyboard = KeyboardController()
         self._keyboard_factory = KeyFactory()
-
         self.lock = threading.Lock()
         self.udp = Udp(UDP_PORT)
         self.udp.allow_broadcast()
@@ -38,17 +43,24 @@ class Server:
         self.tcp_server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.tcp_server.bind(("0.0.0.0", TCP_PORT))
         self.tcp_server.listen(10)
-        threading.Thread(target=self.tcp_listener).start()
-        self.start_msg_listener()
+        self.thread_list.append(threading.Thread(target=self.tcp_listener))
+        self.thread_list.append(threading.Thread(target=self.msg_receiver))
+        self.last_clipboard_text = ''
+        self.service_register()
+        self.thread_list.append(threading.Thread(target=self.clipboard_listener))
+        self.thread_list.append(threading.Thread(target=self.main_loop))
+        self.start_all_threads()
+        self.manager_gui.run()
+
+    def start_all_threads(self):
+        for thread in self.thread_list:
+            thread.setDaemon(True)
+            thread.start()
+
+    def init_screen_info(self):
         monitors = get_monitors()
         self.screen_size_width = monitors[0].width
         self.screen_size_height = monitors[0].height
-        self.last_clipboard_text = ''
-        self.service_register()
-        threading.Thread(target=self.clipboard_listener).start()
-        threading.Thread(target=self.main_loop).start()
-        self.manager_gui.run()
-
 
     def service_register(self):
         info = ServiceInfo(type_="_deviceShare._tcp.local.", name="_deviceShare._tcp.local.",
@@ -64,11 +76,6 @@ class Server:
                 continue
             data, addr = recv_data
             msg = Message.from_bytes(data)
-            # if msg.msg_type == MsgType.DEVICE_ONLINE:  # 客户端上线及心跳
-            #     position = self.device_manager.refresh(ip=addr[0], screen_width=msg.data[0],
-            #                                            screen_height=msg.data[1])  # 临时测试
-            #     # self.cur_client = addr  # 临时测试
-            #     self.udp.sendto(Message(MsgType.SUCCESS_JOIN,{'ip':get_local_ip(),'port':UDP_PORT,'position':int(position)}).to_bytes(), addr)
             if msg.msg_type == MsgType.CLIENT_HEARTBEAT:
                 self.device_manager.update_heartbeat(ip=addr[0])
             elif msg.msg_type == MsgType.CLIPBOARD_UPDATE:
@@ -79,10 +86,11 @@ class Server:
         while True:
             client, addr = self.tcp_server.accept()
             print(f"Connection from {addr}")
-            client_handler = threading.Thread(target=self.handle_client, args=(client, addr))
+            client_handler = threading.Thread(target=self.handle_client, args=(client, addr), daemon=True)
             client_handler.start()
 
     def handle_client(self, client_socket, addr):
+
         keys_manager = KeysManager()
         state = ClientState.WAITING_FOR_KEY
         random_key = None
@@ -113,22 +121,26 @@ class Server:
                     public_key = msg.data['public_key']
                     temp = keys_manager.get_key(client_id)
                     if temp is None or temp != public_key:
-                        # self.manager_gui.notify("新设备请求连接", f"设备{client_id}请求连接")
-                        self.manager_gui.gui_queue.put(GuiMessage(GuiMessage.MessageType.ACCESS_REQUIRE, {"device_id": client_id}))
-                        msg = self.server_queue.get()
-                        if msg.data:
+                        self.manager_gui.device_show_online_require(addr[0])
+                        self.manager_gui.request_queue.put(
+                            GuiMessage(GuiMessage.MessageType.ACCESS_REQUIRE, {"device_id": client_id}))
+                        result = self.response_queue.get()
+                        if result.data['result']:
                             keys_manager.set_key(client_id, public_key)
+                            pass
                         else:
                             client_socket.send(Message(MsgType.ACCESS_DENY, {'result': 'access_deny'}).to_bytes())
                             continue
                     random_key = uuid.uuid1().bytes
-                    client_socket.send(Message(MsgType.KEY_CHECK, {'key': encrypt(public_key, random_key).hex()}).to_bytes())
+                    client_socket.send(
+                            Message(MsgType.KEY_CHECK, {'key': encrypt(public_key, random_key).hex()}).to_bytes())
                     state = ClientState.WAITING_FOR_CHECK
                 elif msg.msg_type == MsgType.KEY_CHECK_RESPONSE and state == ClientState.WAITING_FOR_CHECK:
                     if msg.data['key'] == random_key.hex():
                         position = self.device_manager.add_or_update(ip=addr[0], screen_width=msg.data['screen_width'],
                                                                      screen_height=msg.data['screen_height'])  # 临时测试
                         client_socket.send(Message(MsgType.ACCESS_ALLOW, {'position': int(position)}).to_bytes())
+                        self.manager_gui.device_online_notify(addr[0])
                         state = ClientState.CONNECT
                     else:
                         client_socket.send(Message(MsgType.ACCESS_DENY, {'result': 'access_deny'}).to_bytes())
@@ -137,16 +149,6 @@ class Server:
                 print(f"Connection from {addr} closed")
                 break
         client_socket.close()
-
-    def start_msg_listener(self):
-        msg_listener = threading.Thread(target=self.msg_receiver)
-        msg_listener.start()
-        return msg_listener
-
-    # def start_event_processor(self):
-    #     event_processor = threading.Thread(target=self.event_processor)
-    #     event_processor.start()
-    #     return event_processor
 
     def clipboard_listener(self):
         while True:

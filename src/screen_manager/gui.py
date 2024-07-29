@@ -216,7 +216,6 @@ class Gui:
 
         self.popup = self.newPopup()
         self.popup.withdraw()
-        self.root.mainloop()
 
         def on_done_click():
             for i in range(len(self.client_list)):
