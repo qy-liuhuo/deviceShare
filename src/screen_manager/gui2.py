@@ -1,17 +1,19 @@
 import enum
 import json
 import sys
+import copy
 import time
 
 from PyQt5 import QtCore, QtWidgets
 from PyQt5.QtWidgets import QApplication, QMainWindow, QAction, QMenu, QMessageBox, QToolBar, QLabel, QVBoxLayout, \
-    QWidget, QSystemTrayIcon, QStyle, QGraphicsOpacityEffect
-from PyQt5.QtGui import QIcon, QPixmap
+    QWidget, QSystemTrayIcon, QStyle, QGraphicsOpacityEffect, QGraphicsDropShadowEffect, QGraphicsEffect
+from PyQt5.QtGui import QIcon, QPixmap, QColor
 
 from position import Position
 
 DEFAULT_WIDTH = 384
 DEFAULT_HEIGHT = 216
+color = "red"
 
 
 class GuiMessage:
@@ -36,8 +38,6 @@ class ClientScreen(QLabel):
         self.setAcceptDrops(True)
         self.setFrameShape(QtWidgets.QFrame.Box)
         self.setStyleSheet('border-width: 1px;border-style: solid;border-color: black;')
-
-        # 调整文字与边框的对齐，可以多试几个参数，比如AlignTop
         self.setAlignment(QtCore.Qt.AlignVCenter)
         self.move(x, y)
 
@@ -51,22 +51,53 @@ class ClientScreen(QLabel):
 
     def mousePressEvent(self, e):
         if e.buttons() == QtCore.Qt.LeftButton and not self.empty:
-            # self.setPixmap(QPixmap(""))
             self.relative_position = e.pos()
             self.master.prepare_modify(self)
 
     def mouseMoveEvent(self, e):
         if not self.empty:
             self.move(self.mapToParent(e.pos()) - self.relative_position)
-        # self.move(self.mapToParent(e.pos()) - self.relative_position)
+            self.master.track_move(self.x(), self.y())
 
     def mouseReleaseEvent(self, QMouseEvent):
-        target_location, needExchange = self.master.finish_modify(self.x(), self.y())
-        if target_location and target_location != self.location:
+        if not self.empty:
+            self.master.finish_modify(self.x(), self.y(), self)
+            self.setParent(None)
+            self.deleteLater()
+
+    def enter(self):
+        if not self.empty:
             self.setPixmap(QPixmap(""))
-        if needExchange:
+        self.setStyleSheet('border-width: 2px;border-style: solid;border-color: red;')
+        self.add_shadow()
+
+    def leave(self):
+        if not self.empty:
             self.setPixmap(QPixmap("./resources/background1.jpg"))
-        self.move(self._x, self._y)
+            self.set_opacity(0.5)
+        self.setStyleSheet('border-width: 1px;border-style: solid;border-color: black;')
+        self.clear_shadow()
+
+    def set_opacity(self, opacity):
+        effect_opacity = QGraphicsOpacityEffect()
+        effect_opacity.setOpacity(opacity)
+        self.setGraphicsEffect(effect_opacity)
+
+    def add_shadow(self):
+        effect_shadow = QGraphicsDropShadowEffect()
+        effect_shadow.setOffset(0, 0)  # 偏移
+        effect_shadow.setBlurRadius(0)  # 阴影半径
+        effect_shadow.setColor(QColor(255, 0, 0))
+        effect_shadow.setBlurRadius(50)
+        self.setGraphicsEffect(effect_shadow)
+
+    def clear_shadow(self):
+        effect_shadow = QGraphicsDropShadowEffect()
+        effect_shadow.setOffset(0, 0)  # 偏移
+        effect_shadow.setBlurRadius(0)  # 阴影半径
+        effect_shadow.setColor(QColor(255, 0, 0))
+        effect_shadow.setBlurRadius(0)
+        self.setGraphicsEffect(effect_shadow)
 
 
 class Client:
@@ -79,6 +110,7 @@ class Client:
 class ConfigurationInterface(QWidget):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.last_potential_location = None
         self.resize(1250, 850)
         self.setWindowTitle('主机屏幕排列')
         self.center_image = QLabel("", self)
@@ -126,39 +158,45 @@ class ConfigurationInterface(QWidget):
     def prepare_modify(self, currentClient):
         for client in self.clients.values():
             if currentClient != client and not client.empty:
-                opacity_effect = QGraphicsOpacityEffect()
-                opacity_effect.setOpacity(0.5)
-                client.setGraphicsEffect(opacity_effect)
+                client.set_opacity(0.5)
+        tempScreen = ClientScreen(self, currentClient.x(), currentClient.y(), currentClient.location)
+        tempScreen.show()
+        self.clients[currentClient.location] = tempScreen
 
-    def finish_modify(self, x, y):
-        opacity_effect = QGraphicsOpacityEffect()
-        opacity_effect.setOpacity(1)
+    def track_move(self, x, y):
+        potential_target_location = self.get_target_location(x, y)
+        if potential_target_location != self.last_potential_location:
+            if self.last_potential_location:
+                self.clients[self.last_potential_location].leave()
+            self.last_potential_location = potential_target_location
+            if self.last_potential_location:
+                self.clients[self.last_potential_location].enter()
+
+    def finish_modify(self, x, y, current_client):
+        if self.last_potential_location:
+            self.clients[self.last_potential_location].leave()
+        self.last_potential_location = None
         exchange_flag = False
         for client in self.clients.values():
             if not client.empty:
-                client.setGraphicsEffect(opacity_effect)
-        if self.center_image.y() - y > 120 and abs(x - self.center_image.x()) < 180:
-            target_location = Position["TOP"]
-            # if not self.clients[Position["TOP"]].set_client("./resources/background1.jpg"):
-            #
-            # return Position["TOP"]
-        elif y - self.center_image.y() > 120 and abs(x - self.center_image.x()) < 180:
-            target_location = Position["BOTTOM"]
-            # self.clients[Position["BOTTOM"]].set_client("./resources/background1.jpg")
-            # return Position["BOTTOM"]
-        elif self.center_image.x() - x > 200 and abs(y - self.center_image.y()) < 100:
-            target_location = Position["LEFT"]
-            # self.clients[Position["LEFT"]].set_client("./resources/background1.jpg")
-            # return Position["LEFT"]
-        elif x - self.center_image.x() > 200 and abs(y - self.center_image.y()) < 100:
-            target_location = Position["RIGHT"]
-            # self.clients[Position["RIGHT"]].set_client("./resources/background1.jpg")
-            # return Position["RIGHT"]
-        else:
-            target_location = None
+                client.set_opacity(1)
+        target_location = self.get_target_location(x, y)
+        if not target_location:
+            target_location = current_client.location
         if not self.clients[target_location].set_client("./resources/background1.jpg"):
-            exchange_flag = True
-        return target_location, exchange_flag
+            self.clients[current_client.location].set_client("./resources/background1.jpg")
+
+    def get_target_location(self, x, y):
+        if self.center_image.y() - y > 120 and abs(x - self.center_image.x()) < 180:
+            return Position["TOP"]
+        elif y - self.center_image.y() > 120 and abs(x - self.center_image.x()) < 180:
+            return Position["BOTTOM"]
+        elif self.center_image.x() - x > 200 and abs(y - self.center_image.y()) < 100:
+            return Position["LEFT"]
+        elif x - self.center_image.x() > 200 and abs(y - self.center_image.y()) < 100:
+            return Position["RIGHT"]
+        else:
+            return None
 
 
 class MainWindow(QMainWindow):
