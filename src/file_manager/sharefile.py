@@ -29,10 +29,11 @@ def send_file(ip_addr, file_path):
 
 
 def receive_file(json_data):
+    recv_file_path = 'output.txt'
     file_name = json_data['file_name']
     base64_data = json_data['file_data']
     binary_data = base64.b64decode(base64_data)
-    with open('output.txt', 'wb') as file:
+    with open(recv_file_path, 'wb') as file:
         file.write(binary_data)
     return file_name
 

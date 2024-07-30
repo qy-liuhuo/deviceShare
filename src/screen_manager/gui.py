@@ -172,6 +172,7 @@ class Gui:
         self.frame = ttkb.Frame(self.root)
         self.frame.pack(fill=tk.BOTH, expand=True)
         self.center_image = DraggableImage(self.frame, './resources/background.jpg', None, center_image=True)
+
         def on_done_click():
             for i in range(len(self.client_list)):
                 self.client_list[i].location = self.image_list[i].get_relative_position()  # 更新位置
