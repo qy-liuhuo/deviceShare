@@ -13,7 +13,6 @@ from position import Position
 
 DEFAULT_WIDTH = 384
 DEFAULT_HEIGHT = 216
-color = "red"
 
 
 class GuiMessage:
@@ -88,7 +87,7 @@ class ClientScreen(QLabel):
         effect_shadow.setOffset(0, 0)  # 偏移
         effect_shadow.setBlurRadius(0)  # 阴影半径
         effect_shadow.setColor(QColor(255, 0, 0))
-        effect_shadow.setBlurRadius(50)
+        effect_shadow.setBlurRadius(100)
         self.setGraphicsEffect(effect_shadow)
 
     def clear_shadow(self):
