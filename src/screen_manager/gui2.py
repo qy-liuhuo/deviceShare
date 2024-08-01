@@ -5,9 +5,12 @@ import copy
 import time
 
 from PyQt5 import QtCore, QtWidgets
+from PyQt5.QtCore import QStringListModel, Qt
 from PyQt5.QtWidgets import QApplication, QMainWindow, QAction, QMenu, QMessageBox, QToolBar, QLabel, QVBoxLayout, \
-    QWidget, QSystemTrayIcon, QStyle, QGraphicsOpacityEffect, QGraphicsDropShadowEffect, QGraphicsEffect
-from PyQt5.QtGui import QIcon, QPixmap, QColor
+    QWidget, QSystemTrayIcon, QStyle, QGraphicsOpacityEffect, QGraphicsDropShadowEffect, QGraphicsEffect, QListView, \
+    QStyledItemDelegate, QPushButton
+from PyQt5.QtGui import QIcon, QPixmap, QColor, QBrush, QPalette, QStandardItem, QStandardItemModel, QFont, QPainter, \
+    QPainterPath
 
 from position import Position
 
@@ -29,53 +32,56 @@ class ClientScreen(QLabel):
     def __init__(self, master, x, y, location, *__args):
         super().__init__(master, *__args)
         self.master = master
-        self.empty = True
+        self.client_ip = ""
+        # self.empty = True
         self._x = x
         self._y = y
         self.resize(DEFAULT_WIDTH, DEFAULT_HEIGHT)
         self.location = location
         self.setAcceptDrops(True)
         self.setFrameShape(QtWidgets.QFrame.Box)
-        self.setStyleSheet('border-width: 1px;border-style: solid;border-color: black;')
+        self.setStyleSheet('border-width: 1px;border-style: solid;border-color: black;border-radius: 12')
         self.setAlignment(QtCore.Qt.AlignVCenter)
         self.move(x, y)
 
-    def set_client(self, image_path):
-        # todo: need to return ip message of client
-        # original_client = None
-        flag = self.empty
-        self.setPixmap(QPixmap(image_path))
-        self.empty = False
-        return flag
+    def set_client(self, client_ip):
+        original_client = self.client_ip
+        self.client_ip = client_ip
+        if client_ip == "":
+            self.setPixmap(QPixmap(""))
+        else:
+            # self.setPixmap(QPixmap("./resources/background1.jpg"))
+            self.setPixmap(self.create_round_pixmap())
+        return original_client
 
     def mousePressEvent(self, e):
-        if e.buttons() == QtCore.Qt.LeftButton and not self.empty:
+        if e.buttons() == QtCore.Qt.LeftButton and self.client_ip != "":
             self.relative_position = e.pos()
             self.master.prepare_modify(self)
 
     def mouseMoveEvent(self, e):
-        if not self.empty:
+        if self.client_ip != "":
             self.move(self.mapToParent(e.pos()) - self.relative_position)
             self.master.track_move(self.x(), self.y())
 
     def mouseReleaseEvent(self, QMouseEvent):
-        if not self.empty:
+        if self.client_ip != "":
             self.master.finish_modify(self.x(), self.y(), self)
             self.setParent(None)
             self.deleteLater()
 
     def enter(self):
-        if not self.empty:
+        if self.client_ip != "":
             self.setPixmap(QPixmap(""))
-        self.setStyleSheet('border-width: 2px;border-style: solid;border-color: red;')
-        self.add_shadow()
+        self.setStyleSheet('border-width: 2px;border-style: solid;border-color: red;border-radius: 9')
+        # self.add_shadow()
 
     def leave(self):
-        if not self.empty:
+        if self.client_ip != "":
             self.setPixmap(QPixmap("./resources/background1.jpg"))
             self.set_opacity(0.5)
-        self.setStyleSheet('border-width: 1px;border-style: solid;border-color: black;')
-        self.clear_shadow()
+        self.setStyleSheet('border-width: 1px;border-style: solid;border-color: black;border-radius: 9')
+        # self.clear_shadow()
 
     def set_opacity(self, opacity):
         effect_opacity = QGraphicsOpacityEffect()
@@ -98,26 +104,55 @@ class ClientScreen(QLabel):
         effect_shadow.setBlurRadius(0)
         self.setGraphicsEffect(effect_shadow)
 
+    def create_round_pixmap(self):
+        pixmap = QPixmap("./resources/background1.jpg")  # 替换为你的图片路径
+        size = self.size()
+        rounded_pixmap = QPixmap(size)
+        rounded_pixmap.fill(Qt.transparent)
+
+        painter = QPainter(rounded_pixmap)
+        path = QPainterPath()
+        path.addRoundedRect(0, 0, size.width(), size.height(), 9, 9)
+        painter.setClipPath(path)
+        painter.drawPixmap(0, 0, pixmap)
+        painter.end()
+
+        return rounded_pixmap
+
 
 class Client:
     def __init__(self, id, ip_addr, location="NONE"):
         self.id = id  # 设备编号
         self.ip_addr = ip_addr
         self.location = Position[location]
+        if id == 1:
+            self.online = True
+        else:
+            self.online = False
 
 
 class ConfigurationInterface(QWidget):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.online_clients_number = 0
         self.last_potential_location = None
         self.resize(1250, 850)
-        self.setWindowTitle('主机屏幕排列')
         self.center_image = QLabel("", self)
         self.center_image.setPixmap(QPixmap("./resources/background.jpg"))
         self.center_image.resize(DEFAULT_WIDTH, DEFAULT_HEIGHT)
         self.center_image.move(int(self.width() / 2 - self.center_image.width() / 2),
                                int(self.height() / 2 - self.center_image.height() / 2))
+        self.client_list = QListView(self)
+        self.client_list_init()
         self.client_init()
+        self.done = QPushButton(self, text="确认")
+        self.done.setGeometry(600, 810, 110, 60)
+        font = QFont()
+        font.setFamily("Arial")
+        font.setPointSize(15)
+        self.done.setFont(font)
+        self.done.clicked.connect(self.save_configuration)
+        self.done.setStyleSheet('border-width: 1px;border-style: solid;border-color: black;border-radius: 8')
         self.show()
 
     def client_init(self):
@@ -139,24 +174,43 @@ class ConfigurationInterface(QWidget):
             client = Client(idx, device_ip, device_info[2].split(".")[1])
             idx = idx + 1
             client_list.append(client)
+        self.model = QStandardItemModel(self.client_list)
         for client in client_list:
-            self.clients[client.location].set_client('resources/background1.jpg')
+            self.clients[client.location].set_client(client.ip_addr)
+            if client.online:
+                text = client.ip_addr + " -在线"
+                new_item = QStandardItem(text)
+                new_item.setBackground(QBrush(QColor("#b1f4a4")))
+                self.model.insertRow(0, new_item)
+                self.online_clients_number += 1
+            else:
+                self.clients[client.location].set_opacity(0.4)
+                text = client.ip_addr + " -离线"
+                new_item = QStandardItem(text)
+                new_item.setBackground(QBrush(QColor("gray")))
+                self.model.insertRow(self.online_clients_number, new_item)
+        self.client_list.setModel(self.model)
 
-    def place_client_screen(self, client_image, location):
-        if location == Position["LEFT"]:
-            client_image.move(self.center_image.x() - DEFAULT_WIDTH - 10, self.center_image.y())
-        if location == Position["RIGHT"]:
-            client_image.move(self.center_image.x() + DEFAULT_WIDTH + 10, self.center_image.y())
-        if location == Position["TOP"]:
-            client_image.move(self.center_image.x(), self.center_image.y() - DEFAULT_HEIGHT - 10)
-        if location == Position["BOTTOM"]:
-            client_image.move(self.center_image.x(), self.center_image.y() + DEFAULT_HEIGHT + 10)
+    def client_list_init(self):
+        class CustomDelegate(QStyledItemDelegate):
+            def paint(self, painter, option, index):
+                # 设置文本居中对齐
+                option.displayAlignment = Qt.AlignCenter
+                super().paint(painter, option, index)
 
-        # todo: how to process if location is None?
+            def sizeHint(self, option, index):
+                size = super().sizeHint(option, index)
+                size.setHeight(40)
+                return size
+
+        self.client_list.raise_()
+        self.client_list.setItemDelegate(CustomDelegate(self.client_list))
+        self.client_list.setGeometry(0, 0, int(self.width() * 0.25), 300)
+        self.client_list.hide()
 
     def prepare_modify(self, currentClient):
         for client in self.clients.values():
-            if currentClient != client and not client.empty:
+            if currentClient != client and client.client_ip != "":
                 client.set_opacity(0.5)
         tempScreen = ClientScreen(self, currentClient.x(), currentClient.y(), currentClient.location)
         tempScreen.show()
@@ -175,15 +229,15 @@ class ConfigurationInterface(QWidget):
         if self.last_potential_location:
             self.clients[self.last_potential_location].leave()
         self.last_potential_location = None
-        exchange_flag = False
         for client in self.clients.values():
-            if not client.empty:
+            if client.client_ip != "":
                 client.set_opacity(1)
         target_location = self.get_target_location(x, y)
         if not target_location:
             target_location = current_client.location
-        if not self.clients[target_location].set_client("./resources/background1.jpg"):
-            self.clients[current_client.location].set_client("./resources/background1.jpg")
+        exchange_ip = self.clients[target_location].set_client(current_client.client_ip)
+        if target_location != current_client.location:
+            self.clients[current_client.location].set_client(exchange_ip)
 
     def get_target_location(self, x, y):
         if self.center_image.y() - y > 120 and abs(x - self.center_image.x()) < 180:
@@ -197,6 +251,24 @@ class ConfigurationInterface(QWidget):
         else:
             return None
 
+    def display_client_list(self):
+        if self.client_list.isVisible():
+            self.client_list.hide()
+        else:
+            self.client_list.show()
+
+    def save_configuration(self):
+        new_data = {}
+        with open("./devices.json", "r", encoding="utf-8") as fr:
+            old_data = json.load(fr)
+        for screen in self.clients.values():
+            if screen.client_ip != "":
+                item = old_data[screen.client_ip]
+                item[2] = "Position." + screen.location.name
+                new_data[screen.client_ip] = item
+        with open("./devices.json", "w", encoding="utf-8") as fw:
+            json.dump(new_data, fw, indent=4)
+
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -207,9 +279,15 @@ class MainWindow(QMainWindow):
         self.setWindowTitle('DeviceShare')
         self.setWindowIcon(
             QIcon("./resources/devicelink.ico"))  # 确保你的项目目录下有一个icon.png文件
-        self.resize(1400, 1000)
+        self.resize(1280, 1000)
         menubar = self.menuBar()
         authorization_list = menubar.addMenu('授权列表')
+        show_list = QAction('授权列表', self)
+        show_list.triggered.connect(self.show_list)
+        authorization_list.addAction(show_list)
+
+    def show_list(self):
+        self.configure_interface.display_client_list()
 
     def closeEvent(self, event):
         self.hide()
@@ -224,6 +302,9 @@ class MainWindow(QMainWindow):
         self.hide()
         return reply == QMessageBox.Yes
 
+    def set_configure_interface(self, configure_interface):
+        self.configure_interface = configure_interface
+
 
 class Gui2:
     def __init__(self, update_func=None, request_queue=None, response_queue=None):
@@ -235,7 +316,8 @@ class Gui2:
         self.response_queue = response_queue
 
         self.configureInterface = ConfigurationInterface(self.mainWin)
-        self.configureInterface.setGeometry(0, 40, self.mainWin.width(), self.mainWin.height() - 40)
+        self.mainWin.set_configure_interface(self.configureInterface)
+        self.configureInterface.setGeometry(0, 30, self.mainWin.width(), self.mainWin.height())
 
         self.mainWin.show()
 
@@ -298,3 +380,47 @@ class Gui2:
 if __name__ == '__main__':
     gui = Gui2()
     gui.run()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
