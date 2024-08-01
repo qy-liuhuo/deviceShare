@@ -142,7 +142,11 @@ class ConfigurationInterface(QWidget):
         self.last_potential_location = None
         self.resize(1250, 850)
         self.center_image = QLabel("", self)
-        self.center_image.setPixmap(QPixmap("./resources/background.jpg"))
+        self.center_image.resize(DEFAULT_WIDTH, DEFAULT_HEIGHT)
+        # self.center_image.setPixmap(QPixmap("./resources/background.jpg"))
+        self.center_image.setPixmap(self.create_round_pixmap())
+        self.center_image.setStyleSheet('border-width: 0px;border-style: solid;border-color: black;border-radius: 12')
+        self.center_image.setPixmap(self.create_round_pixmap())
         self.center_image.resize(DEFAULT_WIDTH, DEFAULT_HEIGHT)
         self.center_image.move(int(self.width() / 2 - self.center_image.width() / 2),
                                int(self.height() / 2 - self.center_image.height() / 2))
@@ -272,6 +276,21 @@ class ConfigurationInterface(QWidget):
                 new_data[screen.client_ip] = item
         with open("./devices.json", "w", encoding="utf-8") as fw:
             json.dump(new_data, fw, indent=4)
+
+    def create_round_pixmap(self):
+        pixmap = QPixmap("./resources/background.jpg")  # 替换为你的图片路径
+        size = self.center_image.size()
+        rounded_pixmap = QPixmap(size)
+        rounded_pixmap.fill(Qt.transparent)
+
+        painter = QPainter(rounded_pixmap)
+        path = QPainterPath()
+        path.addRoundedRect(0, 0, size.width(), size.height(), 9, 9)
+        painter.setClipPath(path)
+        painter.drawPixmap(0, 0, pixmap)
+        painter.end()
+
+        return rounded_pixmap
 
 
 class MainWindow(QMainWindow):
