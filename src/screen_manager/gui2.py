@@ -8,8 +8,9 @@ from PyQt5 import QtCore, QtWidgets
 from PyQt5.QtWidgets import QApplication, QMainWindow, QAction, QMenu, QMessageBox, QToolBar, QLabel, QVBoxLayout, \
     QWidget, QSystemTrayIcon, QStyle, QGraphicsOpacityEffect, QGraphicsDropShadowEffect, QGraphicsEffect
 from PyQt5.QtGui import QIcon, QPixmap, QColor
+import qt_material
+from src.screen_manager.position import Position
 
-from position import Position
 
 DEFAULT_WIDTH = 384
 DEFAULT_HEIGHT = 216
@@ -36,7 +37,7 @@ class ClientScreen(QLabel):
         self.location = location
         self.setAcceptDrops(True)
         self.setFrameShape(QtWidgets.QFrame.Box)
-        self.setStyleSheet('border-width: 1px;border-style: solid;border-color: black;')
+        self.setStyleSheet('border-width: 0px;border-style: dotted;border-color: black;')
         self.setAlignment(QtCore.Qt.AlignVCenter)
         self.move(x, y)
 
@@ -67,14 +68,14 @@ class ClientScreen(QLabel):
     def enter(self):
         if not self.empty:
             self.setPixmap(QPixmap(""))
-        self.setStyleSheet('border-width: 2px;border-style: solid;border-color: red;')
+        self.setStyleSheet('border-width: 2px;border-style: dotted;border-color: #0984e3;')
         self.add_shadow()
 
     def leave(self):
         if not self.empty:
             self.setPixmap(QPixmap("./resources/background1.jpg"))
             self.set_opacity(0.5)
-        self.setStyleSheet('border-width: 1px;border-style: solid;border-color: black;')
+        self.setStyleSheet('border-width: 0px;border-style: dotted;border-color: black;')
         self.clear_shadow()
 
     def set_opacity(self, opacity):
@@ -100,10 +101,10 @@ class ClientScreen(QLabel):
 
 
 class Client:
-    def __init__(self, id, ip_addr, location="NONE"):
+    def __init__(self, id, ip_addr, location=Position.NONE):
         self.id = id  # 设备编号
         self.ip_addr = ip_addr
-        self.location = Position[location]
+        self.location = location
 
 
 class ConfigurationInterface(QWidget):
@@ -136,7 +137,7 @@ class ConfigurationInterface(QWidget):
         client_list = []
         idx = 1
         for device_ip, device_info in device_dict.items():
-            client = Client(idx, device_ip, device_info[2].split(".")[1])
+            client = Client(idx, device_ip,Position(device_info[2]))
             idx = idx + 1
             client_list.append(client)
         for client in client_list:
@@ -229,6 +230,7 @@ class Gui2:
     def __init__(self, update_func=None, request_queue=None, response_queue=None):
         self.app = QApplication(sys.argv)
         self.mainWin = MainWindow()
+        qt_material.apply_stylesheet(self.app, theme='dark_blue.xml')
         self.trayIcon = QSystemTrayIcon(self.mainWin)
         self.initTrayIcon()
         self.request_queue = request_queue
