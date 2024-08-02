@@ -36,6 +36,16 @@ class DeviceStorage:
         self.cursor.execute("UPDATE devices SET last_heartbeat = ? WHERE ip = ?", (time.time(), ip))
         self.conn.commit()
 
+    def check_valid(self):
+        self.cursor.execute("SELECT * FROM devices")
+        devices = self.get_all_devices()
+        for dev in devices:
+            print(dev.device_id, time.time(), dev.last_Heartbeat)
+            if not dev.check_valid():
+                self.cursor.execute("DELETE FROM devices WHERE device_id = ?", (dev.device_id,))
+                self.conn.commit()
+
+
     def add_device(self, device: device.Device):
         for p in Position:
             temp = self.get_device_by_position(p)
@@ -57,7 +67,9 @@ class DeviceStorage:
         devices = self.cursor.fetchall()
         device_list = []
         for dev in devices:
-            device_list.append(Device(dev[1], Screen(dev[3], dev[4]), Position(dev[5]), dev[0], dev[2]))
+            temp = Device(dev[1], Screen(dev[3], dev[4]), Position(dev[5]), dev[0], dev[2])
+            temp.last_Heartbeat = dev[6]
+            device_list.append(temp)
         return device_list
 
 
@@ -65,21 +77,27 @@ class DeviceStorage:
         self.cursor.execute("SELECT * FROM devices WHERE device_id = ?", (device_id,))
         device = self.cursor.fetchone()
         if device:
-            return Device(device[1], Screen(device[3], device[4]), Position(device[5]), device[0], device[2])
+            result = Device(device[1], Screen(device[3], device[4]), Position(device[5]), device[0], device[2])
+            result.last_Heartbeat = device[6]
+            return result
         return None
 
     def get_device_by_ip(self, ip):
         self.cursor.execute("SELECT * FROM devices WHERE ip = ?", (ip,))
         device = self.cursor.fetchone()
         if device:
-            return Device(device[1], Screen(device[3], device[4]), Position(device[5]), device[0], device[2])
+            result = Device(device[1], Screen(device[3], device[4]), Position(device[5]), device[0], device[2])
+            result.last_Heartbeat = device[6]
+            return result
         return None
 
     def get_device_by_position(self, position):
         self.cursor.execute("SELECT * FROM devices WHERE position = ?", (int(position),))
         device = self.cursor.fetchone()
         if device:
-            return Device(device[1], Screen(device[3], device[4]), Position(device[5]), device[0], device[2])
+            result = Device(device[1], Screen(device[3], device[4]), Position(device[5]), device[0], device[2])
+            result.last_Heartbeat = device[6]
+            return result
         return None
 
     def close(self):

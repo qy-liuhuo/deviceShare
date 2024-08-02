@@ -33,7 +33,6 @@ class Server:
         self.request_queue = Queue()
         self.response_queue = Queue()
         self.thread_list = []
-
         self.manager_gui = Gui2(devices=[], request_queue=self.request_queue,
                                 response_queue=self.response_queue)
         self.cur_device = None
@@ -53,10 +52,24 @@ class Server:
         self.last_clipboard_text = ''
         self.service_register()
         self.thread_list.append(threading.Thread(target=self.clipboard_listener))
+        self.thread_list.append(threading.Thread(target=self.valid_checker))
         self.thread_list.append(threading.Thread(target=self.main_loop))
         self.start_all_threads()
         self.manager_gui.run()
         # delete_table()
+
+    def valid_checker(self):
+        device_storage = DeviceStorage()
+        try:
+            while True:
+                device_storage.check_valid()
+                if self.cur_device is not None and device_storage.get_device(self.cur_device.device_id) is None:
+                    print("Device offline")
+                    self.manager_gui.device_offline_notify(self.cur_device.device_id)
+                    self.cur_device = None
+                time.sleep(5)
+        except InterruptedError:
+            device_storage.close()
 
     def start_all_threads(self):
         for thread in self.thread_list:
@@ -256,6 +269,9 @@ class Server:
                             self.lock.acquire()
                             device_storage_connect = DeviceStorage()
                             self.cur_device = device_storage_connect.get_device_by_position(move_out)
+                            if self.cur_device is None:
+                                self.lock.release()
+                                continue
                             device_storage_connect.close()
                             time.sleep(0.01)  # 不加识别不到？
                             if self.cur_device is not None:
