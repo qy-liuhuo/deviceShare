@@ -47,20 +47,33 @@ class DeviceStorage:
                              device.screen.screen_height, device.position.value, time.time()))
         self.conn.commit()
 
+    def update_device(self, device: device.Device):
+        self.cursor.execute("UPDATE devices SET position = ? WHERE device_id = ?",
+                            (device.position.value,))
+        self.conn.commit()
+
     def get_all_devices(self):
         self.cursor.execute("SELECT * FROM devices")
         devices = self.cursor.fetchall()
-        return devices
+        device_list = []
+        for dev in devices:
+            device_list.append(Device(dev[1], Screen(dev[3], dev[4]), Position(dev[5]), dev[0], dev[2]))
+        return device_list
+
 
     def get_device(self, device_id):
         self.cursor.execute("SELECT * FROM devices WHERE device_id = ?", (device_id,))
         device = self.cursor.fetchone()
-        return device if device else None
+        if device:
+            return Device(device[1], Screen(device[3], device[4]), Position(device[5]), device[0], device[2])
+        return None
 
     def get_device_by_ip(self, ip):
         self.cursor.execute("SELECT * FROM devices WHERE ip = ?", (ip,))
         device = self.cursor.fetchone()
-        return device if device else None
+        if device:
+            return Device(device[1], Screen(device[3], device[4]), Position(device[5]), device[0], device[2])
+        return None
 
     def get_device_by_position(self, position):
         self.cursor.execute("SELECT * FROM devices WHERE position = ?", (int(position),))

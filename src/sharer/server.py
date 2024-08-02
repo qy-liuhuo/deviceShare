@@ -37,7 +37,7 @@ class Server:
         self.manager_gui = Gui2(devices=[], request_queue=self.request_queue,
                                 response_queue=self.response_queue)
         self.cur_device = None
-        create_table()
+        # create_table()
         self._mouse = MouseController()
         self._keyboard = KeyboardController()
         self._keyboard_factory = KeyFactory()
@@ -56,7 +56,7 @@ class Server:
         self.thread_list.append(threading.Thread(target=self.main_loop))
         self.start_all_threads()
         self.manager_gui.run()
-        delete_table()
+        # delete_table()
 
     def start_all_threads(self):
         for thread in self.thread_list:
