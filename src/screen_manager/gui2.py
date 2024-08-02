@@ -156,7 +156,7 @@ class ConfigurationInterface(QWidget):
         self.done.setFont(font)
         self.done.clicked.connect(self.save_configuration)
         self.done.setStyleSheet('border-width: 1px;border-style: solid;border-color: black;border-radius: 8')
-        self.online_update("qwer")
+        # self.online_update()
         self.show()
 
     def client_init(self):
@@ -329,7 +329,7 @@ class MainWindow(QMainWindow):
         event.ignore()
 
     def showEvent(self, event):
-        print("re init")
+        self.configure_interface.client_init()
         event.accept()
 
     def ask_access_require(self, id):

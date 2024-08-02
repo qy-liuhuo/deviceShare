@@ -36,7 +36,7 @@ class Server:
         self.manager_gui = Gui2(devices=[], request_queue=self.request_queue,
                                 response_queue=self.response_queue)
         self.cur_device = None
-        # create_table()
+        create_table()
         self._mouse = MouseController()
         self._keyboard = KeyboardController()
         self._keyboard_factory = KeyFactory()
@@ -56,7 +56,7 @@ class Server:
         self.thread_list.append(threading.Thread(target=self.main_loop))
         self.start_all_threads()
         self.manager_gui.run()
-        # delete_table()
+        delete_table()
 
     def valid_checker(self):
         device_storage = DeviceStorage()
@@ -64,7 +64,6 @@ class Server:
             while True:
                 device_storage.check_valid()
                 if self.cur_device is not None and device_storage.get_device(self.cur_device.device_id) is None:
-                    print("Device offline")
                     self.manager_gui.device_offline_notify(self.cur_device.device_id)
                     self.cur_device = None
                 time.sleep(5)

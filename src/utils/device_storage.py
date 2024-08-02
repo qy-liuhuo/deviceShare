@@ -40,7 +40,6 @@ class DeviceStorage:
         self.cursor.execute("SELECT * FROM devices")
         devices = self.get_all_devices()
         for dev in devices:
-            print(dev.device_id, time.time(), dev.last_Heartbeat)
             if not dev.check_valid():
                 self.cursor.execute("DELETE FROM devices WHERE device_id = ?", (dev.device_id,))
                 self.conn.commit()
