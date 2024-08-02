@@ -1,7 +1,7 @@
 import sqlite3
 
 
-class KeysManager:
+class KeyStorage:
     def __init__(self, db_path="keys.db"):
         self.db_path = db_path
         self.conn = sqlite3.connect(self.db_path)

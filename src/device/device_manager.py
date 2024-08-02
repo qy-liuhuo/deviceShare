@@ -8,12 +8,13 @@ from src.screen_manager.screen import Screen
 
 
 class DeviceManager:
-    def __init__(self, device_offline_callback=None):
+    def __init__(self,devices, device_offline_callback=None):
         self.devices = []
         self.position_list = [None, None, None, None]
         self.cur_device = None
         self.device_offline_callback = device_offline_callback
         threading.Thread(target=self.valid_checker, daemon=True).start()
+
 
     def add_or_update(self, ip, screen_width, screen_height, position=Position.NONE):
         for device in self.devices:

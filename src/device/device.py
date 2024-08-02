@@ -6,9 +6,10 @@ from src.my_socket.my_socket import UDP_PORT
 
 class Device:
 
-    def __init__(self, device_id: str, ip: str, pub_key: str, screen: Screen, position=Position.NONE, expire_time=5):
+    def __init__(self, ip: str, screen: Screen, position=Position.NONE, device_id=None, pub_key=None, expire_time=5):
         self.device_id = device_id
         self.ip = ip
+        self.pub_key = pub_key
         self.screen = screen
         self.position = position
         self.focus = False
@@ -26,4 +27,3 @@ class Device:
 
     def get_udp_address(self):
         return (self.ip, UDP_PORT)
-
