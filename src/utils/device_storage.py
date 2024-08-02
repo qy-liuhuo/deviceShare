@@ -49,7 +49,7 @@ class DeviceStorage:
 
     def update_device(self, device: device.Device):
         self.cursor.execute("UPDATE devices SET position = ? WHERE device_id = ?",
-                            (device.position.value,))
+                            (device.position.value, device.device_id))
         self.conn.commit()
 
     def get_all_devices(self):

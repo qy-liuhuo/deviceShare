@@ -14,6 +14,7 @@ from PyQt5.QtGui import QIcon, QPixmap, QColor, QBrush, QPalette, QStandardItem,
 from PyQt5.QtGui import QIcon, QPixmap, QColor
 import qt_material
 from src.screen_manager.position import Position
+from src.utils.device_storage import DeviceStorage
 
 DEFAULT_WIDTH = 384
 DEFAULT_HEIGHT = 216
@@ -33,8 +34,9 @@ class ClientScreen(QLabel):
     def __init__(self, master, x, y, location, *__args):
         super().__init__(master, *__args)
         self.master = master
-        self.client_ip = ""
+        # self.client_ip = ""
         # self.empty = True
+        self.device_id = ""
         self._x = x
         self._y = y
         self.resize(DEFAULT_WIDTH, DEFAULT_HEIGHT)
@@ -46,10 +48,10 @@ class ClientScreen(QLabel):
         self.setAlignment(QtCore.Qt.AlignVCenter)
         self.move(x, y)
 
-    def set_client(self, client_ip):
-        original_client = self.client_ip
-        self.client_ip = client_ip
-        if client_ip == "":
+    def set_client(self, device_id):
+        original_client = self.device_id
+        self.device_id = device_id
+        if device_id == "":
             self.setPixmap(QPixmap(""))
         else:
             # self.setPixmap(QPixmap("./resources/background1.jpg"))
@@ -57,30 +59,30 @@ class ClientScreen(QLabel):
         return original_client
 
     def mousePressEvent(self, e):
-        if e.buttons() == QtCore.Qt.LeftButton and self.client_ip != "":
+        if e.buttons() == QtCore.Qt.LeftButton and self.device_id != "":
             self.relative_position = e.pos()
             self.master.prepare_modify(self)
 
     def mouseMoveEvent(self, e):
-        if self.client_ip != "":
+        if self.device_id != "":
             self.move(self.mapToParent(e.pos()) - self.relative_position)
             self.master.track_move(self.x(), self.y())
 
     def mouseReleaseEvent(self, QMouseEvent):
-        if self.client_ip != "":
+        if self.device_id != "":
             self.master.finish_modify(self.x(), self.y(), self)
             self.setParent(None)
             self.deleteLater()
 
     def enter(self):
-        if self.client_ip != "":
+        if self.device_id != "":
             self.setPixmap(QPixmap(""))
 
         self.setStyleSheet('border-width: 2px;border-style: solid;border-color:  #0984e3;;border-radius: 9')
         # self.add_shadow()
 
     def leave(self):
-        if self.client_ip != "":
+        if self.device_id != "":
             self.setPixmap(QPixmap("./resources/background1.jpg"))
             self.set_opacity(0.5)
 
@@ -124,15 +126,11 @@ class ClientScreen(QLabel):
         return rounded_pixmap
 
 
-class Client:
-    def __init__(self, id, ip_addr, location=Position.NONE):
-        self.id = id  # 设备编号
-        self.ip_addr = ip_addr
-        self.location = location
-        if id == 1:
-            self.online = True
-        else:
-            self.online = False
+# class Client:
+#     def __init__(self, id, ip_addr, location=Position.NONE):
+#         self.id = id  # 设备编号
+#         self.ip_addr = ip_addr
+#         self.location = location
 
 
 class ConfigurationInterface(QWidget):
@@ -175,29 +173,35 @@ class ConfigurationInterface(QWidget):
             Position["BOTTOM"]: ClientScreen(self, self.center_image.x(), self.center_image.y() + DEFAULT_HEIGHT + 10,
                                              Position["BOTTOM"])}
         # device_dict = {}
-        with open("./devices.json", "r", encoding="utf-8") as f:
-            device_dict = json.load(f)
-        client_list = []
-        idx = 1
-        for device_ip, device_info in device_dict.items():
-            client = Client(idx, device_ip, Position(device_info[2]))
-            idx = idx + 1
-            client_list.append(client)
+        sqlReader = DeviceStorage()
+        device_list = sqlReader.get_all_devices()
+        sqlReader.close()
+        # with open("./devices.json", "r", encoding="utf-8") as f:
+        #     device_dict = json.load(f)
+        # client_list = []
+        # idx = 1
+        # for device_ip, device_info in device_dict.items():
+        #     client = Client(idx, device_ip, device_info[2])
+        #     idx = idx + 1
+        #     client_list.append(client)
         self.model = QStandardItemModel(self.client_list)
-        for client in client_list:
-            self.clients[client.location].set_client(client.ip_addr)
-            if client.online:
-                text = client.ip_addr + " -在线"
-                new_item = QStandardItem(text)
-                new_item.setBackground(QBrush(QColor("#b1f4a4")))
-                self.model.insertRow(0, new_item)
-                self.online_clients_number += 1
-            else:
-                self.clients[client.location].set_opacity(0.4)
-                text = client.ip_addr + " -离线"
-                new_item = QStandardItem(text)
-                new_item.setBackground(QBrush(QColor("gray")))
-                self.model.insertRow(self.online_clients_number, new_item)
+        for device in device_list:
+            text = device.device_id
+            new_item = QStandardItem(text)
+            self.model.insertRow(0, new_item)
+            self.clients[device.position].set_client(device.device_id)
+            # if client.online:
+            #     text = client.ip_addr + " -在线"
+            #     new_item = QStandardItem(text)
+            #     new_item.setBackground(QBrush(QColor("#b1f4a4")))
+            #     self.model.insertRow(0, new_item)
+            #     self.online_clients_number += 1
+            # else:
+            #     self.clients[client.location].set_opacity(0.4)
+            #     text = client.ip_addr + " -离线"
+            #     new_item = QStandardItem(text)
+            #     new_item.setBackground(QBrush(QColor("gray")))
+            #     self.model.insertRow(self.online_clients_number, new_item)
         self.client_list.setModel(self.model)
 
     def client_list_init(self):
@@ -219,7 +223,7 @@ class ConfigurationInterface(QWidget):
 
     def prepare_modify(self, currentClient):
         for client in self.clients.values():
-            if currentClient != client and client.client_ip != "":
+            if currentClient != client and client.device_id != "":
                 client.set_opacity(0.5)
         tempScreen = ClientScreen(self, currentClient.x(), currentClient.y(), currentClient.location)
         tempScreen.show()
@@ -239,12 +243,12 @@ class ConfigurationInterface(QWidget):
             self.clients[self.last_potential_location].leave()
         self.last_potential_location = None
         for client in self.clients.values():
-            if client.client_ip != "":
+            if client.device_id != "":
                 client.set_opacity(1)
         target_location = self.get_target_location(x, y)
         if not target_location:
             target_location = current_client.location
-        exchange_ip = self.clients[target_location].set_client(current_client.client_ip)
+        exchange_ip = self.clients[target_location].set_client(current_client.device_id)
         if target_location != current_client.location:
             self.clients[current_client.location].set_client(exchange_ip)
 
@@ -402,5 +406,5 @@ class Gui2:
 
 
 if __name__ == '__main__':
-    gui = Gui2()
+    gui = Gui2(devices=[])
     gui.run()
