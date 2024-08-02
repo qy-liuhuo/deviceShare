@@ -110,6 +110,10 @@ class ClientScreen(QLabel):
         effect_shadow.setBlurRadius(0)
         self.setGraphicsEffect(effect_shadow)
 
+    def remove_client(self):
+        self.setPixmap(QPixmap(""))
+        self.device_id = ""
+
     def create_round_pixmap(self):
         pixmap = QPixmap("./resources/background1.jpg")  # 替换为你的图片路径
         size = self.size()
@@ -126,13 +130,6 @@ class ClientScreen(QLabel):
         return rounded_pixmap
 
 
-# class Client:
-#     def __init__(self, id, ip_addr, location=Position.NONE):
-#         self.id = id  # 设备编号
-#         self.ip_addr = ip_addr
-#         self.location = location
-
-
 class ConfigurationInterface(QWidget):
     def __init__(self, master, devices):
         super().__init__(master)
@@ -142,7 +139,6 @@ class ConfigurationInterface(QWidget):
         self.resize(1250, 850)
         self.center_image = QLabel("", self)
         self.center_image.resize(DEFAULT_WIDTH, DEFAULT_HEIGHT)
-        # self.center_image.setPixmap(QPixmap("./resources/background.jpg"))
         self.center_image.setPixmap(self.create_round_pixmap())
         self.center_image.setStyleSheet('border-width: 0px;border-style: solid;border-color: black;border-radius: 12')
         self.center_image.setPixmap(self.create_round_pixmap())
@@ -160,6 +156,7 @@ class ConfigurationInterface(QWidget):
         self.done.setFont(font)
         self.done.clicked.connect(self.save_configuration)
         self.done.setStyleSheet('border-width: 1px;border-style: solid;border-color: black;border-radius: 8')
+        self.online_update("qwer")
         self.show()
 
     def client_init(self):
@@ -176,14 +173,6 @@ class ConfigurationInterface(QWidget):
         sqlReader = DeviceStorage()
         device_list = sqlReader.get_all_devices()
         sqlReader.close()
-        # with open("./devices.json", "r", encoding="utf-8") as f:
-        #     device_dict = json.load(f)
-        # client_list = []
-        # idx = 1
-        # for device_ip, device_info in device_dict.items():
-        #     client = Client(idx, device_ip, device_info[2])
-        #     idx = idx + 1
-        #     client_list.append(client)
         self.model = QStandardItemModel(self.client_list)
         for device in device_list:
             text = device.device_id
@@ -271,16 +260,18 @@ class ConfigurationInterface(QWidget):
             self.client_list.show()
 
     def save_configuration(self):
-        new_data = {}
-        with open("./devices.json", "r", encoding="utf-8") as fr:
-            old_data = json.load(fr)
+        devices = []
+        sqlReaderWriter = DeviceStorage()
         for screen in self.clients.values():
-            if screen.client_ip != "":
-                item = old_data[screen.client_ip]
-                item[2] = int(screen.location)
-                new_data[screen.client_ip] = item
-        with open("./devices.json", "w", encoding="utf-8") as fw:
-            json.dump(new_data, fw, indent=4)
+            if screen.device_id != "":
+                # todo: how to process if the device offline during configuration?
+                temp = sqlReaderWriter.get_device(screen.device_id)
+                if temp:
+                    temp.position = screen.location
+                    devices.append(temp)
+        for device in devices:
+            sqlReaderWriter.update_device(device)
+        sqlReaderWriter.close()
 
     def create_round_pixmap(self):
         pixmap = QPixmap("./resources/background.jpg")  # 替换为你的图片路径
@@ -296,6 +287,22 @@ class ConfigurationInterface(QWidget):
         painter.end()
 
         return rounded_pixmap
+
+    def online_update(self, device_id):
+        for screen in self.clients.values():
+            if screen.device_id == "":
+                screen.set_client(device_id)
+                break
+        text = device_id
+        new_item = QStandardItem(text)
+        self.model.insertRow(0, new_item)
+        self.client_list.setModel(self.model)
+
+    def offline_update(self, device_id):
+        screen = filter(lambda x: x.device_id == device_id, self.clients.values())[0]
+        screen.remove_client()
+
+
 
 
 class MainWindow(QMainWindow):
@@ -403,6 +410,12 @@ class Gui2:
 
     def update_devices(self):
         self.configureInterface.client_init()
+
+    def device_online_update(self, device_id):
+        self.configureInterface.online_update(device_id)
+
+    def device_offline_update(self, device_id):
+        self.configureInterface.offline_update(device_id)
 
 
 if __name__ == '__main__':
