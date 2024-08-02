@@ -30,9 +30,9 @@ class Server:
         self.request_queue = Queue()
         self.response_queue = Queue()
         self.thread_list = []
-        self.manager_gui = Gui2(update_func=self.update_position, request_queue=self.request_queue,
+        self.device_manager = DeviceManager()
+        self.manager_gui = Gui2(device_manager=self.device_manager, request_queue=self.request_queue,
                                 response_queue=self.response_queue)
-        self.device_manager = DeviceManager(device_offline_callback=self.manager_gui.device_offline_notify)
         self._mouse = MouseController()
         self._keyboard = KeyboardController()
         self._keyboard_factory = KeyFactory()

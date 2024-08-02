@@ -6,8 +6,9 @@ from src.my_socket.my_socket import UDP_PORT
 
 class Device:
 
-    def __init__(self, device_ip: str, screen: Screen, position=Position.NONE, expire_time=5):
-        self.device_ip = device_ip
+    def __init__(self, device_id: str, ip: str, pub_key: str, screen: Screen, position=Position.NONE, expire_time=5):
+        self.device_id = device_id
+        self.ip = ip
         self.screen = screen
         self.position = position
         self.focus = False
@@ -20,8 +21,9 @@ class Device:
     def check_valid(self):
         return time.time() - self.last_Heartbeat < self.expire_time
 
-    def equals(self, ip: str):
-        return self.device_ip == ip
+    def equals(self, device_id: str):
+        return self.device_id == device_id
 
     def get_udp_address(self):
-        return (self.device_ip, UDP_PORT)
+        return (self.ip, UDP_PORT)
+

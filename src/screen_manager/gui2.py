@@ -136,8 +136,9 @@ class Client:
 
 
 class ConfigurationInterface(QWidget):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, master, device_manager):
+        super().__init__(master)
+        self.device_manager = device_manager
         self.online_clients_number = 0
         self.last_potential_location = None
         self.resize(1250, 850)
@@ -174,7 +175,7 @@ class ConfigurationInterface(QWidget):
             device_dict = json.load(f)
         client_list = []
         idx = 1
-        for device_ip, device_info in device_dict.items():
+        for device_ip, device_info in self.device_manager.get_devices():
             client = Client(idx, device_ip, Position(device_info[2]))
             idx = idx + 1
             client_list.append(client)
@@ -311,7 +312,8 @@ class MainWindow(QMainWindow):
 
 
 class Gui2:
-    def __init__(self, update_func=None, request_queue=None, response_queue=None):
+    def __init__(self, device_manager=None, request_queue=None, response_queue=None):
+        self.device_manager = device_manager
         self.app = QApplication(sys.argv)
         self.mainWin = MainWindow()
         qt_material.apply_stylesheet(self.app, theme='dark_blue.xml')
@@ -319,11 +321,9 @@ class Gui2:
         self.initTrayIcon()
         self.request_queue = request_queue
         self.response_queue = response_queue
-
-        self.configureInterface = ConfigurationInterface(self.mainWin)
+        self.configureInterface = ConfigurationInterface(self.mainWin, self.device_manager)
         self.mainWin.set_configure_interface(self.configureInterface)
         self.configureInterface.setGeometry(0, 30, self.mainWin.width(), self.mainWin.height())
-
         self.mainWin.show()
 
     def initTrayIcon(self):
@@ -353,20 +353,11 @@ class Gui2:
         self.app.quit()
 
     def process_request(self):
-        # if self.request_queue.empty():
-        #     return
-        # request = self.request_queue.get()
-        # if request.msg_type == GuiMessage.MessageType.ACCESS_REQUIRE:
-        #     self.response_queue.put(GuiMessage(GuiMessage.MessageType.ACCESS_RESPONSE, {"result":self.mainWin.ask_access_require(request.data["device_id"]), "device_id":request.data["device_id"]}))
-        print(self.mainWin.ask_access_require("123"))
-        self.response_queue.put(GuiMessage(GuiMessage.MessageType.ACCESS_RESPONSE,
-                                           {"result": True,
-                                            "device_id": "qwe"}))
-        # reply = QMessageBox.question(self.mainWin,
-        #                      "连接请求处理",
-        #                      "是否允许设备" + id + "连接？",
-        #                      QMessageBox.Yes | QMessageBox.No)
-        # self.response_queue.put(GuiMessage(GuiMessage.MessageType.ACCESS_RESPONSE, {"result":reply == QMessageBox.Yes, "device_id":id}))
+        if self.request_queue.empty():
+            return
+        request = self.request_queue.get()
+        if request.msg_type == GuiMessage.MessageType.ACCESS_REQUIRE:
+            self.response_queue.put(GuiMessage(GuiMessage.MessageType.ACCESS_RESPONSE, {"result":self.mainWin.ask_access_require(request.data["device_id"]), "device_id":request.data["device_id"]}))
 
     def device_offline_notify(self, device_id):
         self.trayIcon.showMessage("提醒", "设备" + device_id + "已下线", QSystemTrayIcon.Information, 5000)
