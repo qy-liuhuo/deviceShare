@@ -1,19 +1,26 @@
+import socket
 import threading
 import time
-
 import pyperclip
-
-
+import rsa
+from zeroconf import Zeroconf, ServiceBrowser
 from src.controller.keyboard_controller import KeyboardController
 from src.screen_manager.position import Position
 from src.my_socket.message import Message, MsgType
-from src.controller.mouse_controller import MouseController
+from src.controller.mouse_controller import MouseController, get_click_button
 from src.my_socket.my_socket import Udp, TcpClient, UDP_PORT, TCP_PORT
 from screeninfo import get_monitors
+
+from src.utils.device_name import get_device_name
+from src.utils.rsautil import RsaUtil, decrypt
+from src.utils.service_listener import ServiceListener
+
 
 class Client:
 
     def __init__(self):
+        self.last_clipboard_text = ''
+        self.device_id = get_device_name()
         self.position = None
         self.udp = Udp(UDP_PORT)
         self.udp.allow_broadcast()
@@ -24,14 +31,42 @@ class Client:
         monitors = get_monitors()
         self.screen_size_width = monitors[0].width
         self.screen_size_height = monitors[0].height
-        self._broadcast_data = Message(MsgType.DEVICE_ONLINE,
-                                       f'{self.screen_size_width}, {self.screen_size_height}').to_bytes()
-        self.server_addr = None
-        self.start_broadcast()
-        self.start_msg_listener()
-        self.last_clipboard_text = ''
+        self.rsa_util = RsaUtil()
+        self.server_ip = None
+        self.zeroconf = Zeroconf()
+        ServiceBrowser(self.zeroconf, "_deviceShare._tcp.local.", ServiceListener(self))
+        while self.server_ip is None:
+            time.sleep(1)
+        self.request_access()
+        threading.Thread(target=self.heartbeat).start()  # 心跳机制
+        threading.Thread(target=self.msg_receiver).start()  # 消息接收
+        threading.Thread(target=self.clipboard_listener).start()  # 剪切板监听
 
-        threading.Thread(target=self.clipboard_listener).start()
+    def request_access(self):
+        tcp_client = TcpClient((self.server_ip, TCP_PORT))
+        msg = Message(MsgType.SEND_PUBKEY,
+                      {"device_id": self.device_id, 'public_key': self.rsa_util.public_key.save_pkcs1().decode()})
+        tcp_client.send(msg.to_bytes())
+        data, _ = tcp_client.recv()
+        msg = Message.from_bytes(data)
+        if msg.msg_type == MsgType.KEY_CHECK:
+            decrypt_key = self.rsa_util.decrypt(bytes.fromhex(msg.data['key']))
+            msg = Message(MsgType.KEY_CHECK_RESPONSE,
+                          {'key': decrypt_key.hex(), 'device_id': self.device_id,
+                           'screen_width': self.screen_size_width,
+                           'screen_height': self.screen_size_height})
+            tcp_client.send(msg.to_bytes())
+            data, _ = tcp_client.recv()
+            msg = Message.from_bytes(data)
+            if msg.msg_type == MsgType.ACCESS_ALLOW:
+                print('Access allow')
+                self.be_added = True
+                self.position = Position(int(msg.data['position']))
+            elif msg.msg_type == MsgType.ACCESS_DENY:
+                print('Access denied')
+        elif msg.msg_type == MsgType.ACCESS_DENY:
+            print('Access denied')
+        tcp_client.close()
 
     def clipboard_listener(self):
         while True:
@@ -42,15 +77,16 @@ class Client:
             time.sleep(1)
 
     def broadcast_clipboard(self, text):
-        msg = Message(MsgType.CLIPBOARD_UPDATE, text)
+        msg = Message(MsgType.CLIPBOARD_UPDATE, {'text': text})
         self.udp.sendto(msg.to_bytes(), ('<broadcast>', UDP_PORT))
 
-    def broadcast_address(self):
+    def heartbeat(self):
+        broadcast_data = Message(MsgType.CLIENT_HEARTBEAT, {}).to_bytes()
         while True:
-            self.udp.sendto(self._broadcast_data, ('<broadcast>', UDP_PORT))  # 表示广播到16666端口
+            self.udp.sendto(broadcast_data, (self.server_ip, UDP_PORT))
             time.sleep(2)
 
-    def judge_move_out(self, x,y):
+    def judge_move_out(self, x, y):
         if x <= 5 and self.position == Position.RIGHT:
             return True
         elif x >= self.screen_size_width - 5 and self.position == Position.LEFT:
@@ -63,42 +99,31 @@ class Client:
 
     def msg_receiver(self):
         while True:
-            data, addr = self.udp.recv()
+            msg_data = self.udp.recv()
+            if msg_data is None:
+                continue
+            data, addr = msg_data
             msg = Message.from_bytes(data)
             if msg.msg_type == MsgType.MOUSE_MOVE:
-                position = self._mouse.move(msg.data[0], msg.data[1])
-                if self.judge_move_out(position[0],position[1]) and self.be_added and self.server_addr and self._mouse.focus:
-                    msg = Message(MsgType.MOUSE_BACK, f"{int(position[0])},{int(position[1])}")
-                    tcp_client = TcpClient((self.server_addr[0], TCP_PORT))
+                position = self._mouse.move(msg.data['x'], msg.data['y'])
+                if self.judge_move_out(position[0],
+                                       position[1]) and self.be_added and self.server_ip and self._mouse.focus:
+                    msg = Message(MsgType.MOUSE_BACK, {"x": position[0], "y": position[1]})
+                    tcp_client = TcpClient((self.server_ip, TCP_PORT))
                     tcp_client.send(msg.to_bytes())
                     tcp_client.close()
                     self._mouse.focus = False
             elif msg.msg_type == MsgType.MOUSE_MOVE_TO:  # 跨屏初始位置
                 self._mouse.focus = True
-                self._mouse.move_to(msg.data)
+                self._mouse.move_to((msg.data['x'], msg.data['y']))
             elif msg.msg_type == MsgType.MOUSE_CLICK:
-                self._mouse.click(msg.data[2], msg.data[3])
+                self._mouse.click(get_click_button(msg.data['button']), msg.data['pressed'])
             elif msg.msg_type == MsgType.KEYBOARD_CLICK:
-                self._keyboard.click(msg.data[0],(msg.data[1],msg.data[2]))
+                self._keyboard.click(msg.data['type'], msg.data['keyData'])
             elif msg.msg_type == MsgType.MOUSE_SCROLL:
-                self._mouse.scroll(msg.data[0], msg.data[1])
-            elif msg.msg_type == MsgType.SUCCESS_JOIN:
-                self.server_addr = addr
-                self.be_added = True
-                self.position = Position(int(msg.data[2]))
+                self._mouse.scroll(msg.data['dx'], msg.data['dy'])
             elif msg.msg_type == MsgType.CLIPBOARD_UPDATE:
-                self.last_clipboard_text = msg.data
-                pyperclip.copy(msg.data)
+                self.last_clipboard_text = msg.data['text']
+                pyperclip.copy(self.last_clipboard_text)
             elif msg.msg_type == MsgType.POSITION_CHANGE:
-                self.position = Position(int(msg.data[0]))
-                print(self.position)
-
-    def start_msg_listener(self):
-        msg_listener = threading.Thread(target=self.msg_receiver)
-        msg_listener.start()
-        return msg_listener
-
-    def start_broadcast(self):
-        broadcast_thread = threading.Thread(target=self.broadcast_address)
-        broadcast_thread.start()
-        return broadcast_thread
+                self.position = Position(int(msg.data['position']))
