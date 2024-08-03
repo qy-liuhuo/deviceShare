@@ -54,6 +54,7 @@ class ClientScreen(QLabel):
         if device_id == "":
             self.setPixmap(QPixmap(""))
         else:
+            # self.setPixmap(QPixmap("./resources/background1.jpg"))
             self.setPixmap(self.create_round_pixmap())
         return original_client
 
@@ -109,8 +110,12 @@ class ClientScreen(QLabel):
         effect_shadow.setBlurRadius(0)
         self.setGraphicsEffect(effect_shadow)
 
+    def remove_client(self):
+        self.setPixmap(QPixmap(""))
+        self.device_id = ""
+
     def create_round_pixmap(self):
-        pixmap = QPixmap("./resources/background1.jpg")
+        pixmap = QPixmap("./resources/background1.jpg")  # 替换为你的图片路径
         size = self.size()
         rounded_pixmap = QPixmap(size)
         rounded_pixmap.fill(Qt.transparent)
@@ -140,17 +145,7 @@ class ConfigurationInterface(QWidget):
         self.center_image.resize(DEFAULT_WIDTH, DEFAULT_HEIGHT)
         self.center_image.move(int(self.width() / 2 - self.center_image.width() / 2),
                                int(self.height() / 2 - self.center_image.height() / 2))
-        self.clients = {
-            Position["TOP"]: ClientScreen(self, self.center_image.x(), self.center_image.y() - DEFAULT_HEIGHT - 10,
-                                          Position["TOP"]),
-            Position["LEFT"]: ClientScreen(self, self.center_image.x() - DEFAULT_WIDTH - 10, self.center_image.y(),
-                                           Position["LEFT"]),
-            Position["RIGHT"]: ClientScreen(self, self.center_image.x() + DEFAULT_WIDTH + 10, self.center_image.y(),
-                                            Position["RIGHT"]),
-            Position["BOTTOM"]: ClientScreen(self, self.center_image.x(), self.center_image.y() + DEFAULT_HEIGHT + 10,
-                                             Position["BOTTOM"])}
         self.client_list = QListView(self)
-        self.model = QStandardItemModel(self.client_list)
         self.client_list_init()
         self.client_init()
         self.done = QPushButton(self, text="确认")
@@ -161,20 +156,41 @@ class ConfigurationInterface(QWidget):
         self.done.setFont(font)
         self.done.clicked.connect(self.save_configuration)
         self.done.setStyleSheet('border-width: 1px;border-style: solid;border-color: black;border-radius: 8')
+        # self.online_update()
         self.show()
 
     def client_init(self):
+        self.clients = {
+            Position["TOP"]: ClientScreen(self, self.center_image.x(), self.center_image.y() - DEFAULT_HEIGHT - 10,
+                                          Position["TOP"]),
+            Position["LEFT"]: ClientScreen(self, self.center_image.x() - DEFAULT_WIDTH - 10, self.center_image.y(),
+                                           Position["LEFT"]),
+            Position["RIGHT"]: ClientScreen(self, self.center_image.x() + DEFAULT_WIDTH + 10, self.center_image.y(),
+                                            Position["RIGHT"]),
+            Position["BOTTOM"]: ClientScreen(self, self.center_image.x(), self.center_image.y() + DEFAULT_HEIGHT + 10,
+                                             Position["BOTTOM"])}
+        # device_dict = {}
         sqlReader = DeviceStorage()
         device_list = sqlReader.get_all_devices()
         sqlReader.close()
-        for screen in self.clients.values():
-            screen.set_client("")
-        self.model.clear()
+        self.model = QStandardItemModel(self.client_list)
         for device in device_list:
             text = device.device_id
             new_item = QStandardItem(text)
             self.model.insertRow(0, new_item)
             self.clients[device.position].set_client(device.device_id)
+            # if client.online:
+            #     text = client.ip_addr + " -在线"
+            #     new_item = QStandardItem(text)
+            #     new_item.setBackground(QBrush(QColor("#b1f4a4")))
+            #     self.model.insertRow(0, new_item)
+            #     self.online_clients_number += 1
+            # else:
+            #     self.clients[client.location].set_opacity(0.4)
+            #     text = client.ip_addr + " -离线"
+            #     new_item = QStandardItem(text)
+            #     new_item.setBackground(QBrush(QColor("gray")))
+            #     self.model.insertRow(self.online_clients_number, new_item)
         self.client_list.setModel(self.model)
 
     def client_list_init(self):
@@ -284,7 +300,9 @@ class ConfigurationInterface(QWidget):
 
     def offline_update(self, device_id):
         screen = filter(lambda x: x.device_id == device_id, self.clients.values())[0]
-        screen.set_client("")
+        screen.remove_client()
+
+
 
 
 class MainWindow(QMainWindow):
