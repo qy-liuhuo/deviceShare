@@ -11,7 +11,6 @@ from zeroconf import ServiceInfo, Zeroconf
 from src.controller.keyboard_controller import KeyboardController, KeyFactory
 from src.device.device import Device
 from src.screen_manager.gui import Gui, GuiMessage
-from src.screen_manager.gui2 import Gui2
 from src.screen_manager.position import Position
 from src.my_socket.message import Message, MsgType
 from src.controller.mouse_controller import MouseController
@@ -28,15 +27,16 @@ from src.utils.rsautil import encrypt
 
 class Server:
     def __init__(self):
+        create_table()
         self.init_screen_info()
         self.server_queue = Queue()
         self.request_queue = Queue()
         self.response_queue = Queue()
         self.thread_list = []
-        self.manager_gui = Gui2(devices=[], request_queue=self.request_queue,
-                                response_queue=self.response_queue)
+        self.update_flag = threading.Event()
+        self.manager_gui = Gui(update_flag = self.update_flag, request_queue=self.request_queue,
+                               response_queue=self.response_queue)
         self.cur_device = None
-        create_table()
         self._mouse = MouseController()
         self._keyboard = KeyboardController()
         self._keyboard_factory = KeyFactory()
@@ -54,6 +54,7 @@ class Server:
         self.thread_list.append(threading.Thread(target=self.clipboard_listener))
         self.thread_list.append(threading.Thread(target=self.valid_checker))
         self.thread_list.append(threading.Thread(target=self.main_loop))
+        self.thread_list.append(threading.Thread(target=self.update_position))
         self.start_all_threads()
         self.manager_gui.run()
         delete_table()
@@ -62,10 +63,14 @@ class Server:
         device_storage = DeviceStorage()
         try:
             while True:
-                device_storage.check_valid()
-                if self.cur_device is not None and device_storage.get_device(self.cur_device.device_id) is None:
-                    self.manager_gui.device_offline_notify(self.cur_device.device_id)
-                    self.cur_device = None
+                devices = device_storage.get_all_devices()
+                for device in devices:
+                    if not device.check_valid():
+                        device_storage.delete_device(device.device_id)
+                        self.manager_gui.device_offline_notify(device.device_id)
+                        if self.cur_device == device:
+                            self.cur_device = None
+                        self.manager_gui.update_devices()
                 time.sleep(5)
         except InterruptedError:
             device_storage.close()
@@ -167,7 +172,8 @@ class Server:
                         device_storage.add_device(new_device)  # 同时会更新device的position
                         device_storage.close()
                         client_socket.send(Message(MsgType.ACCESS_ALLOW, {'position': int(new_device.position)}).to_bytes())
-                        self.manager_gui.device_online_notify(addr[0])
+                        self.manager_gui.device_online_notify(new_device.device_id)
+                        self.manager_gui.update_devices()
                         state = ClientState.CONNECT
                     else:
                         client_socket.send(Message(MsgType.ACCESS_DENY, {'result': 'access_deny'}).to_bytes())
@@ -249,12 +255,16 @@ class Server:
 
     # 待重写
     def update_position(self):
-        pass
-        # self.device_manager.update_device_by_file()
-        # for device in self.device_manager.devices:
-        #     self.udp.sendto(Message(MsgType.POSITION_CHANGE, {'position': device.position}).to_bytes(),
-        #                     device.get_udp_address())
-        #     print(f'{device.device_ip} position is {device.position}')
+        while True:
+            self.update_flag.wait()
+            device_storage = DeviceStorage()
+            devices = device_storage.get_all_devices()
+            for device in devices:
+                self.udp.sendto(Message(MsgType.POSITION_CHANGE, {'position': device.position}).to_bytes(),
+                                device.get_udp_address())
+            device_storage.close()
+            self.update_flag.clear()
+            time.sleep(1)
 
     def main_loop(self):
         while True:

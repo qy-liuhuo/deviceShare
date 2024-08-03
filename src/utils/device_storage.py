@@ -37,12 +37,19 @@ class DeviceStorage:
         self.conn.commit()
 
     def check_valid(self):
+        flag = False
         self.cursor.execute("SELECT * FROM devices")
         devices = self.get_all_devices()
         for dev in devices:
             if not dev.check_valid():
                 self.cursor.execute("DELETE FROM devices WHERE device_id = ?", (dev.device_id,))
                 self.conn.commit()
+                flag = True
+        return flag
+
+    def delete_device(self, device_id):
+        self.cursor.execute("DELETE FROM devices WHERE device_id = ?", (device_id,))
+        self.conn.commit()
 
 
     def add_device(self, device: device.Device):

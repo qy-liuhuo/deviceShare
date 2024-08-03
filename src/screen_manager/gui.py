@@ -1,393 +1,422 @@
 import enum
 import json
-import threading
-import tkinter as tk
-from queue import Queue
-from tkinter import ttk
-import pystray
-from PIL import Image, ImageTk
-import ttkbootstrap as ttkb
-from ttkbootstrap.dialogs import MessageDialog
+import sys
+import copy
+import time
 
+from PyQt5 import QtCore, QtWidgets
+from PyQt5.QtCore import QStringListModel, Qt
+from PyQt5.QtWidgets import QApplication, QMainWindow, QAction, QMenu, QMessageBox, QToolBar, QLabel, QVBoxLayout, \
+    QWidget, QSystemTrayIcon, QStyle, QGraphicsOpacityEffect, QGraphicsDropShadowEffect, QGraphicsEffect, QListView, \
+    QStyledItemDelegate, QPushButton
+from PyQt5.QtGui import QIcon, QPixmap, QColor, QBrush, QPalette, QStandardItem, QStandardItemModel, QFont, QPainter, \
+    QPainterPath
+from PyQt5.QtGui import QIcon, QPixmap, QColor
+import qt_material
 from src.screen_manager.position import Position
+from src.utils.device_storage import DeviceStorage
 
-
-class ToolTip:
-    def __init__(self, widget):
-        self.widget = widget
-        self.tip_window = None
-
-    def show_tip(self, text):
-        if self.tip_window or not text:
-            return
-        x, y, _cx, cy = self.widget.bbox("insert")
-        x = x + self.widget.winfo_rootx() + 27
-        y = y + cy + self.widget.winfo_rooty() + 27
-        self.tip_window = tw = tk.Toplevel(self.widget)
-        tw.wm_overrideredirect(True)
-        tw.wm_geometry("+%d+%d" % (x, y))
-        label = tk.Label(tw, text=text, justify=tk.LEFT,
-                         background="#ffffe0", relief=tk.SOLID, borderwidth=1,
-                         font=("tahoma", "8", "normal"))
-        label.pack(ipadx=1)
-
-    def hide_tip(self):
-        tw = self.tip_window
-        self.tip_window = None
-        if tw:
-            tw.destroy()
-
-
-def create_tooltip(widget, text):
-    tooltip = ToolTip(widget)
-
-    def enter(event):
-        tooltip.show_tip(text)
-
-    def leave(event):
-        tooltip.hide_tip()
-
-    widget.bind('<Enter>', enter)
-    widget.bind('<Leave>', leave)
-
-
-class Client:
-    def __init__(self, id, ip_addr, location=Position.NONE):
-        self.id = id  # 设备编号
-        self.ip_addr = ip_addr
-        self.location = location  # 相对于主机的位置
-
-
-class DraggableImage(ttkb.Frame):
-    def __init__(self, master, image_path, client, other_image=None, center_image=False, *args, **kwargs):
-        super().__init__(master, *args, **kwargs)
-        self.image_path = image_path
-        self.image = Image.open(image_path)
-        self.photo = ImageTk.PhotoImage(self.image)
-        self.center_image = center_image
-        self.other_image = other_image
-        self.client = client  # 客户端
-
-        self.label = ttkb.Label(self, image=self.photo)
-        self.label.pack()
-
-        if not self.center_image:
-            self.label.bind('<Button-1>', self.start_move)
-            self.label.bind('<B1-Motion>', self.do_move)
-            self.label.bind('<ButtonRelease-1>', self.end_move)
-            create_tooltip(self, "拓展屏幕 ip:" + self.client.ip_addr)  # 鼠标悬停提示
-        if center_image:
-            create_tooltip(self, "主机屏幕")
-        self.place(x=0, y=0)
-        self.update_position()
-
-    def update_position(self):
-        if self.center_image:
-            parent_width = self.master.winfo_width()
-            parent_height = self.master.winfo_height()
-            self_width = self.winfo_width()
-            self_height = self.winfo_height()
-            self.place(x=(parent_width - self_width) // 2, y=(parent_height - self_height) // 2)
-        else:
-            ox, oy = self.other_image.winfo_x(), self.other_image.winfo_y()
-            ow, oh = self.other_image.winfo_width(), self.other_image.winfo_height()
-            iw, ih = self.winfo_width(), self.winfo_height()
-            positions = {
-                Position.TOP: (ox + (ow - iw) // 2, oy - ih),
-                Position.BOTTOM: (ox + (ow - iw) // 2, oy + oh),
-                Position.LEFT: (ox - iw, oy + (oh - ih) // 2),
-                Position.RIGHT: (ox + ow, oy + (oh - ih) // 2)
-            }
-            self.place(x=positions[self.client.location][0], y=positions[self.client.location][1])
-
-    def start_move(self, event):
-        self._x = event.x
-        self._y = event.y
-
-    def do_move(self, event):
-        x = self.winfo_x() - self._x + event.x
-        y = self.winfo_y() - self._y + event.y
-        self.place(x=x, y=y)
-
-    def end_move(self, event):
-        if self.other_image:
-            ox, oy = self.other_image.winfo_x(), self.other_image.winfo_y()
-            ow, oh = self.other_image.winfo_width(), self.other_image.winfo_height()
-            iw, ih = self.winfo_width(), self.winfo_height()
-
-            # Calculate positions for top, bottom, left, right
-            positions = {
-                'TOP': (ox + (ow - iw) // 2, oy - ih),
-                'BOTTOM': (ox + (ow - iw) // 2, oy + oh),
-                'LEFT': (ox - iw, oy + (oh - ih) // 2),
-                'RIGHT': (ox + ow, oy + (oh - ih) // 2)
-            }
-
-            # Find the nearest position
-            min_distance = float('inf')
-            nearest_position = None
-            for pos in positions.values():
-                distance = (self.winfo_x() - pos[0]) ** 2 + (self.winfo_y() - pos[1]) ** 2
-                if distance < min_distance:
-                    min_distance = distance
-                    nearest_position = pos
-
-            self.place(x=nearest_position[0], y=nearest_position[1])
-
-    def get_relative_position(self):
-        ox, oy = self.other_image.winfo_x(), self.other_image.winfo_y()  # 中心图
-        x, y = self.winfo_x(), self.winfo_y()
-
-        if y < oy:
-            return Position.TOP
-        elif y > oy:
-            return Position.BOTTOM
-        elif x < ox:
-            return Position.LEFT
-        elif x > ox:
-            return Position.RIGHT
-        return Position.NONE
-
-class ClientList(ttkb.Frame):
-    def __init__(self, master):
-        style = ttkb.Style()
-        style.configure('Custom.TFrame', background='black')  # 设置背景颜色
-        super().__init__(width=master.winfo_width() * 0.2, height=master.winfo_height(), style='Custom.TFrame')
-        self.clientList = ttk.Treeview(master=self)
-        self.clientList["columns"] = ('address')
-        self.clientList.column("#0", width=0, stretch=tk.NO)
-        self.clientList.column("address", anchor=ttkb.CENTER, width=self.winfo_width())
-        self.clientList.heading("address", text="客户机列表")
-        self.clientList.tag_configure("itemTag", background="black")
-        row = self.clientList.insert(parent='', index='end', iid=0, text='',
-                                     values=('192.168.3.108'))
-        # self.clientList.item(row, tags="itemTag")
-        self.place(x=0, y=0)
-        self.clientList.place(relwidth=1, relheight=1)
-
-
-def rewrite(path, client_list):
-    with open(path, 'r', encoding='utf-8') as f:
-        device_dict = json.load(f)
-    for client in client_list:
-        device_dict[client.ip_addr][2] = int(client.location)
-    with open(path, 'w', encoding='utf-8') as f:
-        json.dump(device_dict, f, indent=4)
+DEFAULT_WIDTH = 384
+DEFAULT_HEIGHT = 216
 
 
 class GuiMessage:
     class MessageType(enum.IntEnum):
         ACCESS_REQUIRE = enum.auto()
         ACCESS_RESPONSE = enum.auto()
+
     def __init__(self, msg_type, data):
         self.msg_type = msg_type
         self.data = data
 
 
-class Gui:
-    def __init__(self, update_func=None, gui_queue=None, server_queue=None):
-        self.gui_queue = gui_queue
-        self.server_queue = server_queue
-        self.client_list = []
-        self.image_list = []
-        self.icon = None
-        self.create_systray_icon()
-        self.root = ttkb.Window(themename="superhero")
-        self.root.title("主机屏幕排列")
-        self.root.geometry('1200x800')
-        self.root.update_idletasks()
-        self.root.protocol('WM_DELETE_WINDOW', self.hide)
-        self.frame = ttkb.Frame(self.root)
-        self.frame.pack(fill=tk.BOTH, expand=True)
-        self.root.update()
-        self.clientList = ClientList(self.frame)
-        # ttkb.Style().configure('Custom.TFrame', background='red')  # 设置背景颜色
-        self.layout_interface = ttkb.Frame(master=self.frame, width=self.frame.winfo_width() * 0.8,
-                                           height=self.frame.winfo_height())
-        self.layout_interface.place(x=self.frame.winfo_width() * 0.2)
-        self.root.update()
-        self.center_image = DraggableImage(self.layout_interface, './resources/background.jpg', None, center_image=True)
-        self.layout_interface.update()
-        self.center_image.update_position()
-        style = ttkb.Style()
-        style.configure('Custom.TFrame', background='black')  # 设置背景颜色
-        # self.top_frame = ttkb.Frame(self.layout_interface, width=image_size["width"], height=image_size["height"], style="Custom.TFrame")
-        # self.top_frame.place(x=self.center_image.winfo_x(), y=self.center_image.winfo_y() - image_size["height"])
+class ClientScreen(QLabel):
+    def __init__(self, master, x, y, location, *__args):
+        super().__init__(master, *__args)
+        self.master = master
+        # self.client_ip = ""
+        # self.empty = True
+        self.device_id = ""
+        self._x = x
+        self._y = y
+        self.resize(DEFAULT_WIDTH, DEFAULT_HEIGHT)
+        self.location = location
+        self.setAcceptDrops(True)
+        self.setFrameShape(QtWidgets.QFrame.Box)
 
-        self.popup = self.newPopup()
-        self.popup.withdraw()
+        self.setStyleSheet('border-width: 0px;border-style: solid;border-color: black;border-radius: 12')
+        self.setAlignment(QtCore.Qt.AlignVCenter)
+        self.move(x, y)
 
-        def on_done_click():
-            for i in range(len(self.client_list)):
-                self.client_list[i].location = self.image_list[i].get_relative_position()  # 更新位置
-                print("设备id:", self.client_list[i].id, "相对于主机的位置 ", self.client_list[i].location)
-            # 将位置location写回配置文件
-            rewrite("./devices.json", self.client_list)
-            update_func()
-            self.hide()
+    def set_client(self, device_id):
+        original_client = self.device_id
+        self.device_id = device_id
+        if device_id == "":
+            self.setPixmap(QPixmap(""))
+        else:
+            # self.setPixmap(QPixmap("./resources/background1.jpg"))
+            self.setPixmap(self.create_round_pixmap())
+        return original_client
 
-        # Done
-        btn_done = ttk.Button(self.root, text="Done", command=on_done_click)
-        btn_done.pack(side=tk.BOTTOM, padx=15, pady=15)
-        self.update()
-        self.hide()
-        self.check_queue()
+    def mousePressEvent(self, e):
+        if e.buttons() == QtCore.Qt.LeftButton and self.device_id != "":
+            self.relative_position = e.pos()
+            self.master.prepare_modify(self)
 
-    def check_queue(self):
-        if not self.gui_queue.empty():
-            msg = self.gui_queue.get()
-            if isinstance(msg, GuiMessage):
-                if msg.msg_type == GuiMessage.MessageType.ACCESS_REQUIRE:
-                    self.server_queue.put(GuiMessage(GuiMessage.MessageType.ACCESS_RESPONSE,self.ask_access(msg.data['device_id'])))
-        self.root.after(100, self.check_queue)
+    def mouseMoveEvent(self, e):
+        if self.device_id != "":
+            self.move(self.mapToParent(e.pos()) - self.relative_position)
+            self.master.track_move(self.x(), self.y())
 
-    def ask_access(self, device_id):
+    def mouseReleaseEvent(self, QMouseEvent):
+        if self.device_id != "":
+            self.master.finish_modify(self.x(), self.y(), self)
+            self.setParent(None)
+            self.deleteLater()
+
+    def enter(self):
+        if self.device_id != "":
+            self.setPixmap(QPixmap(""))
+
+        self.setStyleSheet('border-width: 2px;border-style: solid;border-color:  #0984e3;;border-radius: 9')
+        # self.add_shadow()
+
+    def leave(self):
+        if self.device_id != "":
+            self.setPixmap(QPixmap("./resources/background1.jpg"))
+            self.set_opacity(0.5)
+
+        self.setStyleSheet('border-width: 0px;border-style: solid;border-color: black;border-radius: 9')
+        # self.clear_shadow()
+
+    def set_opacity(self, opacity):
+        effect_opacity = QGraphicsOpacityEffect()
+        effect_opacity.setOpacity(opacity)
+        self.setGraphicsEffect(effect_opacity)
+
+    def add_shadow(self):
+        effect_shadow = QGraphicsDropShadowEffect()
+        effect_shadow.setOffset(0, 0)  # 偏移
+        effect_shadow.setBlurRadius(0)  # 阴影半径
+        effect_shadow.setColor(QColor(255, 0, 0))
+        effect_shadow.setBlurRadius(100)
+        self.setGraphicsEffect(effect_shadow)
+
+    def clear_shadow(self):
+        effect_shadow = QGraphicsDropShadowEffect()
+        effect_shadow.setOffset(0, 0)  # 偏移
+        effect_shadow.setBlurRadius(0)  # 阴影半径
+        effect_shadow.setColor(QColor(255, 0, 0))
+        effect_shadow.setBlurRadius(0)
+        self.setGraphicsEffect(effect_shadow)
+
+    def remove_client(self):
+        self.setPixmap(QPixmap(""))
+        self.device_id = ""
+
+    def create_round_pixmap(self):
+        pixmap = QPixmap("./resources/background1.jpg")  # 替换为你的图片路径
+        size = self.size()
+        rounded_pixmap = QPixmap(size)
+        rounded_pixmap.fill(Qt.transparent)
+
+        painter = QPainter(rounded_pixmap)
+        path = QPainterPath()
+        path.addRoundedRect(0, 0, size.width(), size.height(), 9, 9)
+        painter.setClipPath(path)
+        painter.drawPixmap(0, 0, pixmap)
+        painter.end()
+
+        return rounded_pixmap
+
+
+class ConfigurationInterface(QWidget):
+    def __init__(self, master, update_flag):
+        super().__init__(master)
+        self.update_flag = update_flag
+        self.online_clients_number = 0
+        self.last_potential_location = None
+        self.resize(1250, 850)
+        self.center_image = QLabel("", self)
+        self.center_image.resize(DEFAULT_WIDTH, DEFAULT_HEIGHT)
+        self.center_image.setPixmap(self.create_round_pixmap())
+        self.center_image.setStyleSheet('border-width: 0px;border-style: solid;border-color: black;border-radius: 12')
+        self.center_image.setPixmap(self.create_round_pixmap())
+        self.center_image.resize(DEFAULT_WIDTH, DEFAULT_HEIGHT)
+        self.center_image.move(int(self.width() / 2 - self.center_image.width() / 2),
+                               int(self.height() / 2 - self.center_image.height() / 2))
+        self.client_list = QListView(self)
+        self.client_list_init()
+        self.clients = {
+            Position["TOP"]: ClientScreen(self, self.center_image.x(), self.center_image.y() - DEFAULT_HEIGHT - 10,
+                                          Position["TOP"]),
+            Position["LEFT"]: ClientScreen(self, self.center_image.x() - DEFAULT_WIDTH - 10, self.center_image.y(),
+                                           Position["LEFT"]),
+            Position["RIGHT"]: ClientScreen(self, self.center_image.x() + DEFAULT_WIDTH + 10, self.center_image.y(),
+                                            Position["RIGHT"]),
+            Position["BOTTOM"]: ClientScreen(self, self.center_image.x(), self.center_image.y() + DEFAULT_HEIGHT + 10,
+                                             Position["BOTTOM"])}
+        self.model = QStandardItemModel(self.client_list)
+        self.client_init()
+        self.done = QPushButton(self, text="确认")
+        self.done.setGeometry(600, 810, 110, 60)
+        font = QFont()
+        font.setFamily("Arial")
+        font.setPointSize(15)
+        self.done.setFont(font)
+        self.done.clicked.connect(self.save_configuration)
+        self.done.setStyleSheet('border-width: 1px;border-style: solid;border-color: black;border-radius: 8')
+        # self.online_update()
         self.show()
-        dialog = MessageDialog(
-            title="设备连接请求",
-            message="是否允许新设备(" + device_id + ")连接",
-            parent=None,
-            alert=False,
-            buttons=["拒绝:secondary", "允许:primary"],
-            localize=True,
-        )
-        dialog.show(None)
-        return dialog.result == "允许"
 
-    def notify(self, title, message):
-        self.icon.notify(title, message)
+    def client_init(self):
+        # device_dict = {}
+        sqlReader = DeviceStorage()
+        device_list = sqlReader.get_all_devices()
+        sqlReader.close()
+        self.model.clear()
+        for screen in self.clients.values():
+            screen.set_client("")
 
-    def update(self):
-        for widget in self.frame.winfo_children():
-            widget.destroy()
-        self.center_image = DraggableImage(self.frame, './resources/background.jpg', None, center_image=True)
-        # 从配置文件中读取
-        device_dict = {}
-        self.client_list = []
-        self.image_list = []
-        try:
-            with open("./devices.json", "r", encoding="utf-8") as f:
-                device_dict = json.load(f)
-        except Exception as e:
-            print("读取配置文件失败", e)
-        idx = 1
-        for device_ip in device_dict:
-            client = Client(idx, device_ip, Position(device_dict[device_ip][2]))
-            idx = idx + 1
-            self.client_list.append(client)
-        for client in self.client_list:
-            self.image_list.append(
-                DraggableImage(self.frame, './resources/background1.jpg', client, other_image=self.center_image))
-        self.root.update()
-        self.center_image.update_position()
+        for device in device_list:
+            text = device.device_id
+            new_item = QStandardItem(text)
+            self.model.insertRow(0, new_item)
+            self.clients[device.position].set_client(device.device_id)
+            # if client.online:
+            #     text = client.ip_addr + " -在线"
+            #     new_item = QStandardItem(text)
+            #     new_item.setBackground(QBrush(QColor("#b1f4a4")))
+            #     self.model.insertRow(0, new_item)
+            #     self.online_clients_number += 1
+            # else:
+            #     self.clients[client.location].set_opacity(0.4)
+            #     text = client.ip_addr + " -离线"
+            #     new_item = QStandardItem(text)
+            #     new_item.setBackground(QBrush(QColor("gray")))
+            #     self.model.insertRow(self.online_clients_number, new_item)
+        self.client_list.setModel(self.model)
 
-    def create_systray_icon(self):
-        """
-        使用 Pystray 创建系统托盘图标
-        """
+    def client_list_init(self):
+        class CustomDelegate(QStyledItemDelegate):
+            def paint(self, painter, option, index):
+                # 设置文本居中对齐
+                option.displayAlignment = Qt.AlignCenter
+                super().paint(painter, option, index)
 
-        # 创建图标对象
-        image = Image.open("./resources/devicelink.png")  # 打开 ICO 图像文件并创建一个 Image 对象
-        menu = (pystray.MenuItem(text='设置', action=self.show),  # 创建菜单项元组
-                pystray.MenuItem(text='退出', action=self.quit))  # 创建菜单项元组
-        self.icon = pystray.Icon("name", image, "DeviceShare", menu)  # 创建 PyStray Icon 对象，并传入关键参数
-        threading.Thread(target=self.icon.run, daemon=True).start()
+            def sizeHint(self, option, index):
+                size = super().sizeHint(option, index)
+                size.setHeight(40)
+                return size
 
-    def hide(self):
-        self.root.withdraw()
+        self.client_list.raise_()
+        self.client_list.setItemDelegate(CustomDelegate(self.client_list))
+        self.client_list.setGeometry(0, 0, int(self.width() * 0.25), 300)
+        self.client_list.hide()
 
-    def show(self):
-        self.update()
-        self.root.deiconify()
+    def prepare_modify(self, currentClient):
+        for client in self.clients.values():
+            if currentClient != client and client.device_id != "":
+                client.set_opacity(0.5)
+        tempScreen = ClientScreen(self, currentClient.x(), currentClient.y(), currentClient.location)
+        tempScreen.show()
+        self.clients[currentClient.location] = tempScreen
 
-    def quit(self):
-        # self.icon.stop()
-        self.root.quit()
-        self.root.destroy()
+    def track_move(self, x, y):
+        potential_target_location = self.get_target_location(x, y)
+        if potential_target_location != self.last_potential_location:
+            if self.last_potential_location:
+                self.clients[self.last_potential_location].leave()
+            self.last_potential_location = potential_target_location
+            if self.last_potential_location:
+                self.clients[self.last_potential_location].enter()
 
-    def newPopup(self):
-        popup = tk.Toplevel()
-        popupWidth = 450
-        popupHeight = 300
-        popupX = self.root.winfo_screenwidth() - popupWidth - 30
-        popupY = self.root.winfo_screenheight() - popupHeight - 50
-        popup.update_idletasks()
+    def finish_modify(self, x, y, current_client):
+        if self.last_potential_location:
+            self.clients[self.last_potential_location].leave()
+        self.last_potential_location = None
+        for client in self.clients.values():
+            if client.device_id != "":
+                client.set_opacity(1)
+        target_location = self.get_target_location(x, y)
+        if not target_location:
+            target_location = current_client.location
+        exchange_ip = self.clients[target_location].set_client(current_client.device_id)
+        if target_location != current_client.location:
+            self.clients[current_client.location].set_client(exchange_ip)
 
-        popup.geometry(f"{popupWidth}x{popupHeight}+{popupX}+{popupY}")
-        popup.overrideredirect(True)
-        popup.attributes("-topmost", True)
+    def get_target_location(self, x, y):
+        if self.center_image.y() - y > 120 and abs(x - self.center_image.x()) < 180:
+            return Position["TOP"]
+        elif y - self.center_image.y() > 120 and abs(x - self.center_image.x()) < 180:
+            return Position["BOTTOM"]
+        elif self.center_image.x() - x > 200 and abs(y - self.center_image.y()) < 100:
+            return Position["LEFT"]
+        elif x - self.center_image.x() > 200 and abs(y - self.center_image.y()) < 100:
+            return Position["RIGHT"]
+        else:
+            return None
 
-        popup.config(bg="white", bd=2, relief="solid")
+    def display_client_list(self):
+        if self.client_list.isVisible():
+            self.client_list.hide()
+        else:
+            self.client_list.show()
 
-        ttk.Style().configure("title.TFrame", background="#CAE1FF")
-        title_frame = ttk.Frame(popup, width=popupWidth, height=popupHeight * 0.2)
-        title_frame.configure(style="title.TFrame")
-        title_frame.pack()
-        titleLabel = ttk.Label(title_frame, text="主机接入认证", foreground="black", background="#CAE1FF",
-                               font=tk.font.Font(size=12, family="Microsoft YaHei UI"))
-        titleLabel.place(x=30, y=10)
+    def save_configuration(self):
+        devices = []
+        sqlReaderWriter = DeviceStorage()
+        for screen in self.clients.values():
+            if screen.device_id != "":
+                # todo: how to process if the device offline during configuration?
+                temp = sqlReaderWriter.get_device(screen.device_id)
+                if temp:
+                    temp.position = screen.location
+                    devices.append(temp)
+        for device in devices:
+            sqlReaderWriter.update_device(device)
+        sqlReaderWriter.close()
+        self.update_flag.set()
 
-        label = ttk.Label(popup, text="message", background="white",
-                          font=tk.font.Font(size=12, family="Microsoft YaHei UI"))
-        # label = ttk.Label(popup, text="message", background="white")
-        # ttk.Style().configure("labelStyle", font=("Arial", 12))
-        label.configure(foreground="black")
-        # label.pack(pady=10)
-        label.place(x=25, y=95)
-        ttk.Style().configure("ButtonFrame.TFrame", background="white")
-        button_frame = ttk.Frame(popup, style="ButtonFrame.TFrame")
-        button_frame.configure(style="ButtonFrame.TFrame")
-        button_frame.place(x=115, y=175)
-        # button_frame.place_forget()
-        # Microsoft YaHei UI
+    def create_round_pixmap(self):
+        pixmap = QPixmap("./resources/background.jpg")  # 替换为你的图片路径
+        size = self.center_image.size()
+        rounded_pixmap = QPixmap(size)
+        rounded_pixmap.fill(Qt.transparent)
 
-        ttk.Style().configure("Popup.TButton", background="white", foreground="black", highlightcolor="black", height=35,
-                              font=("Microsoft YaHei UI", 12), relief="solid")
+        painter = QPainter(rounded_pixmap)
+        path = QPainterPath()
+        path.addRoundedRect(0, 0, size.width(), size.height(), 9, 9)
+        painter.setClipPath(path)
+        painter.drawPixmap(0, 0, pixmap)
+        painter.end()
 
-        ignore_button = ttk.Button(button_frame, text="忽略", command=popup.destroy)
-        ignore_button.configure(style="Popup.TButton")
-        ignore_button.pack(side=tk.RIGHT, padx=10)
+        return rounded_pixmap
 
-        authenticate_button = ttk.Button(button_frame, text="认证", command=lambda: authenticate(popup))
-        authenticate_button.configure(style="Popup.TButton")
-        authenticate_button.pack(side=tk.RIGHT, padx=10)
-        # ok_button.place(x=10, y=5)
+    def online_update(self, device_id):
+        for screen in self.clients.values():
+            if screen.device_id == "":
+                screen.set_client(device_id)
+                break
+        text = device_id
+        new_item = QStandardItem(text)
+        self.model.insertRow(0, new_item)
+        self.client_list.setModel(self.model)
 
-        # todo: access authenticate
-        def authenticate(popup):
-            popup.destroy()
-
-        return popup
-
-    def showJoinPopup(self, ip="192.168.3.108"):
-        title = self.popup.nametowidget(".!toplevel.!frame.!label")
-        title["text"] = "主机接入认证"
-        label = self.popup.nametowidget(f".{self.popup.winfo_name()}.!label")
-        label["text"] = "主机" + ip + "请求加入"
-        buttonFrame = self.popup.nametowidget(".!toplevel.!frame2")
-        authenticate_button = self.popup.nametowidget(".!toplevel.!frame2.!button2")
-        authenticate_button.pack(side=tk.RIGHT, padx=10)
-        buttonFrame.place(x=115)
-        self.popup.deiconify()
-
-    def showOnlinePopup(self, ip="192.168.3.108"):
-        title = self.popup.nametowidget(".!toplevel.!frame.!label")
-        title["text"] = "主机上线通知"
-        label = self.popup.nametowidget(f".{self.popup.winfo_name()}.!label")
-        label["text"] = "主机" + ip + "已上线"
-        buttonFrame = self.popup.nametowidget(".!toplevel.!frame2")
-        authenticate_button = self.popup.nametowidget(".!toplevel.!frame2.!button2")
-        authenticate_button.pack_forget()
-        ok_button = self.popup.nametowidget(".!toplevel.!frame2.!button")
-        ok_button["text"] = "确认"
-        buttonFrame.place(x=145)
-        self.popup.deiconify()
+    def offline_update(self, device_id):
+        screen = filter(lambda x: x.device_id == device_id, self.clients.values())[0]
+        screen.remove_client()
 
 
+class MainWindow(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.initUI()
+
+    def initUI(self):
+        self.setWindowTitle('DeviceShare')
+        self.setWindowIcon(
+            QIcon("./resources/devicelink.ico"))  # 确保你的项目目录下有一个icon.png文件
+        self.resize(1280, 1000)
+        menubar = self.menuBar()
+        authorization_list = menubar.addMenu('授权列表')
+        show_list = QAction('授权列表', self)
+        show_list.triggered.connect(self.show_list)
+        authorization_list.addAction(show_list)
+
+    def show_list(self):
+        self.configure_interface.display_client_list()
+
+    def closeEvent(self, event):
+        self.hide()
+        event.ignore()
+
+    def showEvent(self, event):
+        self.configure_interface.client_init()
+        event.accept()
+
+    def ask_access_require(self, id):
+        self.show()
+        reply = QMessageBox.information(None,
+                                        "连接请求处理",
+                                        "是否允许设备" + id + "连接？",
+                                        QMessageBox.Yes | QMessageBox.No)
+        self.hide()
+        return reply == QMessageBox.Yes
+
+    def set_configure_interface(self, configure_interface):
+        self.configure_interface = configure_interface
+
+
+class Gui:
+    def __init__(self, update_flag, request_queue=None, response_queue=None):
+        self.app = QApplication(sys.argv)
+        self.mainWin = MainWindow()
+        qt_material.apply_stylesheet(self.app, theme='dark_blue.xml')
+        self.trayIcon = QSystemTrayIcon(self.mainWin)
+        self.initTrayIcon()
+        self.request_queue = request_queue
+        self.response_queue = response_queue
+        self.configureInterface = ConfigurationInterface(self.mainWin, update_flag)
+        self.mainWin.set_configure_interface(self.configureInterface)
+        self.configureInterface.setGeometry(0, 30, self.mainWin.width(), self.mainWin.height())
+        self.mainWin.show()
+
+    def initTrayIcon(self):
+        # 创建托盘图标
+        self.trayIcon.setIcon(QIcon("D:\\Project\\PythonProject\\DeviceShare\\resources\\devicelink.ico"))
+        # 创建托盘菜单
+        trayMenu = QMenu(self.mainWin)
+        # 添加显示窗口动作
+        showSetting = QAction('设置', self.mainWin)
+        showSetting.triggered.connect(self.mainWin.show)
+        trayMenu.addAction(showSetting)
+        # 添加退出动作
+        exitAction = QAction('退出', self.mainWin)
+        exitAction.triggered.connect(self.exit)
+        trayMenu.addAction(exitAction)
+        # 将菜单添加到托盘图标
+        self.trayIcon.setContextMenu(trayMenu)
+        self.trayIcon.messageClicked.connect(self.process_request)
+        # 显示托盘图标
+        self.trayIcon.show()
 
     def run(self):
-        self.root.mainloop()
+        self.app.exec_()
+
+    def exit(self):
+        self.trayIcon.setVisible(False)
+        self.app.quit()
+
+    def process_request(self):
+        if self.request_queue.empty():
+            return
+        request = self.request_queue.get()
+        if request.msg_type == GuiMessage.MessageType.ACCESS_REQUIRE:
+            self.response_queue.put(GuiMessage(GuiMessage.MessageType.ACCESS_RESPONSE,
+                                               {"result": self.mainWin.ask_access_require(request.data["device_id"]),
+                                                "device_id": request.data["device_id"]}))
+
+    def device_offline_notify(self, device_id):
+        self.trayIcon.showMessage("提醒", "设备" + device_id + "已下线", QSystemTrayIcon.Information, 5000)
+
+    def device_online_notify(self, device_id):
+        self.trayIcon.showMessage("提醒", "设备" + device_id + "已上线", QSystemTrayIcon.Information, 5000)
+
+    def device_show_online_require(self, device_id):
+        if (sys.platform == 'Linux'):
+            self.trayIcon.showMessage("申请", "设备" + device_id + "申请加入链接,点击处理", QSystemTrayIcon.Critical,
+                                      5000)
+        self.trayIcon.showMessage("申请", "设备" + device_id + "申请加入链接,点击处理", QSystemTrayIcon.Information,
+                                  5000)
+
+    def update_devices(self):
+        self.configureInterface.client_init()
+
+    def device_online_update(self, device_id):
+        self.configureInterface.online_update(device_id)
+
+    def device_offline_update(self, device_id):
+        self.configureInterface.offline_update(device_id)
 
 
-if __name__ == '__main__':
-    gui = Gui()
