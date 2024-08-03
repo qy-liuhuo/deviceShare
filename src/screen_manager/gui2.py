@@ -147,6 +147,16 @@ class ConfigurationInterface(QWidget):
                                int(self.height() / 2 - self.center_image.height() / 2))
         self.client_list = QListView(self)
         self.client_list_init()
+        self.clients = {
+            Position["TOP"]: ClientScreen(self, self.center_image.x(), self.center_image.y() - DEFAULT_HEIGHT - 10,
+                                          Position["TOP"]),
+            Position["LEFT"]: ClientScreen(self, self.center_image.x() - DEFAULT_WIDTH - 10, self.center_image.y(),
+                                           Position["LEFT"]),
+            Position["RIGHT"]: ClientScreen(self, self.center_image.x() + DEFAULT_WIDTH + 10, self.center_image.y(),
+                                            Position["RIGHT"]),
+            Position["BOTTOM"]: ClientScreen(self, self.center_image.x(), self.center_image.y() + DEFAULT_HEIGHT + 10,
+                                             Position["BOTTOM"])}
+        self.model = QStandardItemModel(self.client_list)
         self.client_init()
         self.done = QPushButton(self, text="确认")
         self.done.setGeometry(600, 810, 110, 60)
@@ -160,20 +170,11 @@ class ConfigurationInterface(QWidget):
         self.show()
 
     def client_init(self):
-        self.clients = {
-            Position["TOP"]: ClientScreen(self, self.center_image.x(), self.center_image.y() - DEFAULT_HEIGHT - 10,
-                                          Position["TOP"]),
-            Position["LEFT"]: ClientScreen(self, self.center_image.x() - DEFAULT_WIDTH - 10, self.center_image.y(),
-                                           Position["LEFT"]),
-            Position["RIGHT"]: ClientScreen(self, self.center_image.x() + DEFAULT_WIDTH + 10, self.center_image.y(),
-                                            Position["RIGHT"]),
-            Position["BOTTOM"]: ClientScreen(self, self.center_image.x(), self.center_image.y() + DEFAULT_HEIGHT + 10,
-                                             Position["BOTTOM"])}
         # device_dict = {}
         sqlReader = DeviceStorage()
         device_list = sqlReader.get_all_devices()
         sqlReader.close()
-        self.model = QStandardItemModel(self.client_list)
+        self.model.clear()
         for device in device_list:
             text = device.device_id
             new_item = QStandardItem(text)
