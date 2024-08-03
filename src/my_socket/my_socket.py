@@ -25,7 +25,7 @@ class Udp:
         try:
             return self._udp.recvfrom(1024)
         except Exception as e:
-            return None
+            return None,None
 
     def close(self):
         self._udp.close()
@@ -35,6 +35,8 @@ class Tcp:
     def __init__(self, port=16667, listen_num=5, queue_size=5):
         self._tcp_port = port
         self._tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self._tcp.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, True)
+        self._tcp.ioctl(socket.SIO_KEEPALIVE_VALS, (1, 60*1000, 30*1000))
         self._tcp.bind(("0.0.0.0", self._tcp_port))
         self._tcp.listen(listen_num)
         self._tcp_alive = True
@@ -72,4 +74,4 @@ class TcpClient:
         try:
             return self._tcp.recvfrom(1024)
         except Exception as e:
-            return None
+            return None,None
