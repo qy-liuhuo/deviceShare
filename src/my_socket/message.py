@@ -20,6 +20,7 @@ class MsgType(enum.IntEnum):
     KEY_CHECK_RESPONSE = enum.auto()
     ACCESS_DENY = enum.auto()
     ACCESS_ALLOW = enum.auto()
+    CLIENT_OFFLINE = enum.auto()
 
 
 class Message:
