@@ -36,6 +36,13 @@ class Client:
         threading.Thread(target=self.wait_for_connect, daemon=True).start()
         self.gui = ClientGUI()
         self.gui.run()
+        self.send_offline_msg()
+
+    def send_offline_msg(self):
+        msg = Message(MsgType.CLIENT_OFFLINE, {'device_id': self.device_id})
+        # 使用tcp发送离线消息
+        tcp_client = TcpClient((self.server_ip, TCP_PORT))
+        tcp_client.send(msg.to_bytes())
 
     def init_screen_info(self):
         monitors = get_monitors()
