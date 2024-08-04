@@ -5,6 +5,7 @@ import time
 import uuid
 from queue import Queue
 
+from PyQt5.QtCore import QTimer
 from screeninfo import get_monitors
 import pynput
 from zeroconf import ServiceInfo, Zeroconf
