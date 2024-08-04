@@ -5,6 +5,7 @@ import time
 import uuid
 from queue import Queue
 
+from PyQt5.QtCore import QTimer
 from screeninfo import get_monitors
 import pynput
 from zeroconf import ServiceInfo, Zeroconf
@@ -181,8 +182,8 @@ class Server:
                         device_storage = DeviceStorage()
                         device_storage.add_device(new_device)  # 同时会更新device的position
                         device_storage.close()
-                        client_socket.send(Message(MsgType.ACCESS_ALLOW, {'position': int(new_device.position)}).to_bytes())
                         self.manager_gui.device_online_notify(new_device.device_id)
+                        QTimer.singleShot(0, lambda: self.manager_gui.device_online_notify(new_device.device_id))
                         self.manager_gui.update_devices()
                         state = ClientState.CONNECT
                     else:
