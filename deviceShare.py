@@ -10,6 +10,9 @@ from src.sharer.server import Server
 class RoleSelectionDialog(QDialog):
     def __init__(self):
         super().__init__()
+
+        self.setFixedSize(400, 200)
+
         self.setWindowTitle("身份选择")
         self.layout = QVBoxLayout()
 

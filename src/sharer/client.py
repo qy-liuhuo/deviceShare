@@ -5,6 +5,7 @@ import pyperclip
 import rsa
 from zeroconf import Zeroconf, ServiceBrowser
 from src.controller.keyboard_controller import KeyboardController
+from src.screen_manager.client_gui import ClientGUI
 from src.screen_manager.position import Position
 from src.my_socket.message import Message, MsgType
 from src.controller.mouse_controller import MouseController, get_click_button
@@ -19,6 +20,7 @@ from src.utils.service_listener import ServiceListener
 class Client:
 
     def __init__(self):
+        self.init_screen_info()
         self.last_clipboard_text = ''
         self.device_id = get_device_name()
         self.position = None
@@ -28,12 +30,19 @@ class Client:
         self._mouse = MouseController()
         self._mouse.focus = False
         self._keyboard = KeyboardController()
-        monitors = get_monitors()
-        self.screen_size_width = monitors[0].width
-        self.screen_size_height = monitors[0].height
         self.rsa_util = RsaUtil()
         self.server_ip = None
         self.zeroconf = Zeroconf()
+        threading.Thread(target=self.wait_for_connect, daemon=True).start()
+        self.gui = ClientGUI()
+        self.gui.run()
+
+    def init_screen_info(self):
+        monitors = get_monitors()
+        self.screen_size_width = monitors[0].width
+        self.screen_size_height = monitors[0].height
+
+    def wait_for_connect(self):
         ServiceBrowser(self.zeroconf, "_deviceShare._tcp.local.", ServiceListener(self))
         while self.server_ip is None:
             time.sleep(1)
@@ -83,7 +92,8 @@ class Client:
     def heartbeat(self):
         broadcast_data = Message(MsgType.CLIENT_HEARTBEAT, {}).to_bytes()
         while True:
-            self.udp.sendto(broadcast_data, (self.server_ip, UDP_PORT))
+            if self.server_ip:
+                self.udp.sendto(broadcast_data, (self.server_ip, UDP_PORT))
             time.sleep(2)
 
     def judge_move_out(self, x, y):
