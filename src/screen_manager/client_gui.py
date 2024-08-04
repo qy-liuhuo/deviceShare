@@ -24,4 +24,4 @@ class ClientGUI:
         self.app.quit()
 
     def run(self):
-        sys.exit(self.app.exec_())
+        self.app.exec_()
