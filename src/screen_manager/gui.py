@@ -400,7 +400,7 @@ class Gui:
 
     def initTrayIcon(self):
         # 创建托盘图标
-        self.trayIcon.setIcon(QIcon("D:\\Project\\PythonProject\\DeviceShare\\resources\\devicelink.ico"))
+        self.trayIcon.setIcon(QIcon("./resources/devicelink.ico"))
         # 创建托盘菜单
         trayMenu = QMenu(self.mainWin)
         # 添加显示窗口动作

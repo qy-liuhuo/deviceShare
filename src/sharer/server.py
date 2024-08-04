@@ -128,6 +128,16 @@ class Server:
                 if not data:
                     break
                 msg = Message.from_bytes(data)
+                if msg.msg_type == MsgType.CLIENT_OFFLINE:
+                    device_storage = DeviceStorage()
+                    device_storage.delete_device(msg.data['device_id'])
+                    device_storage.close()
+                    self.manager_gui.device_offline_notify(msg.data['device_id'])
+                    if self.cur_device and self.cur_device.device_id == msg.data['device_id']:
+                        self.cur_device = None
+                    self.manager_gui.update_devices()
+                    client_socket.close()
+                    break
                 if msg.msg_type == MsgType.MOUSE_BACK:
                     self.lock.acquire()
                     if self.cur_device is not None:
