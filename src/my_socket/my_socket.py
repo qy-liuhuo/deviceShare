@@ -22,7 +22,7 @@ class Udp:
     def sendto(self, data: bytes, target: tuple):
         if target is None:
             return
-        total_packets = (len(data) + Udp.packet_size - 1)
+        total_packets = (len(data) + Udp.packet_size - 1) // Udp.packet_size
         packet_id = 0
         while data:
             chunk = data[:Udp.packet_size]
@@ -39,15 +39,18 @@ class Udp:
         addr = None
         try:
             while True:
+                print("start recv")
                 packet, addr = self._udp.recvfrom(Udp.packet_size + 8)  # 8 bytes for header
                 header = packet[:8]
                 packet_id, total_packets, chunk_size = struct.unpack('!IHH', header)
+                print(packet_id, total_packets, chunk_size)
                 chunk = packet[8:8 + chunk_size]
                 fragments[packet_id] = chunk
                 if expected_packets is None:
                     expected_packets = total_packets
                 if len(fragments) == expected_packets:
                     data = b''.join(fragments[i] for i in range(expected_packets))
+                    print(data)
                     break
         except Exception as e:
             print(e)
