@@ -8,7 +8,7 @@ def encrypt(public_key, data: bytes):
     result = []
     for n in range(0, len(data), 245 * 8):
         part = data[n:n + 245 * 8]
-        result.append(rsa.encrypt(part, public_key))
+        result.append(rsa.encrypt(part, rsa.PublicKey.load_pkcs1(public_key)))
     return b''.join(result)
 
 
@@ -16,7 +16,7 @@ def decrypt(private_key, data: bytes):
     result = bytearray()
     for n in range(0, len(data), 256):
         part = data[n:n + 256]
-        result.extend(rsa.decrypt(part, private_key))
+        result.extend(rsa.decrypt(part, rsa.PrivateKey.load_pkcs1(private_key)))
     return result.decode()
 
 
