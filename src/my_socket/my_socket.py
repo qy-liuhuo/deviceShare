@@ -62,32 +62,6 @@ class Udp:
         self._udp.close()
 
 
-class Tcp:
-    def __init__(self, port=16667, listen_num=5, queue_size=5):
-        self._tcp_port = port
-        self._tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self._tcp.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, True)
-        self._tcp.ioctl(socket.SIO_KEEPALIVE_VALS, (1, 60 * 1000, 30 * 1000))
-        self._tcp.bind(("0.0.0.0", self._tcp_port))
-        self._tcp.listen(listen_num)
-        self._tcp_alive = True
-        self.event_queue = queue.Queue(queue_size)
-        threading.Thread(target=self.receive_loop).start()
-
-    def receive_loop(self):
-        while self._tcp_alive:
-            conn, addr = self._tcp.accept()
-            while True:
-                data = conn.recv(1024)
-                if not data:
-                    break
-                self.event_queue.put((data, addr))
-                conn.send(b'OK')
-        self._tcp.close()
-
-    def close(self):
-        self._tcp.close()
-        self._tcp_alive = False
 
 
 class TcpClient:
@@ -96,23 +70,49 @@ class TcpClient:
         self._tcp.connect(target)
 
     def send(self, data: bytes):
-        self._tcp.send(data)
+        # 先发送数据长度
+        data_len = struct.pack('!I', len(data))
+        self._tcp.sendall(data_len)
+        # 再发送实际数据
+        self._tcp.sendall(data)
 
     def close(self):
         self._tcp.close()
 
     def recv(self):
-        try:
-            return self._tcp.recv(1024)
-        except Exception as e:
-            return None
+        # 先接收数据长度
+        raw_data_len = self._tcp.recv(4)
+        if not raw_data_len:
+            return WRONG_MESSAGE
+        data_len = struct.unpack('!I', raw_data_len)[0]
+        # 接收实际数据
+        received_data = bytearray()
+        while len(received_data) < data_len:
+            packet = self._tcp.recv(data_len - len(received_data))
+            if not packet:
+                break
+            received_data.extend(packet)
+        return received_data.decode()
 
 
 def read_data_from_tcp_socket(client_socket):
+    # 先接收数据长度
+    raw_data_len = client_socket.recv(4)
+    if not raw_data_len:
+        return WRONG_MESSAGE
+    data_len = struct.unpack('!I', raw_data_len)[0]
+    # 接收实际数据
     received_data = bytearray()
-    while True:
-        data = client_socket.recv(4096)
-        if not data:
+    while len(received_data) < data_len:
+        packet = client_socket.recv(data_len - len(received_data))
+        if not packet:
             break
-        received_data.extend(data)
+        received_data.extend(packet)
     return received_data.decode()
+
+def send_data_to_tcp_socket(client_socket, data: bytes):
+    # 先发送数据长度
+    data_len = struct.pack('!I', len(data))
+    client_socket.sendall(data_len)
+    # 再发送实际数据
+    client_socket.sendall(data)

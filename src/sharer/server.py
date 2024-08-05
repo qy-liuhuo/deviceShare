@@ -15,7 +15,7 @@ from src.screen_manager.gui import Gui, GuiMessage
 from src.screen_manager.position import Position
 from src.my_socket.message import Message, MsgType
 from src.controller.mouse_controller import MouseController
-from src.my_socket.my_socket import Udp, Tcp, UDP_PORT, TCP_PORT, read_data_from_tcp_socket
+from src.my_socket.my_socket import Udp, UDP_PORT, TCP_PORT, read_data_from_tcp_socket, send_data_to_tcp_socket
 import pyperclip
 
 from src.screen_manager.screen import Screen
@@ -151,7 +151,7 @@ class Server:
                         elif device_position == Position.BOTTOM:
                             self._mouse.move_to((msg.data['x'], self.screen_size_height - 30))
                     self.lock.release()
-                    client_socket.send(Message(MsgType.TCP_ECHO).to_bytes())
+                    send_data_to_tcp_socket(client_socket, Message(MsgType.TCP_ECHO).to_bytes())
                 elif msg.msg_type == MsgType.CLIPBOARD_UPDATE:
                     self.last_clipboard_text = msg.data['text']
                     pyperclip.copy(self.last_clipboard_text)
@@ -170,11 +170,10 @@ class Server:
                             keys_manager.set_key(client_id, public_key)
                             pass
                         else:
-                            client_socket.send(Message(MsgType.ACCESS_DENY, {'result': 'access_deny'}).to_bytes())
+                            send_data_to_tcp_socket(client_socket, Message(MsgType.ACCESS_DENY, {'result': 'access_deny'}).to_bytes())
                             continue
                     random_key = uuid.uuid1().bytes
-                    client_socket.send(
-                        Message(MsgType.KEY_CHECK, {'key': encrypt(public_key, random_key).hex()}).to_bytes())
+                    send_data_to_tcp_socket(client_socket, Message(MsgType.KEY_CHECK, {'key': encrypt(public_key, random_key).hex()}).to_bytes())
                     state = ClientState.WAITING_FOR_CHECK
                 elif msg.msg_type == MsgType.KEY_CHECK_RESPONSE and state == ClientState.WAITING_FOR_CHECK:
                     if msg.data['key'] == random_key.hex():
@@ -182,12 +181,12 @@ class Server:
                         device_storage = DeviceStorage()
                         device_storage.add_device(new_device)  # 同时会更新device的position
                         device_storage.close()
-                        client_socket.send(Message(MsgType.ACCESS_ALLOW, {'position': int(new_device.position)}).to_bytes())
+                        send_data_to_tcp_socket(client_socket, Message(MsgType.ACCESS_ALLOW, {'position': int(new_device.position)}).to_bytes())
                         self.manager_gui.device_online_notify(new_device.device_id)
                         self.manager_gui.update_devices()
                         state = ClientState.CONNECT
                     else:
-                        client_socket.send(Message(MsgType.ACCESS_DENY, {'result': 'access_deny'}).to_bytes())
+                        send_data_to_tcp_socket(client_socket, Message(MsgType.ACCESS_DENY, {'result': 'access_deny'}).to_bytes())
                         state = ClientState.WAITING_FOR_KEY
             except ConnectionResetError:
                 print(f"Connection from {addr} closed")
