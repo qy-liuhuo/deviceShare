@@ -71,18 +71,15 @@ class Client:
 
     def handle_client(self, client_socket, addr):
         try:
-            while True:
-                data = read_data_from_tcp_socket(client_socket)
-                msg = Message.from_bytes(data.encode())
-                if msg.msg_type == MsgType.CLIPBOARD_UPDATE:
-                    self.last_clipboard_text = msg.data['text']
-                    pyperclip.copy(self.last_clipboard_text)
+            data = read_data_from_tcp_socket(client_socket)
+            msg = Message.from_bytes(data.encode())
+            if msg.msg_type == MsgType.CLIPBOARD_UPDATE:
+                self.last_clipboard_text = msg.data['text']
+                pyperclip.copy(self.last_clipboard_text)
         except Exception as e:
             print(e)
         finally:
             client_socket.close()
-
-
 
 
     def request_access(self):
