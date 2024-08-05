@@ -35,6 +35,8 @@ class Message:
     @staticmethod
     def from_bytes(byteData: bytes):
         msg_type, data = byteData.decode().split(Message.SPLITTER)
+        if int(msg_type) == MsgType.CLIPBOARD_UPDATE:
+            return Message(MsgType(int(msg_type)), data)
         return Message(MsgType(int(msg_type)), json.loads(data))
         #
         # if int(msg_type) == MsgType.MOUSE_MOVE:

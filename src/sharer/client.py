@@ -93,7 +93,7 @@ class Client:
             time.sleep(1)
 
     def broadcast_clipboard(self, text):
-        msg = Message(MsgType.CLIPBOARD_UPDATE, {'text': text})
+        msg = Message(MsgType.CLIPBOARD_UPDATE, text)
         self.udp.sendto(msg.to_bytes(), ('<broadcast>', UDP_PORT))
 
     def heartbeat(self):
@@ -140,7 +140,7 @@ class Client:
             elif msg.msg_type == MsgType.MOUSE_SCROLL:
                 self._mouse.scroll(msg.data['dx'], msg.data['dy'])
             elif msg.msg_type == MsgType.CLIPBOARD_UPDATE:
-                self.last_clipboard_text = msg.data['text']
+                self.last_clipboard_text = msg.data
                 pyperclip.copy(self.last_clipboard_text)
             elif msg.msg_type == MsgType.POSITION_CHANGE:
                 self.position = Position(int(msg.data['position']))
