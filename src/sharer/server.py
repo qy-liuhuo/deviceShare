@@ -15,7 +15,8 @@ from src.screen_manager.gui import Gui, GuiMessage
 from src.screen_manager.position import Position
 from src.my_socket.message import Message, MsgType
 from src.controller.mouse_controller import MouseController
-from src.my_socket.my_socket import Udp, UDP_PORT, TCP_PORT, read_data_from_tcp_socket, send_data_to_tcp_socket
+from src.my_socket.my_socket import Udp, UDP_PORT, TCP_PORT, read_data_from_tcp_socket, send_data_to_tcp_socket, \
+    TcpClient
 import pyperclip
 
 from src.screen_manager.screen import Screen
@@ -222,9 +223,10 @@ class Server:
         for device in device_storage.get_all_devices():
             text_encrypted = encrypt(device.pub_key, text.encode()).hex()
             msg = Message(MsgType.CLIPBOARD_UPDATE, {'text': text_encrypted})
-            tcp_client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            tcp_client.connect((device.ip, TCP_PORT))
+            tcp_client = TcpClient((device.ip, TCP_PORT))
             tcp_client.send(msg.to_bytes())
+            tcp_client.close()
+
 
     def add_mouse_listener(self):
         def on_click(x, y, button, pressed):
