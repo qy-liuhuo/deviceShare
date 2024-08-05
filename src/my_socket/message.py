@@ -35,6 +35,8 @@ class Message:
 
     @staticmethod
     def from_bytes(byteData: bytes):
+        if isinstance(byteData, bytearray):
+            byteData = bytes(byteData)
         msg_type, data = byteData.decode().split(Message.SPLITTER)
         return Message(MsgType(int(msg_type)), json.loads(data))
         #

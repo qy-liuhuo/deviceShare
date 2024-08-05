@@ -72,7 +72,7 @@ class Client:
     def handle_client(self, client_socket, addr):
         try:
             data = read_data_from_tcp_socket(client_socket)
-            msg = Message.from_bytes(data.encode())
+            msg = Message.from_bytes(data)
             if msg.msg_type == MsgType.CLIPBOARD_UPDATE:
                 self.last_clipboard_text = self.rsa_util.decrypt(msg.data['text'])
                 pyperclip.copy(self.last_clipboard_text)
