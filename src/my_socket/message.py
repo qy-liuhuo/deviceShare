@@ -36,8 +36,6 @@ class Message:
     @staticmethod
     def from_bytes(byteData: bytes):
         msg_type, data = byteData.decode().split(Message.SPLITTER)
-        if int(msg_type) == MsgType.WRONG_MSG:
-            print("wrong msg")
         return Message(MsgType(int(msg_type)), json.loads(data))
         #
         # if int(msg_type) == MsgType.MOUSE_MOVE:

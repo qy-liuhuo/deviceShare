@@ -15,7 +15,7 @@ from src.screen_manager.gui import Gui, GuiMessage
 from src.screen_manager.position import Position
 from src.my_socket.message import Message, MsgType
 from src.controller.mouse_controller import MouseController
-from src.my_socket.my_socket import Udp, Tcp, UDP_PORT, TCP_PORT
+from src.my_socket.my_socket import Udp, Tcp, UDP_PORT, TCP_PORT, read_data_from_tcp_socket
 import pyperclip
 
 from src.screen_manager.screen import Screen
@@ -124,9 +124,7 @@ class Server:
         new_device = Device(ip=addr[0], screen = None, position=Position.NONE)
         while True:
             try:
-                data = client_socket.recv(1024)
-                if not data:
-                    break
+                data = read_data_from_tcp_socket(client_socket)
                 msg = Message.from_bytes(data)
                 if msg.msg_type == MsgType.CLIENT_OFFLINE:
                     device_storage = DeviceStorage()
@@ -138,7 +136,7 @@ class Server:
                     self.manager_gui.update_devices()
                     client_socket.close()
                     break
-                if msg.msg_type == MsgType.MOUSE_BACK:
+                elif msg.msg_type == MsgType.MOUSE_BACK:
                     self.lock.acquire()
                     if self.cur_device is not None:
                         device_position = self.cur_device.position
@@ -154,6 +152,9 @@ class Server:
                             self._mouse.move_to((msg.data['x'], self.screen_size_height - 30))
                     self.lock.release()
                     client_socket.send(Message(MsgType.TCP_ECHO).to_bytes())
+                elif msg.msg_type == MsgType.CLIPBOARD_UPDATE:
+                    self.last_clipboard_text = msg.data['text']
+                    pyperclip.copy(self.last_clipboard_text)
                 elif msg.msg_type == MsgType.SEND_PUBKEY and state == ClientState.WAITING_FOR_KEY:
                     client_id = msg.data['device_id']
                     public_key = msg.data['public_key']
@@ -203,7 +204,7 @@ class Server:
 
     def broadcast_clipboard(self, text):
         msg = Message(MsgType.CLIPBOARD_UPDATE, {'text': text})
-        self.udp.sendto(msg.to_bytes(), ('<broadcast>', UDP_PORT))
+        # self.udp.sendto(msg.to_bytes(), ('<broadcast>', UDP_PORT))
 
     def add_mouse_listener(self):
         def on_click(x, y, button, pressed):

@@ -47,7 +47,7 @@ class Udp:
                 chunk = packet[8:8 + chunk_size]
                 if expected_packets is None:
                     expected_packets = total_packets
-                if len(fragments)>packet_id and fragments[packet_id] is not None:
+                if len(fragments) > packet_id and fragments[packet_id] is not None:
                     data = WRONG_MESSAGE
                 fragments[packet_id] = chunk
                 if len(fragments) == expected_packets:
@@ -56,7 +56,8 @@ class Udp:
         except Exception as e:
             print(e)
         finally:
-            return data,addr
+            return data, addr
+
     def close(self):
         self._udp.close()
 
@@ -105,3 +106,13 @@ class TcpClient:
             return self._tcp.recv(1024)
         except Exception as e:
             return None
+
+
+def read_data_from_tcp_socket(client_socket):
+    received_data = bytearray()
+    while True:
+        data = client_socket.recv(4096)
+        if not data:
+            break
+        received_data.extend(data)
+    return received_data.decode()

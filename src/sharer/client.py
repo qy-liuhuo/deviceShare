@@ -9,7 +9,7 @@ from src.screen_manager.client_gui import ClientGUI
 from src.screen_manager.position import Position
 from src.my_socket.message import Message, MsgType
 from src.controller.mouse_controller import MouseController, get_click_button
-from src.my_socket.my_socket import Udp, TcpClient, UDP_PORT, TCP_PORT
+from src.my_socket.my_socket import Udp, TcpClient, UDP_PORT, TCP_PORT, read_data_from_tcp_socket
 from screeninfo import get_monitors
 
 from src.utils.device_name import get_device_name
@@ -26,6 +26,9 @@ class Client:
         self.position = None
         self.udp = Udp(UDP_PORT)
         self.udp.allow_broadcast()
+        self.tcp_server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.tcp_server.bind(("0.0.0.0", TCP_PORT))
+        self.tcp_server.listen(5)
         self.be_added = False
         self._mouse = MouseController()
         self._mouse.focus = False
@@ -57,6 +60,30 @@ class Client:
         threading.Thread(target=self.heartbeat).start()  # 心跳机制
         threading.Thread(target=self.msg_receiver).start()  # 消息接收
         threading.Thread(target=self.clipboard_listener).start()  # 剪切板监听
+        threading.Thread(target=self.tcp_listener).start()  # tcp监听
+
+    def tcp_listener(self):
+        while True:
+            client, addr = self.tcp_server.accept()
+            print(f"Connection from {addr}")
+            client_handler = threading.Thread(target=self.handle_client, args=(client, addr), daemon=True)
+            client_handler.start()
+
+    def handle_client(self, client_socket, addr):
+        try:
+            while True:
+                data = read_data_from_tcp_socket(client_socket)
+                msg = Message.from_bytes(data.encode())
+                if msg.msg_type == MsgType.CLIPBOARD_UPDATE:
+                    self.last_clipboard_text = msg.data['text']
+                    pyperclip.copy(self.last_clipboard_text)
+        except Exception as e:
+            print(e)
+        finally:
+            client_socket.close()
+
+
+
 
     def request_access(self):
         while not self.be_added:
@@ -100,12 +127,10 @@ class Client:
             new_clip_text = pyperclip.paste()
             if new_clip_text != '' and new_clip_text != self.last_clipboard_text:
                 self.last_clipboard_text = new_clip_text
-                self.broadcast_clipboard(new_clip_text)
+                tcp_client = TcpClient((self.server_ip, TCP_PORT))
+                msg = Message(MsgType.CLIPBOARD_UPDATE, {'text': new_clip_text})
+                tcp_client.send(msg.to_bytes())
             time.sleep(1)
-
-    def broadcast_clipboard(self, text):
-        msg = Message(MsgType.CLIPBOARD_UPDATE, {'text': text})
-        self.udp.sendto(msg.to_bytes(), ('<broadcast>', UDP_PORT))
 
     def heartbeat(self):
         broadcast_data = Message(MsgType.CLIENT_HEARTBEAT, {}).to_bytes()
