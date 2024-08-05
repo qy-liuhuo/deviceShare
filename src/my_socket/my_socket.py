@@ -1,5 +1,6 @@
 import queue
 import socket
+import struct
 import threading
 
 UDP_PORT = 16666
@@ -7,6 +8,8 @@ TCP_PORT = 16667
 
 
 class Udp:
+    packet_size = 1024
+
     def __init__(self, port=16666):
         self.msg_listener = None
         self._udp_port = port
@@ -19,14 +22,37 @@ class Udp:
     def sendto(self, data: bytes, target: tuple):
         if target is None:
             return
-        self._udp.sendto(data, target)
+        total_packets = (len(data) + Udp.packet_size - 1)
+        packet_id = 0
+        while data:
+            chunk = data[:Udp.packet_size]
+            data = data[Udp.packet_size:]
+            header = struct.pack('!IHH', packet_id, total_packets, len(chunk))
+            packet = header + chunk
+            self._udp.sendto(packet, target)
+            packet_id += 1
 
     def recv(self):
+        fragments = {}
+        expected_packets = None
+        data = None
+        addr = None
         try:
-            return self._udp.recvfrom(1024)
+            while True:
+                packet, addr = self._udp.recvfrom(Udp.packet_size + 8)  # 8 bytes for header
+                header = packet[:8]
+                packet_id, total_packets, chunk_size = struct.unpack('!IHH', header)
+                chunk = packet[8:8 + chunk_size]
+                fragments[packet_id] = chunk
+                if expected_packets is None:
+                    expected_packets = total_packets
+                if len(fragments) == expected_packets:
+                    data = b''.join(fragments[i] for i in range(expected_packets))
+                    break
         except Exception as e:
-            return None, None
-
+            print(e)
+        finally:
+            return data,addr
     def close(self):
         self._udp.close()
 

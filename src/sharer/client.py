@@ -104,7 +104,7 @@ class Client:
             time.sleep(1)
 
     def broadcast_clipboard(self, text):
-        msg = Message(MsgType.CLIPBOARD_UPDATE, {'text': text[0:200]})
+        msg = Message(MsgType.CLIPBOARD_UPDATE, {'text': text})
         self.udp.sendto(msg.to_bytes(), ('<broadcast>', UDP_PORT))
 
     def heartbeat(self):
