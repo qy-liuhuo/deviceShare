@@ -116,7 +116,7 @@ class Server:
             client_handler = threading.Thread(target=self.handle_client, args=(client, addr), daemon=True)
             client_handler.start()
 
-    def handle_access(self,access_client_socket,msg,addr):
+    def handle_access(self, access_client_socket, msg, addr):
         keys_manager = KeyStorage()
         state = ClientState.WAITING_FOR_KEY
         random_key = None
@@ -175,7 +175,7 @@ class Server:
         msg = Message.from_bytes(data)
         try:
             if msg.msg_type == MsgType.SEND_PUBKEY:
-                self.handle_access(client_socket,msg,addr)
+                self.handle_access(client_socket, msg, addr)
             elif msg.msg_type == MsgType.CLIENT_OFFLINE:
                 device_storage = DeviceStorage()
                 device_storage.delete_device(msg.data['device_id'])
@@ -208,6 +208,7 @@ class Server:
             print(f"Connection from {addr} closed")
         finally:
             client_socket.close()
+
     def clipboard_listener(self):
         while True:
             new_clip_text = pyperclip.paste()
@@ -219,13 +220,11 @@ class Server:
     def broadcast_clipboard(self, text):
         device_storage = DeviceStorage()
         for device in device_storage.get_all_devices():
-            text_encrypted = device.pub_key.encrypt(text.encode()).hex()
+            text_encrypted = encrypt(device.pub_key, text.encode()).hex()
             msg = Message(MsgType.CLIPBOARD_UPDATE, {'text': text_encrypted})
             tcp_client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             tcp_client.connect((device.ip, TCP_PORT))
             tcp_client.send(msg.to_bytes())
-
-
 
     def add_mouse_listener(self):
         def on_click(x, y, button, pressed):
