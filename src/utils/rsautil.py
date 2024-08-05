@@ -5,18 +5,20 @@ from src.utils.device_name import get_device_name
 
 
 def encrypt(public_key, data: bytes):
+    public_key = rsa.PublicKey.load_pkcs1(public_key)
     result = []
     for n in range(0, len(data), 245 * 8):
         part = data[n:n + 245 * 8]
-        result.append(rsa.encrypt(part, rsa.PublicKey.load_pkcs1(public_key)))
+        result.append(rsa.encrypt(part, public_key))
     return b''.join(result)
 
 
 def decrypt(private_key, data: bytes):
+    private_key = rsa.PrivateKey.load_pkcs1(private_key)
     result = bytearray()
     for n in range(0, len(data), 256):
         part = data[n:n + 256]
-        result.extend(rsa.decrypt(part, rsa.PrivateKey.load_pkcs1(private_key)))
+        result.extend(rsa.decrypt(part, private_key))
     return result.decode()
 
 
@@ -55,10 +57,18 @@ class RsaUtil:
             f.write(self.private_key.save_pkcs1())
 
     def encrypt(self, data: bytes):
-        return encrypt(self.public_key, data)
+        result = []
+        for n in range(0, len(data), 245*8):
+            part = data[n:n+245*8]
+            result.append(rsa.encrypt(part, self.public_key))
+        return b''.join(result)
 
     def decrypt(self, data: bytes):
-        return decrypt(self.private_key, data)
+        result = bytearray()
+        for n in range(0, len(data), 256):
+            part = data[n:n+256]
+            result.extend(rsa.decrypt(part, self.private_key))
+        return result.decode()
 
     def sign(self, data: bytes):
         return rsa.sign(data, self.private_key, 'SHA-1')
