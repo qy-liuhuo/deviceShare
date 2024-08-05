@@ -97,10 +97,9 @@ class Server:
         device_storage = DeviceStorage()
         try:
             while True:
-                recv_data = self.udp.recv()
-                if recv_data is None:
+                data, addr = self.udp.recv()
+                if data is None:
                     continue
-                data, addr = recv_data
                 msg = Message.from_bytes(data)
                 if msg.msg_type == MsgType.CLIENT_HEARTBEAT:
                     device_storage.update_heartbeat(ip=addr[0])

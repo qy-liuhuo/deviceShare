@@ -59,30 +59,41 @@ class Client:
         threading.Thread(target=self.clipboard_listener).start()  # 剪切板监听
 
     def request_access(self):
-        tcp_client = TcpClient((self.server_ip, TCP_PORT))
-        msg = Message(MsgType.SEND_PUBKEY,
-                      {"device_id": self.device_id, 'public_key': self.rsa_util.public_key.save_pkcs1().decode()})
-        tcp_client.send(msg.to_bytes())
-        data = tcp_client.recv()
-        msg = Message.from_bytes(data)
-        if msg.msg_type == MsgType.KEY_CHECK:
-            decrypt_key = self.rsa_util.decrypt(bytes.fromhex(msg.data['key']))
-            msg = Message(MsgType.KEY_CHECK_RESPONSE,
-                          {'key': decrypt_key.hex(), 'device_id': self.device_id,
-                           'screen_width': self.screen_size_width,
-                           'screen_height': self.screen_size_height})
+        while not self.be_added:
+            tcp_client = TcpClient((self.server_ip, TCP_PORT))
+            msg = Message(MsgType.SEND_PUBKEY,
+                          {"device_id": self.device_id, 'public_key': self.rsa_util.public_key.save_pkcs1().decode()})
             tcp_client.send(msg.to_bytes())
             data = tcp_client.recv()
+            if data is None:
+                tcp_client.close()
+                continue
             msg = Message.from_bytes(data)
-            if msg.msg_type == MsgType.ACCESS_ALLOW:
-                print('Access allow')
-                self.be_added = True
-                self.position = Position(int(msg.data['position']))
+            if msg.msg_type == MsgType.KEY_CHECK:
+                decrypt_key = self.rsa_util.decrypt(bytes.fromhex(msg.data['key']))
+                msg = Message(MsgType.KEY_CHECK_RESPONSE,
+                              {'key': decrypt_key.hex(), 'device_id': self.device_id,
+                               'screen_width': self.screen_size_width,
+                               'screen_height': self.screen_size_height})
+                tcp_client.send(msg.to_bytes())
+                data = tcp_client.recv()
+                if data is None:
+                    tcp_client.close()
+                    continue
+                msg = Message.from_bytes(data)
+                if msg.msg_type == MsgType.ACCESS_ALLOW:
+                    print('Access allow')
+                    self.be_added = True
+                    self.position = Position(int(msg.data['position']))
+                elif msg.msg_type == MsgType.ACCESS_DENY:
+                    print('Access denied')
+                    tcp_client.close()
+                    break
             elif msg.msg_type == MsgType.ACCESS_DENY:
                 print('Access denied')
-        elif msg.msg_type == MsgType.ACCESS_DENY:
-            print('Access denied')
-        tcp_client.close()
+                tcp_client.close()
+                break
+            tcp_client.close()
 
     def clipboard_listener(self):
         while True:
@@ -116,10 +127,9 @@ class Client:
 
     def msg_receiver(self):
         while True:
-            msg_data = self.udp.recv()
-            if msg_data is None:
+            data, addr = self.udp.recv()
+            if data is None:
                 continue
-            data, addr = msg_data
             msg = Message.from_bytes(data)
             if msg.msg_type == MsgType.MOUSE_MOVE:
                 position = self._mouse.move(msg.data['x'], msg.data['y'])
