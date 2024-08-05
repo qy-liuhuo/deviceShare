@@ -108,7 +108,6 @@ def read_data_from_tcp_socket(client_socket):
         if not packet:
             break
         received_data.extend(packet)
-    print(received_data)
     return received_data
 
 def send_data_to_tcp_socket(client_socket, data: bytes):

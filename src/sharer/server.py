@@ -203,51 +203,11 @@ class Server:
             elif msg.msg_type == MsgType.CLIPBOARD_UPDATE:
                 self.last_clipboard_text = msg.data['text']
                 pyperclip.copy(self.last_clipboard_text)
+                self.broadcast_clipboard(self.last_clipboard_text)
         except ConnectionResetError:
             print(f"Connection from {addr} closed")
         finally:
             client_socket.close()
-
-                # elif msg.msg_type == MsgType.SEND_PUBKEY and state == ClientState.WAITING_FOR_KEY:
-                #     client_id = msg.data['device_id']
-                #     public_key = msg.data['public_key']
-                #     new_device.pub_key = public_key
-                #     new_device.device_id = client_id
-                #     temp = keys_manager.get_key(client_id)
-                #     if temp is None or temp != public_key:
-                #         self.manager_gui.device_show_online_require(addr[0])
-                #         self.manager_gui.request_queue.put(
-                #             GuiMessage(GuiMessage.MessageType.ACCESS_REQUIRE, {"device_id": client_id}))
-                #         result = self.response_queue.get()
-                #         if result.data['result']:
-                #             keys_manager.set_key(client_id, public_key)
-                #             pass
-                #         else:
-                #             send_data_to_tcp_socket(client_socket,
-                #                                     Message(MsgType.ACCESS_DENY, {'result': 'access_deny'}).to_bytes())
-                #             continue
-                #     random_key = uuid.uuid1().bytes
-                #     send_data_to_tcp_socket(client_socket, Message(MsgType.KEY_CHECK, {
-                #         'key': encrypt(public_key, random_key).hex()}).to_bytes())
-                #     state = ClientState.WAITING_FOR_CHECK
-                # elif msg.msg_type == MsgType.KEY_CHECK_RESPONSE and state == ClientState.WAITING_FOR_CHECK:
-                #     if msg.data['key'] == random_key.hex():
-                #         new_device.screen = Screen(screen_width=msg.data['screen_width'],
-                #                                    screen_height=msg.data['screen_height'])
-                #         device_storage = DeviceStorage()
-                #         device_storage.add_device(new_device)  # 同时会更新device的position
-                #         device_storage.close()
-                #         send_data_to_tcp_socket(client_socket, Message(MsgType.ACCESS_ALLOW, {
-                #             'position': int(new_device.position)}).to_bytes())
-                #         self.manager_gui.device_online_notify(new_device.device_id)
-                #         self.manager_gui.update_devices()
-                #         state = ClientState.CONNECT
-                #     else:
-                #         send_data_to_tcp_socket(client_socket,
-                #                                 Message(MsgType.ACCESS_DENY, {'result': 'access_deny'}).to_bytes())
-                #         state = ClientState.WAITING_FOR_KEY
-
-
     def clipboard_listener(self):
         while True:
             new_clip_text = pyperclip.paste()
@@ -257,8 +217,15 @@ class Server:
             time.sleep(1)
 
     def broadcast_clipboard(self, text):
-        msg = Message(MsgType.CLIPBOARD_UPDATE, {'text': text})
-        # self.udp.sendto(msg.to_bytes(), ('<broadcast>', UDP_PORT))
+        device_storage = DeviceStorage()
+        for device in device_storage.get_all_devices():
+            text_encrypted = device.pub_key.encrypt(text.encode()).hex()
+            msg = Message(MsgType.CLIPBOARD_UPDATE, {'text': text_encrypted})
+            tcp_client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            tcp_client.connect((device.ip, TCP_PORT))
+            tcp_client.send(msg.to_bytes())
+
+
 
     def add_mouse_listener(self):
         def on_click(x, y, button, pressed):
