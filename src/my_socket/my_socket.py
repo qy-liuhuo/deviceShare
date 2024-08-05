@@ -3,6 +3,8 @@ import socket
 import struct
 import threading
 
+from src.my_socket.message import WRONG_MESSAGE
+
 UDP_PORT = 16666
 TCP_PORT = 16667
 
@@ -43,9 +45,11 @@ class Udp:
                 header = packet[:8]
                 packet_id, total_packets, chunk_size = struct.unpack('!IHH', header)
                 chunk = packet[8:8 + chunk_size]
-                fragments[packet_id] = chunk
                 if expected_packets is None:
                     expected_packets = total_packets
+                if len(fragments)>packet_id and fragments[packet_id] is not None:
+                    data = WRONG_MESSAGE
+                fragments[packet_id] = chunk
                 if len(fragments) == expected_packets:
                     data = b''.join(fragments[i] for i in range(expected_packets))
                     break
