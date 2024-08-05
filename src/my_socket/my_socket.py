@@ -92,7 +92,7 @@ class TcpClient:
             if not packet:
                 break
             received_data.extend(packet)
-        return received_data.decode()
+        return received_data
 
 
 def read_data_from_tcp_socket(client_socket):
@@ -108,7 +108,7 @@ def read_data_from_tcp_socket(client_socket):
         if not packet:
             break
         received_data.extend(packet)
-    return received_data.decode()
+    return received_data
 
 def send_data_to_tcp_socket(client_socket, data: bytes):
     # 先发送数据长度
