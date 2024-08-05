@@ -104,8 +104,8 @@ class Server:
                 if msg.msg_type == MsgType.CLIENT_HEARTBEAT:
                     device_storage.update_heartbeat(ip=addr[0])
                 elif msg.msg_type == MsgType.CLIPBOARD_UPDATE:
-                    self.last_clipboard_text = msg.data
-                    pyperclip.copy(msg.data)
+                    self.last_clipboard_text = msg.data['text']
+                    pyperclip.copy(self.last_clipboard_text)
         except InterruptedError:
             device_storage.close()
 
@@ -202,7 +202,7 @@ class Server:
             time.sleep(1)
 
     def broadcast_clipboard(self, text):
-        msg = Message(MsgType.CLIPBOARD_UPDATE, text)
+        msg = Message(MsgType.CLIPBOARD_UPDATE, {'text': text[0:200]})
         self.udp.sendto(msg.to_bytes(), ('<broadcast>', UDP_PORT))
 
     def add_mouse_listener(self):
