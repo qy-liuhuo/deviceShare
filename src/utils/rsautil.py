@@ -68,7 +68,7 @@ class RsaUtil:
         for n in range(0, len(data), 256):
             part = data[n:n+256]
             result.extend(rsa.decrypt(part, self.private_key))
-        return result.decode()
+        return result
 
     def sign(self, data: bytes):
         return rsa.sign(data, self.private_key, 'SHA-1')
