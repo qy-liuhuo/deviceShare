@@ -14,8 +14,8 @@ class MouseController:
         self.focus = True
 
 
-    def update_last_position(self,x,y):
-        self.last_position = (x,y)
+    def update_last_position(self):
+        self.last_position = self.get_position()
 
     def get_last_position(self):
         return self.last_position
