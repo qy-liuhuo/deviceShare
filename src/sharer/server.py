@@ -1,3 +1,4 @@
+import platform
 import socket
 import sys
 import threading
@@ -227,7 +228,6 @@ class Server:
             tcp_client.send(msg.to_bytes())
             tcp_client.close()
 
-
     def add_mouse_listener(self):
         def on_click(x, y, button, pressed):
             msg = Message(MsgType.MOUSE_CLICK, {'x': x, 'y': y, 'button': str(button), 'pressed': pressed})
@@ -243,11 +243,15 @@ class Server:
                 self.udp.sendto(msg.to_bytes(), self.cur_device.get_udp_address())
             # if self._mouse.get_position()[0] >= self.screen_size.width - 10: # 向右移出
             #     self.udp.sendto(msg.to_bytes(), self.device_manager.cur_device.get_udp_address())
-            if not self._mouse.focus and self._mouse.get_position()[0] <= 200 or self._mouse.get_position()[1] <= 200 or \
-                    self._mouse.get_position()[0] >= self.screen_size_width - 200 or self._mouse.get_position()[
-                1] >= self.screen_size_height - 200:
-                self._mouse.move_to((int(self.screen_size_width / 2), int(self.screen_size_height / 2)))
+            # if not self._mouse.focus and self._mouse.get_position()[0] <= 200 or self._mouse.get_position()[1] <= 200 or \
+            #         self._mouse.get_position()[0] >= self.screen_size_width - 200 or self._mouse.get_position()[1] >= self.screen_size_height - 200:
+            #     self._mouse.move_to((int(self.screen_size_width / 2), int(self.screen_size_height / 2)))
             self._mouse.update_last_position()
+
+        def on_move_linux(dx, dy):
+            if self.cur_device:
+                msg = Message(MsgType.MOUSE_MOVE, {'x': dx, 'y': dy})
+                self.udp.sendto(msg.to_bytes(), self.cur_device.get_udp_address())
 
         def on_scroll(x, y, dx, dy):
             msg = Message(MsgType.MOUSE_SCROLL, {'dx': dx, 'dy': dy})
@@ -257,6 +261,26 @@ class Server:
         mouse_listener = self._mouse.mouse_listener(on_click, on_move, on_scroll, suppress=True)
         mouse_listener.start()
         return mouse_listener
+
+    def add_mouse_listener_linux(self):
+        def on_click(x, y, button, pressed):
+            msg = Message(MsgType.MOUSE_CLICK, {'x': x, 'y': y, 'button': str(button), 'pressed': pressed})
+            if self.cur_device:
+                self.udp.sendto(msg.to_bytes(), self.cur_device.get_udp_address())
+        def on_move_linux(dx, dy):
+            if self.cur_device:
+                msg = Message(MsgType.MOUSE_MOVE, {'x': dx, 'y': dy})
+                self.udp.sendto(msg.to_bytes(), self.cur_device.get_udp_address())
+                return True
+            else:
+                return False
+        def on_scroll(x, y, dx, dy):
+            msg = Message(MsgType.MOUSE_SCROLL, {'dx': dx, 'dy': dy})
+            if self.cur_device:
+                self.udp.sendto(msg.to_bytes(), self.cur_device.get_udp_address())
+
+        self._mouse.mouse_listener_linux(on_click, on_move_linux, on_scroll, suppress=True)
+
 
     def add_keyboard_listener(self):
         def on_press(key):
@@ -339,11 +363,17 @@ class Server:
                                 break
 
             if not self._mouse.focus:
-                mouse_listener = self.add_mouse_listener()
-                keyboard_listener = self.add_keyboard_listener()
-                mouse_listener.join()
-                keyboard_listener.stop()  # 鼠标监听结束后关闭键盘监听
-                self._mouse.focus = True
+                if platform.system().lower() == "linux":
+                    keyboard_listener = self.add_keyboard_listener()
+                    self.add_mouse_listener_linux()
+                    keyboard_listener.stop()
+                    self._mouse.focus = True
+                else:
+                    mouse_listener = self.add_mouse_listener()
+                    keyboard_listener = self.add_keyboard_listener()
+                    mouse_listener.join()
+                    keyboard_listener.stop()  # 鼠标监听结束后关闭键盘监听
+                    self._mouse.focus = True
 
     def close(self):
         self.udp.close()

@@ -42,7 +42,6 @@ class KeyboardController:
 
     def run_keyboard_listener(self, keyboard, on_press, on_release, suppress=False):
         if suppress:
-            print("lock")
             keyboard.grab()
         try:
             while not self.stop_event.is_set():
@@ -63,7 +62,6 @@ class KeyboardController:
         finally:
             if suppress:
                 keyboard.ungrab()
-        print("1234")
 
     def keyboard_listener(self, on_press, on_release, suppress=False):
         self.listener = []

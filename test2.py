@@ -62,5 +62,3 @@ def on_move(x, y):
 with mouse.Listener(on_move=on_move) as listener:
     listener.join()
 
-import subprocess
-subprocess.run(['xdotool', 'getmouselocation'])
