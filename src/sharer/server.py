@@ -247,7 +247,7 @@ class Server:
                     self._mouse.get_position()[0] >= self.screen_size_width - 200 or self._mouse.get_position()[
                 1] >= self.screen_size_height - 200:
                 self._mouse.move_to((int(self.screen_size_width / 2), int(self.screen_size_height / 2)))
-            self._mouse.update_last_position()
+            self._mouse.update_last_position(x,y)
 
         def on_scroll(x, y, dx, dy):
             msg = Message(MsgType.MOUSE_SCROLL, {'dx': dx, 'dy': dy})
