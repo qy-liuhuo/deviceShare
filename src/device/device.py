@@ -6,7 +6,7 @@ from src.my_socket.my_socket import UDP_PORT
 
 class Device:
 
-    def __init__(self, ip: str, screen: Screen, position=Position.NONE, device_id=None, pub_key=None, expire_time=5):
+    def __init__(self, ip: str, screen: Screen, position=Position.NONE, device_id=None, pub_key=None, expire_time=10):
         self.device_id = device_id
         self.ip = ip
         self.pub_key = pub_key

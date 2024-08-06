@@ -21,11 +21,12 @@ class MsgType(enum.IntEnum):
     ACCESS_DENY = enum.auto()
     ACCESS_ALLOW = enum.auto()
     CLIENT_OFFLINE = enum.auto()
+    WRONG_MSG = enum.auto()
+
 
 
 class Message:
-    SPLITTER = "@"
-
+    SPLITTER = "[@~|"
     def __init__(self, msg_type: MsgType, data=None):
         if data is None:
             data = {}
@@ -34,6 +35,8 @@ class Message:
 
     @staticmethod
     def from_bytes(byteData: bytes):
+        if isinstance(byteData, bytearray):
+            byteData = bytes(byteData)
         msg_type, data = byteData.decode().split(Message.SPLITTER)
         return Message(MsgType(int(msg_type)), json.loads(data))
         #
@@ -75,3 +78,6 @@ class Message:
 
     def __str__(self):
         return f"Message({self.msg_type},{self.data})"
+
+
+WRONG_MESSAGE = Message(MsgType.WRONG_MSG).to_bytes()

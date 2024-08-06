@@ -9,7 +9,7 @@ from src.screen_manager.client_gui import ClientGUI
 from src.screen_manager.position import Position
 from src.my_socket.message import Message, MsgType
 from src.controller.mouse_controller import MouseController, get_click_button
-from src.my_socket.my_socket import Udp, TcpClient, UDP_PORT, TCP_PORT
+from src.my_socket.my_socket import Udp, TcpClient, UDP_PORT, TCP_PORT, read_data_from_tcp_socket
 from screeninfo import get_monitors
 
 from src.utils.device_name import get_device_name
@@ -26,6 +26,9 @@ class Client:
         self.position = None
         self.udp = Udp(UDP_PORT)
         self.udp.allow_broadcast()
+        self.tcp_server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.tcp_server.bind(("0.0.0.0", TCP_PORT))
+        self.tcp_server.listen(5)
         self.be_added = False
         self._mouse = MouseController()
         self._mouse.focus = False
@@ -57,44 +60,74 @@ class Client:
         threading.Thread(target=self.heartbeat).start()  # 心跳机制
         threading.Thread(target=self.msg_receiver).start()  # 消息接收
         threading.Thread(target=self.clipboard_listener).start()  # 剪切板监听
+        threading.Thread(target=self.tcp_listener).start()  # tcp监听
+
+    def tcp_listener(self):
+        while True:
+            client, addr = self.tcp_server.accept()
+            print(f"Connection from {addr}")
+            client_handler = threading.Thread(target=self.handle_client, args=(client, addr), daemon=True)
+            client_handler.start()
+
+    def handle_client(self, client_socket, addr):
+        try:
+            data = read_data_from_tcp_socket(client_socket)
+            msg = Message.from_bytes(data)
+            if msg.msg_type == MsgType.CLIPBOARD_UPDATE:
+                self.last_clipboard_text = self.rsa_util.decrypt(bytes.fromhex(msg.data['text']))
+                pyperclip.copy(self.last_clipboard_text.decode())
+        except Exception as e:
+            print(e)
+        finally:
+            client_socket.close()
+
 
     def request_access(self):
-        tcp_client = TcpClient((self.server_ip, TCP_PORT))
-        msg = Message(MsgType.SEND_PUBKEY,
-                      {"device_id": self.device_id, 'public_key': self.rsa_util.public_key.save_pkcs1().decode()})
-        tcp_client.send(msg.to_bytes())
-        data, _ = tcp_client.recv()
-        msg = Message.from_bytes(data)
-        if msg.msg_type == MsgType.KEY_CHECK:
-            decrypt_key = self.rsa_util.decrypt(bytes.fromhex(msg.data['key']))
-            msg = Message(MsgType.KEY_CHECK_RESPONSE,
-                          {'key': decrypt_key.hex(), 'device_id': self.device_id,
-                           'screen_width': self.screen_size_width,
-                           'screen_height': self.screen_size_height})
+        while not self.be_added:
+            tcp_client = TcpClient((self.server_ip, TCP_PORT))
+            msg = Message(MsgType.SEND_PUBKEY,
+                          {"device_id": self.device_id, 'public_key': self.rsa_util.public_key.save_pkcs1().decode()})
             tcp_client.send(msg.to_bytes())
-            data, _ = tcp_client.recv()
+            data = tcp_client.recv()
+            if data is None:
+                tcp_client.close()
+                continue
             msg = Message.from_bytes(data)
-            if msg.msg_type == MsgType.ACCESS_ALLOW:
-                print('Access allow')
-                self.be_added = True
-                self.position = Position(int(msg.data['position']))
+            if msg.msg_type == MsgType.KEY_CHECK:
+                decrypt_key = self.rsa_util.decrypt(bytes.fromhex(msg.data['key']))
+                msg = Message(MsgType.KEY_CHECK_RESPONSE,
+                              {'key': decrypt_key.hex(), 'device_id': self.device_id,
+                               'screen_width': self.screen_size_width,
+                               'screen_height': self.screen_size_height})
+                tcp_client.send(msg.to_bytes())
+                data = tcp_client.recv()
+                if data is None:
+                    tcp_client.close()
+                    continue
+                msg = Message.from_bytes(data)
+                if msg.msg_type == MsgType.ACCESS_ALLOW:
+                    print('Access allow')
+                    self.be_added = True
+                    self.position = Position(int(msg.data['position']))
+                elif msg.msg_type == MsgType.ACCESS_DENY:
+                    print('Access denied')
+                    tcp_client.close()
+                    break
             elif msg.msg_type == MsgType.ACCESS_DENY:
                 print('Access denied')
-        elif msg.msg_type == MsgType.ACCESS_DENY:
-            print('Access denied')
-        tcp_client.close()
+                tcp_client.close()
+                break
+            tcp_client.close()
 
     def clipboard_listener(self):
         while True:
             new_clip_text = pyperclip.paste()
             if new_clip_text != '' and new_clip_text != self.last_clipboard_text:
                 self.last_clipboard_text = new_clip_text
-                self.broadcast_clipboard(new_clip_text)
+                tcp_client = TcpClient((self.server_ip, TCP_PORT))
+                msg = Message(MsgType.CLIPBOARD_UPDATE, {'text': new_clip_text})
+                tcp_client.send(msg.to_bytes())
             time.sleep(1)
-
-    def broadcast_clipboard(self, text):
-        msg = Message(MsgType.CLIPBOARD_UPDATE, {'text': text})
-        self.udp.sendto(msg.to_bytes(), ('<broadcast>', UDP_PORT))
 
     def heartbeat(self):
         broadcast_data = Message(MsgType.CLIENT_HEARTBEAT, {}).to_bytes()
@@ -116,10 +149,9 @@ class Client:
 
     def msg_receiver(self):
         while True:
-            msg_data = self.udp.recv()
-            if msg_data is None:
+            data, addr = self.udp.recv()
+            if data is None:
                 continue
-            data, addr = msg_data
             msg = Message.from_bytes(data)
             if msg.msg_type == MsgType.MOUSE_MOVE:
                 position = self._mouse.move(msg.data['x'], msg.data['y'])
