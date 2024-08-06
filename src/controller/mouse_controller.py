@@ -1,9 +1,10 @@
-import pynput
 import platform
 
 
 class MouseController:
+
     def __init__(self):
+        import pynput
         # 解决windows下缩放偏移问题
         if platform.system().lower() == 'windows':
             import ctypes
@@ -40,9 +41,12 @@ class MouseController:
             self.__mouse.release(button)
 
     def mouse_listener(self, on_click, on_move,on_scroll,suppress=False):
+        import pynput
         return pynput.mouse.Listener(on_click=on_click, on_move=on_move, on_scroll=on_scroll,suppress=suppress)
 
 def get_click_button(btn: str):
+    import pynput
+    import platform
     if btn == 'Button.left':
         return pynput.mouse.Button.left
     elif btn == 'Button.right':
@@ -50,3 +54,9 @@ def get_click_button(btn: str):
     elif btn == 'Button.middle':
         return pynput.mouse.Button.middle
     return pynput.mouse.Button.unknown
+
+if __name__ == '__main__':
+    from evdev import InputDevice, categorize, ecodes, list_devices
+    # 列出所有输入设备
+    devices = [InputDevice(path) for path in list_devices()]
+    print(devices)

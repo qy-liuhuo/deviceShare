@@ -73,9 +73,10 @@ class Client:
         try:
             data = read_data_from_tcp_socket(client_socket)
             msg = Message.from_bytes(data)
+            print(msg)
             if msg.msg_type == MsgType.CLIPBOARD_UPDATE:
-                self.last_clipboard_text = self.rsa_util.decrypt(bytes.fromhex(msg.data['text']))
-                pyperclip.copy(self.last_clipboard_text.decode())
+                new_text = self.rsa_util.decrypt(bytes.fromhex(msg.data['text'])).decode()
+                pyperclip.copy(new_text)
         except Exception as e:
             print(e)
         finally:
@@ -171,8 +172,5 @@ class Client:
                 self._keyboard.click(msg.data['type'], msg.data['keyData'])
             elif msg.msg_type == MsgType.MOUSE_SCROLL:
                 self._mouse.scroll(msg.data['dx'], msg.data['dy'])
-            elif msg.msg_type == MsgType.CLIPBOARD_UPDATE:
-                self.last_clipboard_text = msg.data['text']
-                pyperclip.copy(self.last_clipboard_text)
             elif msg.msg_type == MsgType.POSITION_CHANGE:
                 self.position = Position(int(msg.data['position']))
