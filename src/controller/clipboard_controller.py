@@ -36,4 +36,4 @@ class ClipboardControllerWayland(ClipboardController):
     def paste(self):
         process = subprocess.Popen(['wl-paste'], stdout=subprocess.PIPE)
         stdout, stderr = process.communicate()
-        return stdout.decode('utf-8')
+        return stdout.decode('utf-8').strip()
