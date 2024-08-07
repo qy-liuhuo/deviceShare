@@ -1,4 +1,4 @@
-from evdev import UInput, ecodes
+from evdev import UInput, ecodes, AbsInfo
 import time
 
 # 定义鼠标设备的能力
@@ -8,9 +8,11 @@ capabilities = {
         ecodes.BTN_RIGHT,
         ecodes.BTN_MIDDLE,
     ],
+    ecodes.EV_ABS: [
+        (ecodes.ABS_X, AbsInfo(value=0, min=0, max=1920, fuzz=0, flat=0, resolution=0)),
+        (ecodes.ABS_Y, AbsInfo(value=0, min=0, max=1080, fuzz=0, flat=0, resolution=0)),
+    ],
     ecodes.EV_REL: [
-        ecodes.REL_X,
-        ecodes.REL_Y,
         ecodes.REL_WHEEL,
     ],
 }
@@ -18,10 +20,10 @@ capabilities = {
 # 创建虚拟鼠标设备
 ui = UInput(capabilities, name="virtual_mouse")
 
-# 函数：模拟鼠标移动
-def simulate_mouse_move(dx, dy):
-    ui.write(ecodes.EV_REL, ecodes.REL_X, dx)
-    ui.write(ecodes.EV_REL, ecodes.REL_Y, dy)
+# 函数：模拟鼠标绝对位置移动
+def simulate_mouse_abs_move(x, y):
+    ui.write(ecodes.EV_ABS, ecodes.ABS_X, x)
+    ui.write(ecodes.EV_ABS, ecodes.ABS_Y, y)
     ui.syn()
 
 # 函数：模拟鼠标点击
@@ -40,8 +42,8 @@ def simulate_mouse_wheel(direction):
 
 # 示例：模拟鼠标操作
 try:
-    # 移动鼠标 (相对坐标)
-    simulate_mouse_move(100, 100)
+    # 绝对位置移动鼠标
+    simulate_mouse_abs_move(1000, 500)
     time.sleep(1)
 
     # 左键点击
