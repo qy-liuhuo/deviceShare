@@ -73,7 +73,6 @@ class Client:
         try:
             data = read_data_from_tcp_socket(client_socket)
             msg = Message.from_bytes(data)
-            print(msg)
             if msg.msg_type == MsgType.CLIPBOARD_UPDATE:
                 new_text = self.rsa_util.decrypt(bytes.fromhex(msg.data['text'])).decode()
                 pyperclip.copy(new_text)
@@ -163,6 +162,7 @@ class Client:
                     tcp_client.close()
                     self._mouse.focus = False
             elif msg.msg_type == MsgType.MOUSE_MOVE_TO:  # 跨屏初始位置
+                print("moved into")
                 self._mouse.focus = True
                 self._mouse.move_to((msg.data['x'], msg.data['y']))
             elif msg.msg_type == MsgType.MOUSE_CLICK:
