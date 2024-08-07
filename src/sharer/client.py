@@ -169,6 +169,7 @@ class Client:
                 msg = Message.from_bytes(data)
                 if msg.msg_type == MsgType.MOUSE_MOVE:
                     position = self._mouse.move(msg.data['x'], msg.data['y'])
+                    print("moved new position"+str(position))
                     if self.judge_move_out(position[0],
                                            position[1]) and self.be_added and self.server_ip and self._mouse.focus:
                         msg = Message(MsgType.MOUSE_BACK, {"x": position[0], "y": position[1]})
@@ -181,7 +182,7 @@ class Client:
                     self._mouse.focus = True
                     self._mouse.move_to((msg.data['x'], msg.data['y']))
                 elif msg.msg_type == MsgType.MOUSE_CLICK:
-                    self._mouse.click(get_click_button(msg.data['button']), msg.data['pressed'])
+                    self._mouse.click(msg.data['button'], msg.data['pressed'])
                 elif msg.msg_type == MsgType.KEYBOARD_CLICK:
                     self._keyboard.click(msg.data['type'], msg.data['keyData'])
                 elif msg.msg_type == MsgType.MOUSE_SCROLL:

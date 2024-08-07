@@ -101,16 +101,25 @@ class MouseController:
     def click(self, button, pressed):
         if is_wayland():
             from evdev import ecodes
+            def get_evdev_button(button):
+                if button == 'Button.left':
+                    return ecodes.BTN_LEFT
+                elif button == 'Button.right':
+                    return ecodes.BTN_RIGHT
+                elif button == 'Button.middle':
+                    return ecodes.BTN_MIDDLE
+                return ecodes.BTN_LEFT
+
             if pressed:
-                self.ui.write(ecodes.EV_KEY, button, 1)
+                self.ui.write(ecodes.EV_KEY, get_evdev_button(button), 1)
             else:
-                self.ui.write(ecodes.EV_KEY, button, 0)
+                self.ui.write(ecodes.EV_KEY, get_evdev_button(button), 0)
             self.ui.syn()
         else:
             if pressed:
-                self.__mouse.press(button)
+                self.__mouse.press(get_click_button(button))
             else:
-                self.__mouse.release(button)
+                self.__mouse.release(get_click_button(button))
 
     def run_mouse_listener(self, mouse, on_click, on_move, on_scroll, suppress=False):
         from evdev import InputDevice, categorize, ecodes, list_devices, UInput
