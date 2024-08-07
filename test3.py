@@ -69,3 +69,4 @@ try:
 finally:
     # 关闭虚拟设备
     ui.close()
+
