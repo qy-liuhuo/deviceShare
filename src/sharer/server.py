@@ -1,139 +1,299 @@
+import platform
 import socket
+import sys
 import threading
 import time
+import uuid
+from queue import Queue
 
 from screeninfo import get_monitors
 import pynput
+from zeroconf import ServiceInfo, Zeroconf
 
-
+from src.controller.clipboard_controller import get_clipboard_controller
 from src.controller.keyboard_controller import KeyboardController, KeyFactory
-from src.device.device_manager import DeviceManager
+from src.device.device import Device
+from src.screen_manager.gui import Gui, GuiMessage
 from src.screen_manager.position import Position
 from src.my_socket.message import Message, MsgType
 from src.controller.mouse_controller import MouseController
-from src.my_socket.my_socket import Udp, Tcp, UDP_PORT, TCP_PORT
-import pyperclip
+from src.my_socket.my_socket import Udp, UDP_PORT, TCP_PORT, read_data_from_tcp_socket, send_data_to_tcp_socket, \
+    TcpClient
+
+from src.screen_manager.screen import Screen
+from src.sharer.client_state import ClientState
+from src.utils.device_storage import DeviceStorage, create_table, delete_table
+from src.utils.key_storage import KeyStorage
+from src.utils.net import get_local_ip
+from src.utils.rsautil import encrypt
 
 
 class Server:
     def __init__(self):
-        self.udp = Udp(UDP_PORT)
-        self.udp.allow_broadcast()
-        self.tcp = Tcp(TCP_PORT)
-        self.device_manager = DeviceManager()
+        create_table()
+        self.init_screen_info()
+        self.clipboard_controller = get_clipboard_controller()
+        self.server_queue = Queue()
+        self.request_queue = Queue()
+        self.response_queue = Queue()
+        self.thread_list = []
+        self.update_flag = threading.Event()
+        self.manager_gui = Gui(update_flag=self.update_flag, request_queue=self.request_queue,
+                               response_queue=self.response_queue)
+        self.cur_device = None
         self._mouse = MouseController()
         self._keyboard = KeyboardController()
         self._keyboard_factory = KeyFactory()
         self.lock = threading.Lock()
-        self.start_event_processor()
-        self.start_msg_listener()
+        self.udp = Udp(UDP_PORT)
+        self.udp.allow_broadcast()
+        # self.tcp = Tcp(TCP_PORT)
+        self.tcp_server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.tcp_server.bind(("0.0.0.0", TCP_PORT))
+        self.tcp_server.listen(10)
+        self.thread_list.append(threading.Thread(target=self.tcp_listener))
+        self.thread_list.append(threading.Thread(target=self.msg_receiver))
+        self.service_register()
+        self.thread_list.append(threading.Thread(target=self.clipboard_listener))
+        self.thread_list.append(threading.Thread(target=self.valid_checker))
+        self.thread_list.append(threading.Thread(target=self.main_loop))
+        self.thread_list.append(threading.Thread(target=self.update_position))
+        self.start_all_threads()
+        self.manager_gui.run()
+        delete_table()
+
+    def valid_checker(self):
+        device_storage = DeviceStorage()
+        try:
+            while True:
+                devices = device_storage.get_all_devices()
+                for device in devices:
+                    if not device.check_valid():
+                        device_storage.delete_device(device.device_id)
+                        self.manager_gui.device_offline_notify(device.device_id)
+                        if self.cur_device == device:
+                            self.cur_device = None
+                        self.manager_gui.update_devices()
+                time.sleep(5)
+        except InterruptedError:
+            device_storage.close()
+
+    def start_all_threads(self):
+        for thread in self.thread_list:
+            thread.setDaemon(True)
+            thread.start()
+
+    def init_screen_info(self):
         monitors = get_monitors()
         self.screen_size_width = monitors[0].width
         self.screen_size_height = monitors[0].height
-        self.last_clipboard_text = ''
-        threading.Thread(target=self.clipboard_listener).start()
-        threading.Thread(target=self.main_loop).start()
 
-
+    def service_register(self):
+        info = ServiceInfo(type_="_deviceShare._tcp.local.", name="_deviceShare._tcp.local.",
+                           addresses=[socket.inet_aton(get_local_ip())], port=UDP_PORT, weight=0, priority=0,
+                           properties={"tcp_port": str(TCP_PORT), "udp_port": str(UDP_PORT)})
+        self.zeroconf = Zeroconf()
+        self.zeroconf.register_service(info)
 
     def msg_receiver(self):
-        while True:
-            data, addr = self.udp.recv()
-            msg = Message.from_bytes(data)
-            if msg.msg_type == MsgType.DEVICE_ONLINE:  # 客户端上线及心跳
-                position = self.device_manager.refresh(ip=addr[0], screen_width=msg.data[0], screen_height=msg.data[1])  # 临时测试
-                # self.cur_client = addr  # 临时测试
-                self.udp.sendto(Message(MsgType.SUCCESS_JOIN,
-                                        f'{socket.gethostbyname(socket.gethostname())},{UDP_PORT},{int(position)}').to_bytes(), addr)
+        device_storage = DeviceStorage()
+        try:
+            while True:
+                data, addr = self.udp.recv()
+                if data is None:
+                    continue
+                msg = Message.from_bytes(data)
+                if msg.msg_type == MsgType.CLIENT_HEARTBEAT:
+                    device_storage.update_heartbeat(ip=addr[0])
+                elif msg.msg_type == MsgType.CLIPBOARD_UPDATE:
+                    self.clipboard_controller.copy(msg.data['text'])
+                    self.clipboard_controller.update_last_clipboard_text(msg.data['text'])
+        except InterruptedError:
+            device_storage.close()
 
-            elif msg.msg_type == MsgType.CLIPBOARD_UPDATE:
-                self.last_clipboard_text = msg.data
-                pyperclip.copy(msg.data)
-
-    def event_processor(self):
+    def tcp_listener(self):
         while True:
-            data, addr = self.tcp.event_queue.get()
+            client, addr = self.tcp_server.accept()
+            print(f"Connection from {addr}")
+            client_handler = threading.Thread(target=self.handle_client, args=(client, addr), daemon=True)
+            client_handler.start()
+
+    def handle_access(self, access_client_socket, msg, addr):
+        keys_manager = KeyStorage()
+        state = ClientState.WAITING_FOR_KEY
+        random_key = None
+        new_device = Device(ip=addr[0], screen=None, position=Position.NONE)
+        if msg.msg_type == MsgType.SEND_PUBKEY and state == ClientState.WAITING_FOR_KEY:
+            client_id = msg.data['device_id']
+            public_key = msg.data['public_key']
+            new_device.pub_key = public_key
+            new_device.device_id = client_id
+            temp = keys_manager.get_key(client_id)
+            if temp is None or temp != public_key:
+                self.manager_gui.device_show_online_require(addr[0])
+                self.manager_gui.request_queue.put(
+                    GuiMessage(GuiMessage.MessageType.ACCESS_REQUIRE, {"device_id": client_id}))
+                result = self.response_queue.get()
+                if result.data['result']:
+                    keys_manager.set_key(client_id, public_key)
+
+                else:
+                    send_data_to_tcp_socket(access_client_socket,
+                                            Message(MsgType.ACCESS_DENY, {'result': 'access_deny'}).to_bytes())
+                    return
+            random_key = uuid.uuid1().bytes
+            send_data_to_tcp_socket(access_client_socket, Message(MsgType.KEY_CHECK,
+                                                                  {'key': encrypt(public_key,
+                                                                                  random_key).hex()}).to_bytes())
+            state = ClientState.WAITING_FOR_CHECK
+            data = read_data_from_tcp_socket(access_client_socket)
             msg = Message.from_bytes(data)
-            if msg.msg_type == MsgType.MOUSE_BACK:
+            if msg.msg_type == MsgType.KEY_CHECK_RESPONSE and state == ClientState.WAITING_FOR_CHECK:
+                if msg.data['key'] == random_key.hex():
+                    new_device.screen = Screen(screen_width=msg.data['screen_width'],
+                                               screen_height=msg.data['screen_height'])
+                    device_storage = DeviceStorage()
+                    device_storage.add_device(new_device)  # 同时会更新device的position
+                    device_storage.close()
+                    send_data_to_tcp_socket(access_client_socket, Message(MsgType.ACCESS_ALLOW,
+                                                                          {'position': int(
+                                                                              new_device.position)}).to_bytes())
+                    self.manager_gui.device_online_notify(new_device.device_id)
+                    self.manager_gui.update_devices()
+                    state = ClientState.CONNECT
+                else:
+                    send_data_to_tcp_socket(access_client_socket,
+                                            Message(MsgType.ACCESS_DENY, {'result': 'access_deny'}).to_bytes())
+                    state = ClientState.WAITING_FOR_KEY
+            else:
+                send_data_to_tcp_socket(access_client_socket,
+                                        Message(MsgType.ACCESS_DENY, {'result': 'access_deny'}).to_bytes())
+        else:
+            send_data_to_tcp_socket(access_client_socket,
+                                    Message(MsgType.ACCESS_DENY, {'result': 'access_deny'}).to_bytes())
+
+    def handle_client(self, client_socket, addr):
+        data = read_data_from_tcp_socket(client_socket)
+        msg = Message.from_bytes(data)
+        try:
+            if msg.msg_type == MsgType.SEND_PUBKEY:
+                self.handle_access(client_socket, msg, addr)
+            elif msg.msg_type == MsgType.CLIENT_OFFLINE:
+                device_storage = DeviceStorage()
+                device_storage.delete_device(msg.data['device_id'])
+                device_storage.close()
+                self.manager_gui.device_offline_notify(msg.data['device_id'])
+                if self.cur_device and self.cur_device.device_id == msg.data['device_id']:
+                    self.cur_device = None
+                self.manager_gui.update_devices()
+            elif msg.msg_type == MsgType.MOUSE_BACK:
                 self.lock.acquire()
-                if self.device_manager.cur_device is not None:
-                    device_position = self.device_manager.cur_device.position
-                    self.device_manager.cur_device = None
+                if self.cur_device is not None:
+                    device_position = self.cur_device.position
+                    self.cur_device = None
                     self._mouse.focus = True
                     if device_position == Position.RIGHT:
-                        self._mouse.move_to((self.screen_size_width - 30, msg.data[1]))
+                        self._mouse.move_to((self.screen_size_width - 30, msg.data['y']))
                     elif device_position == Position.LEFT:
-                        self._mouse.move_to((30, msg.data[1]))
+                        self._mouse.move_to((30, msg.data['y']))
                     elif device_position == Position.TOP:
-                        self._mouse.move_to((msg.data[0], 30))
+                        self._mouse.move_to((msg.data['x'], 30))
                     elif device_position == Position.BOTTOM:
-                        self._mouse.move_to((msg.data[0], self.screen_size_height - 30))
+                        self._mouse.move_to((msg.data['x'], self.screen_size_height - 30))
                 self.lock.release()
-
-    def start_msg_listener(self):
-        msg_listener = threading.Thread(target=self.msg_receiver)
-        msg_listener.start()
-        return msg_listener
-
-    def start_event_processor(self):
-        event_processor = threading.Thread(target=self.event_processor)
-        event_processor.start()
-        return event_processor
+                send_data_to_tcp_socket(client_socket, Message(MsgType.TCP_ECHO).to_bytes())
+            elif msg.msg_type == MsgType.CLIPBOARD_UPDATE:
+                self.clipboard_controller.copy(msg.data['text'])
+                self.clipboard_controller.update_last_clipboard_text(msg.data['text'])
+                self.broadcast_clipboard(msg.data['text'])
+        except ConnectionResetError:
+            print(f"Connection from {addr} closed")
+        finally:
+            client_socket.close()
 
     def clipboard_listener(self):
         while True:
-            new_clip_text = pyperclip.paste()
-            if new_clip_text != '' and new_clip_text != self.last_clipboard_text:
-                self.last_clipboard_text = new_clip_text
+            new_clip_text = self.clipboard_controller.paste()
+            if new_clip_text != '' and new_clip_text != self.clipboard_controller.get_last_clipboard_text():
+                self.clipboard_controller.update_last_clipboard_text(new_clip_text)
                 self.broadcast_clipboard(new_clip_text)
             time.sleep(1)
 
     def broadcast_clipboard(self, text):
-        msg = Message(MsgType.CLIPBOARD_UPDATE, text)
-        self.udp.sendto(msg.to_bytes(), ('<broadcast>', UDP_PORT))
+        device_storage = DeviceStorage()
+        for device in device_storage.get_all_devices():
+            text_encrypted = encrypt(device.pub_key, text.encode()).hex()
+            msg = Message(MsgType.CLIPBOARD_UPDATE, {'text': text_encrypted})
+            tcp_client = TcpClient((device.ip, TCP_PORT))
+            tcp_client.send(msg.to_bytes())
+            tcp_client.close()
 
     def add_mouse_listener(self):
         def on_click(x, y, button, pressed):
-            msg = Message(MsgType.MOUSE_CLICK, f"{x},{y},{button},{pressed}")
-            if self.device_manager.cur_device:
-                self.udp.sendto(msg.to_bytes(), self.device_manager.cur_device.get_udp_address())
+            msg = Message(MsgType.MOUSE_CLICK, {'x': x, 'y': y, 'button': str(button), 'pressed': pressed})
+            if self.cur_device:
+                self.udp.sendto(msg.to_bytes(), self.cur_device.get_udp_address())
 
         def on_move(x, y):
             last_pos = self._mouse.get_last_position()
-            msg = Message(MsgType.MOUSE_MOVE, f"{x - last_pos[0]},{y - last_pos[1]}")
-            if self.device_manager.cur_device is None:
+            msg = Message(MsgType.MOUSE_MOVE, {'x': x - last_pos[0], 'y': y - last_pos[1]})
+            if self.cur_device is None:
                 return False
-            if self.device_manager.cur_device:
-                self.udp.sendto(msg.to_bytes(), self.device_manager.cur_device.get_udp_address())
+            if self.cur_device:
+                self.udp.sendto(msg.to_bytes(), self.cur_device.get_udp_address())
             # if self._mouse.get_position()[0] >= self.screen_size.width - 10: # 向右移出
             #     self.udp.sendto(msg.to_bytes(), self.device_manager.cur_device.get_udp_address())
-            if not self._mouse.focus and self._mouse.get_position()[0] <= 200 or self._mouse.get_position()[1] <= 200 or \
-                    self._mouse.get_position()[0] >= self.screen_size_width - 200 or self._mouse.get_position()[
-                1] >= self.screen_size_height - 200:
-                self._mouse.move_to((int(self.screen_size_width / 2), int(self.screen_size_height / 2)))
+            # if not self._mouse.focus and self._mouse.get_position()[0] <= 200 or self._mouse.get_position()[1] <= 200 or \
+            #         self._mouse.get_position()[0] >= self.screen_size_width - 200 or self._mouse.get_position()[1] >= self.screen_size_height - 200:
+            #     self._mouse.move_to((int(self.screen_size_width / 2), int(self.screen_size_height / 2)))
             self._mouse.update_last_position()
 
+        def on_move_linux(dx, dy):
+            if self.cur_device:
+                msg = Message(MsgType.MOUSE_MOVE, {'x': dx, 'y': dy})
+                self.udp.sendto(msg.to_bytes(), self.cur_device.get_udp_address())
+
         def on_scroll(x, y, dx, dy):
-            msg = Message(MsgType.MOUSE_SCROLL, f"{dx},{dy}")
-            if self.device_manager.cur_device:
-                self.udp.sendto(msg.to_bytes(), self.device_manager.cur_device.get_udp_address())
+            msg = Message(MsgType.MOUSE_SCROLL, {'dx': dx, 'dy': dy})
+            if self.cur_device:
+                self.udp.sendto(msg.to_bytes(), self.cur_device.get_udp_address())
 
         mouse_listener = self._mouse.mouse_listener(on_click, on_move, on_scroll, suppress=True)
         mouse_listener.start()
         return mouse_listener
 
+    def add_mouse_listener_linux(self):
+        def on_click(x, y, button, pressed):
+            msg = Message(MsgType.MOUSE_CLICK, {'x': x, 'y': y, 'button': str(button), 'pressed': pressed})
+            if self.cur_device:
+                self.udp.sendto(msg.to_bytes(), self.cur_device.get_udp_address())
+        def on_move_linux(dx, dy):
+            if self.cur_device:
+                msg = Message(MsgType.MOUSE_MOVE, {'x': dx, 'y': dy})
+                self.udp.sendto(msg.to_bytes(), self.cur_device.get_udp_address())
+                return True
+            else:
+                return False
+        def on_scroll(x, y, dx, dy):
+            msg = Message(MsgType.MOUSE_SCROLL, {'dx': dx, 'dy': dy})
+            if self.cur_device:
+                self.udp.sendto(msg.to_bytes(), self.cur_device.get_udp_address())
+
+        self._mouse.mouse_listener_linux(on_click, on_move_linux, on_scroll, suppress=True)
+
+
     def add_keyboard_listener(self):
         def on_press(key):
             data = self._keyboard_factory.input(key)
-            msg = Message(MsgType.KEYBOARD_CLICK, f"press,{data[0]},{data[1]}")
-            if self.device_manager.cur_device:
-                self.udp.sendto(msg.to_bytes(), self.device_manager.cur_device.get_udp_address())
+            msg = Message(MsgType.KEYBOARD_CLICK, {'type': "press", "keyData": (data[0], data[1])})
+            if self.cur_device:
+                self.udp.sendto(msg.to_bytes(), self.cur_device.get_udp_address())
 
         def on_release(key):
             data = self._keyboard_factory.input(key)
-            msg = Message(MsgType.KEYBOARD_CLICK, f"release,{data[0]},{data[1]}")
-            if self.device_manager.cur_device:
-                self.udp.sendto(msg.to_bytes(), self.device_manager.cur_device.get_udp_address())
+            msg = Message(MsgType.KEYBOARD_CLICK, {'type': "release", "keyData": (data[0], data[1])})
+            if self.cur_device:
+                self.udp.sendto(msg.to_bytes(), self.cur_device.get_udp_address())
 
         keyboard_listener = self._keyboard.keyboard_listener(on_press, on_release)
         keyboard_listener.start()
@@ -150,12 +310,18 @@ class Server:
             return Position.BOTTOM
         return False
 
+    # 待重写
     def update_position(self):
-        self.device_manager.update_device_by_file()
-        for device in self.device_manager.devices:
-            self.udp.sendto(Message(MsgType.POSITION_CHANGE, f'{int(device.position)}').to_bytes(),
-                            device.get_udp_address())
-            print(f'{device.device_ip} position is {device.position}')
+        while True:
+            self.update_flag.wait()
+            device_storage = DeviceStorage()
+            devices = device_storage.get_all_devices()
+            for device in devices:
+                self.udp.sendto(Message(MsgType.POSITION_CHANGE, {'position': device.position}).to_bytes(),
+                                device.get_udp_address())
+            device_storage.close()
+            self.update_flag.clear()
+            time.sleep(1)
 
     def main_loop(self):
         while True:
@@ -164,31 +330,53 @@ class Server:
                     if isinstance(event, pynput.mouse.Events.Move):
                         x, y = event.x, event.y
                         move_out = self.judge_move_out(x, y)
-                        if move_out and self.device_manager.cur_device is None:
+                        if move_out and self.cur_device is None:
                             self._mouse.focus = False
                             self.lock.acquire()
-                            self.device_manager.cur_device = self.device_manager.get_device_by_position(move_out)
+                            device_storage_connect = DeviceStorage()
+                            self.cur_device = device_storage_connect.get_device_by_position(move_out)
+                            if self.cur_device is None:
+                                self.lock.release()
+                                continue
+                            device_storage_connect.close()
                             time.sleep(0.01)  # 不加识别不到？
-                            if self.device_manager.cur_device is not None:
+                            if self.cur_device is not None:
                                 if move_out == Position.LEFT:
-                                    self.udp.sendto(Message(MsgType.MOUSE_MOVE_TO, f'{self.device_manager.cur_device.screen.screen_width-30},{y}').to_bytes(),
-                                                    self.device_manager.cur_device.get_udp_address())
+                                    self.udp.sendto(Message(MsgType.MOUSE_MOVE_TO, {
+                                        'x': self.cur_device.screen.screen_width - 30,
+                                        'y': y}).to_bytes(),
+                                                    self.cur_device.get_udp_address())
                                 elif move_out == Position.RIGHT:
-                                    self.udp.sendto(Message(MsgType.MOUSE_MOVE_TO, f'{30},{y}').to_bytes(),
-                                                    self.device_manager.cur_device.get_udp_address())
+                                    self.udp.sendto(Message(MsgType.MOUSE_MOVE_TO, {'x': 30, 'y': y}).to_bytes(),
+                                                    self.cur_device.get_udp_address())
                                 elif move_out == Position.TOP:
-                                    self.udp.sendto(Message(MsgType.MOUSE_MOVE_TO, f'{x},{self.device_manager.cur_device.screen.screen_height-30}').to_bytes(),
-                                                    self.device_manager.cur_device.get_udp_address())
+                                    self.udp.sendto(Message(MsgType.MOUSE_MOVE_TO,
+                                                            {'x': x,
+                                                             'y': self.cur_device.screen.screen_height - 30}).to_bytes(),
+                                                    self.cur_device.get_udp_address())
                                 elif move_out == Position.BOTTOM:
-                                    self.udp.sendto(Message(MsgType.MOUSE_MOVE_TO, f'{x},{30}').to_bytes(),
-                                                    self.device_manager.cur_device.get_udp_address())
+                                    self.udp.sendto(Message(MsgType.MOUSE_MOVE_TO,
+                                                            {'x': x, 'y': 30}).to_bytes(),
+                                                    self.cur_device.get_udp_address())
                                 self._mouse.move_to((int(self.screen_size_width / 2), int(self.screen_size_height / 2)))
                                 self.lock.release()
                                 break
 
             if not self._mouse.focus:
-                mouse_listener = self.add_mouse_listener()
-                keyboard_listener = self.add_keyboard_listener()
-                mouse_listener.join()
-                keyboard_listener.stop()  # 鼠标监听结束后关闭键盘监听
-                self._mouse.focus = True
+                if platform.system().lower() == "linux":
+                    keyboard_listener = self.add_keyboard_listener()
+                    self.add_mouse_listener_linux()
+                    keyboard_listener.stop()
+                    self._mouse.focus = True
+                else:
+                    mouse_listener = self.add_mouse_listener()
+                    keyboard_listener = self.add_keyboard_listener()
+                    mouse_listener.join()
+                    keyboard_listener.stop()  # 鼠标监听结束后关闭键盘监听
+                    self._mouse.focus = True
+
+    def close(self):
+        self.udp.close()
+        # self.tcp.close()
+        self.zeroconf.unregister_all_services()
+        self.zeroconf.close()
