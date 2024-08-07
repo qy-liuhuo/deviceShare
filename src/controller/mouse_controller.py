@@ -85,7 +85,8 @@ class MouseController:
             from evdev import ecodes
             self.ui.write(ecodes.EV_REL, ecodes.REL_X, dx)
             self.ui.write(ecodes.EV_REL, ecodes.REL_Y, dy)
-            return (self.position[0] + dx, self.position[1] + dy)
+            self.position = (self.position[0] + dx, self.position[1] + dy)
+            return self.position 
         else:
             self.__mouse.move(dx, dy)
             return self.__mouse.position
@@ -217,15 +218,13 @@ class MouseController:
         self.stop_event_put.set()
         for i in self.event_puter:
             i.join()
-        print("stop")
-
 
 
     def mouse_listener_linux(self, on_click, on_move, on_scroll, suppress=False):
         self.stop_event = threading.Event()
         self.listener = []
         for mouse in self.get_mouse_devices():
-            print(f"监听设备: {mouse.name} at {mouse.path}")
+            # print(f"监听设备: {mouse.name} at {mouse.path}")
             self.listener.append(threading.Thread(target=self.run_mouse_listener,
                                                   args=(mouse, on_click, on_move, on_scroll, suppress)))
         for i in self.listener:
