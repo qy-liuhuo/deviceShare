@@ -335,46 +335,49 @@ class Server:
     def main_loop(self):
         if platform.system().lower() == "linux" and is_wayland():
             while True:
-                stop_event = threading.Event()
-                self._mouse.update_position_by_listeners(stop_event)
-                while True:
-                    if self._mouse.position is None:
-                        continue
-                    x,y = self._mouse.position
-                    print(x,y)
-                    move_out = self.judge_move_out(x, y)
-                    if move_out and self.cur_device is None:
-                        self._mouse.focus = False
-                        self.lock.acquire()
-                        device_storage_connect = DeviceStorage()
-                        self.cur_device = device_storage_connect.get_device_by_position(move_out)
-                        if self.cur_device is None:
-                            self.lock.release()
+                self._mouse.update_position_by_listeners()
+                try:
+                    while True:
+                        if self._mouse.position is None:
                             continue
-                        device_storage_connect.close()
-                        time.sleep(0.01)
-                        if self.cur_device is not None:
-                            if move_out == Position.LEFT:
-                                self.udp.sendto(Message(MsgType.MOUSE_MOVE_TO, {
-                                    'x': self.cur_device.screen.screen_width - 30,
-                                    'y': y}).to_bytes(),
-                                                self.cur_device.get_udp_address())
-                            elif move_out == Position.RIGHT:
-                                self.udp.sendto(Message(MsgType.MOUSE_MOVE_TO, {'x': 30, 'y': y}).to_bytes(),
-                                                self.cur_device.get_udp_address())
-                            elif move_out == Position.TOP:
-                                self.udp.sendto(Message(MsgType.MOUSE_MOVE_TO,
-                                                        {'x': x,
-                                                         'y': self.cur_device.screen.screen_height - 30}).to_bytes(),
-                                                self.cur_device.get_udp_address())
-                            elif move_out == Position.BOTTOM:
-                                self.udp.sendto(Message(MsgType.MOUSE_MOVE_TO,
-                                                        {'x': x, 'y': 30}).to_bytes(),
-                                                self.cur_device.get_udp_address())
-                            self._mouse.move_to((int(self.screen_size_width / 2), int(self.screen_size_height / 2)))
-                            self.lock.release()
-                            stop_event.set()
-                            break
+                        x,y = self._mouse.position
+                        move_out = self.judge_move_out(x, y)
+                        if move_out and self.cur_device is None:
+                            self._mouse.focus = False
+                            self.lock.acquire()
+                            device_storage_connect = DeviceStorage()
+                            self.cur_device = device_storage_connect.get_device_by_position(move_out)
+                            if self.cur_device is None:
+                                self.lock.release()
+                                continue
+                            device_storage_connect.close()
+                            time.sleep(0.01)
+                            if self.cur_device is not None:
+                                if move_out == Position.LEFT:
+                                    self.udp.sendto(Message(MsgType.MOUSE_MOVE_TO, {
+                                        'x': self.cur_device.screen.screen_width - 30,
+                                        'y': y}).to_bytes(),
+                                                    self.cur_device.get_udp_address())
+                                elif move_out == Position.RIGHT:
+                                    self.udp.sendto(Message(MsgType.MOUSE_MOVE_TO, {'x': 30, 'y': y}).to_bytes(),
+                                                    self.cur_device.get_udp_address())
+                                elif move_out == Position.TOP:
+                                    self.udp.sendto(Message(MsgType.MOUSE_MOVE_TO,
+                                                            {'x': x,
+                                                            'y': self.cur_device.screen.screen_height - 30}).to_bytes(),
+                                                    self.cur_device.get_udp_address())
+                                elif move_out == Position.BOTTOM:
+                                    self.udp.sendto(Message(MsgType.MOUSE_MOVE_TO,
+                                                            {'x': x, 'y': 30}).to_bytes(),
+                                                    self.cur_device.get_udp_address())
+                                self._mouse.wait_for_event_puter_stop()
+                                self._mouse.move_to((int(self.screen_size_width / 2), int(self.screen_size_height / 2)))
+                                self.lock.release()
+                                break
+                        time.sleep(0.1)
+                finally:
+                    self._mouse.wait_for_event_puter_stop()
+                # self._mouse.wait_for_event_puter_stop()
                 if not self._mouse.focus:
                     if platform.system().lower() == "linux":
                         keyboard_listener = self.add_keyboard_listener()

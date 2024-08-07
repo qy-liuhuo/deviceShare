@@ -24,10 +24,10 @@ class MouseController:
         self.focus = True
         self.ui = None
         if is_wayland():
-            from evdev import UInput, ecodes, AbsInfo
+            from evdev import UInput, AbsInfo ,InputDevice, categorize, ecodes, list_devices
             monitors = get_monitors()
             # 定义鼠标设备的能力
-            capabilities = {
+            self.capabilities = {
                 ecodes.EV_KEY: [
                     ecodes.BTN_LEFT,
                     ecodes.BTN_RIGHT,
@@ -45,20 +45,22 @@ class MouseController:
             }
 
             # 创建虚拟鼠标设备
-            self.ui = UInput(capabilities, name="virtual_mouse")
+            self.ui = UInput(self.capabilities, name="virtual_mouse")
             self.position = (0,0)
-            from evdev import InputDevice, categorize, ecodes, list_devices, UInput
-            devices = [InputDevice(path) for path in list_devices()]
-            self.stop_event = threading.Event()
-            self.mouse_devices = []
-            for device in devices:
-                capabilities = device.capabilities()
-                if ecodes.EV_REL in capabilities and ecodes.EV_KEY in capabilities:
-                    if ecodes.REL_X in capabilities[ecodes.EV_REL] and ecodes.REL_Y in capabilities[ecodes.EV_REL]:
-                        if ecodes.BTN_LEFT in capabilities[ecodes.EV_KEY] or ecodes.BTN_RIGHT in capabilities[
-                            ecodes.EV_KEY]:
-                            self.mouse_devices.append(device)
         self.position = None
+
+    def get_mouse_devices(self):
+        from evdev import InputDevice, ecodes, list_devices
+        devices = [InputDevice(path) for path in list_devices()]
+        mouse_devices = []
+        for device in devices:
+            capabilities = device.capabilities()
+            if ecodes.EV_REL in capabilities and ecodes.EV_KEY in capabilities:
+                if ecodes.REL_X in capabilities[ecodes.EV_REL] and ecodes.REL_Y in capabilities[ecodes.EV_REL]:
+                    if ecodes.BTN_LEFT in capabilities[ecodes.EV_KEY] or ecodes.BTN_RIGHT in capabilities[
+                        ecodes.EV_KEY]:
+                        self.mouse_devices.append(device)
+        return mouse_devices 
 
     def update_last_position(self):
         self.last_position = self.get_position()
@@ -83,7 +85,7 @@ class MouseController:
         if is_wayland():
             from evdev import ecodes
             self.ui.write(ecodes.EV_REL, ecodes.REL_X, dx)
-            self.ui.write(ecodes.EVself.mouse_devicesosition[0] + dx, self.position[1] + dy)
+            self.ui.write(ecodes.EV_REL, ecodes.REL_Y, dy)
             return self.position
         else:
             self.__mouse.move(dx, dy)
@@ -100,9 +102,9 @@ class MouseController:
 
     def run_mouse_listener(self, mouse, on_click, on_move, on_scroll, suppress=False):
         from evdev import InputDevice, categorize, ecodes, list_devices, UInput
-        if suppress:
-            mouse.grab()
         try:
+            if suppress:
+                mouse.grab()
             while not self.stop_event.is_set():
                 event = mouse.read_one()  # 非阻塞读取事件
                 if event:
@@ -140,39 +142,64 @@ class MouseController:
         self.pynput_listener = pynput.mouse.Listener(on_click=on_click, on_move=on_move, on_scroll=on_scroll,suppress=suppress)
         return self.pynput_listener
 
-    def update_position_by_listeners(self,stop_put_event:threading.Event):
+    def update_position_by_listeners(self):
         from evdev import ecodes
-        def on_move(mouse,stop_put_event):
-            monitor = get_monitors()[0]
-            while not stop_put_event.is_set():
-                event = mouse.read_one()
-                if event and event.type == ecodes.EV_REL:
-                    if self.position is None:
-                        self.move_to((monitor.width // 2, monitor.height // 2))  # 同时也更新了self.position
-                    if event.code == ecodes.REL_X:
-                        temp = (self.position[0] + event.value, self.position[1] )
-                        if temp[0] < 0:
-                            self.position = (0, temp[1])
-                        if temp[0] > monitor.width:
-                            self.position = (monitor.width, temp[1])
-                    elif event.code == ecodes.REL_Y:
-                        temp = (self.position[0], self.position[1] + event.value)
-                        if temp[1] < 0:
-                            self.position = (temp[0], 0)
-                        if temp[1] > monitor.height:
-                            self.position = (temp[0], monitor.height)
+        monitor = get_monitors()[0]
+        self.stop_event_put = threading.Event()
+        def on_move(mouse):
+            if self.position is None:
+                self.move_to((monitor.width // 2, monitor.height // 2))  # 同时也更新了self.position
+            try:
+                mouse.grab()
+                while not self.stop_event_put.is_set():
+                    dx = 0
+                    dy = 0
+                    for i in range(100):
+                        event = mouse.read_one()
+                        if event:
+                            if event.type == ecodes.EV_REL:
+                                if event.code == ecodes.REL_X:
+                                    self.ui.write(ecodes.EV_REL, ecodes.REL_X, event.value)
+                                    dx += event.value
+                                elif event.code == ecodes.REL_Y:
+                                    dy += event.value
+                                    self.ui.write(ecodes.EV_REL, ecodes.REL_Y, event.value)
+                            else:
+                                self.ui.write(event.type , event.code, event.value)
+                    old_x = self.position[0]
+                    old_y = self.position[1]
+                    new_x = old_x + dx
+                    if new_x < 0:
+                        new_x = 0
+                    elif new_x > monitor.width:
+                        new_x = monitor.width
+                    new_y = old_y + dy
+                    if new_y < 0:
+                        new_y = 0
+                    elif new_y > monitor.height:
+                        new_y = monitor.height
+                    self.position = (new_x,new_y)
+            except Exception as e:
+                print(e)
+            finally:
+                mouse.ungrab()
         self.event_puter = []
         for mouse in self.mouse_devices:
             self.event_puter.append(threading.Thread(target=on_move,
-                                                  args=(mouse,stop_put_event)))
+                                                  args=(mouse,)))
         for i in self.event_puter:
             i.start()
 
-
+    def wait_for_event_puter_stop(self):
+        self.stop_event_put.set()
+        for i in self.event_puter:
+            i.join()
+        print("stop")
 
 
 
     def mouse_listener_linux(self, on_click, on_move, on_scroll, suppress=False):
+        self.stop_event = threading.Event()
         self.listener = []
         for mouse in self.mouse_devices:
             print(f"监听设备: {mouse.name} at {mouse.path}")

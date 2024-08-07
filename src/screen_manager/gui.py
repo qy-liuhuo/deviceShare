@@ -3,7 +3,7 @@ import json
 import sys
 import copy
 import time
-
+import qt_material
 from PyQt5 import QtCore, QtWidgets
 from PyQt5.QtCore import QStringListModel, Qt, QTimer
 from PyQt5.QtWidgets import QApplication, QMainWindow, QAction, QMenu, QMessageBox, QToolBar, QLabel, QVBoxLayout, \
@@ -12,7 +12,6 @@ from PyQt5.QtWidgets import QApplication, QMainWindow, QAction, QMenu, QMessageB
 from PyQt5.QtGui import QIcon, QPixmap, QColor, QBrush, QPalette, QStandardItem, QStandardItemModel, QFont, QPainter, \
     QPainterPath, QCursor
 from PyQt5.QtGui import QIcon, QPixmap, QColor
-import qt_material
 from src.screen_manager.position import Position
 from src.utils.device_storage import DeviceStorage
 from src.utils.key_storage import KeyStorage
