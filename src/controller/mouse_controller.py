@@ -91,13 +91,26 @@ class MouseController:
             return self.__mouse.position
 
     def scroll(self, dx, dy):
-        self.__mouse.scroll(dx, dy)
+        if is_wayland():
+            from evdev import ecodes
+            self.ui.write(ecodes.EV_REL, ecodes.REL_WHEEL, dy)
+        else:
+            self.__mouse.scroll(dx, dy)
+
 
     def click(self, button, pressed):
-        if pressed:
-            self.__mouse.press(button)
+        if is_wayland():
+            from evdev import ecodes
+            if pressed:
+                self.ui.write(ecodes.EV_KEY, button, 1)
+            else:
+                self.ui.write(ecodes.EV_KEY, button, 0)
+            self.ui.syn()
         else:
-            self.__mouse.release(button)
+            if pressed:
+                self.__mouse.press(button)
+            else:
+                self.__mouse.release(button)
 
     def run_mouse_listener(self, mouse, on_click, on_move, on_scroll, suppress=False):
         from evdev import InputDevice, categorize, ecodes, list_devices, UInput
