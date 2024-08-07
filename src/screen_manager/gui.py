@@ -3,7 +3,7 @@ import json
 import sys
 import copy
 import time
-
+import qt_material
 from PyQt5 import QtCore, QtWidgets
 from PyQt5.QtCore import QStringListModel, Qt, QTimer
 from PyQt5.QtWidgets import QApplication, QMainWindow, QAction, QMenu, QMessageBox, QToolBar, QLabel, QVBoxLayout, \
@@ -12,7 +12,6 @@ from PyQt5.QtWidgets import QApplication, QMainWindow, QAction, QMenu, QMessageB
 from PyQt5.QtGui import QIcon, QPixmap, QColor, QBrush, QPalette, QStandardItem, QStandardItemModel, QFont, QPainter, \
     QPainterPath, QCursor
 from PyQt5.QtGui import QIcon, QPixmap, QColor
-import qt_material
 from src.screen_manager.position import Position
 from src.utils.device_storage import DeviceStorage
 from src.utils.key_storage import KeyStorage
@@ -354,6 +353,10 @@ class MainWindow(QMainWindow):
         self.setWindowIcon(
             QIcon("./resources/devicelink.ico"))  # 确保你的项目目录下有一个icon.png文件
         self.resize(1280, 1000)
+        qr = self.frameGeometry()  # 获取对话框的几何框架
+        cp = QApplication.primaryScreen().availableGeometry().center()  # 获取屏幕中心点
+        qr.moveCenter(cp)  # 将对话框几何框架的中心移动到屏幕中心
+        self.move(qr.topLeft())  # 将对话框的左上角移动到新的位置
         menubar = self.menuBar()
         authorization_list = menubar.addMenu('授权列表')
         show_list = QAction('授权列表', self)
