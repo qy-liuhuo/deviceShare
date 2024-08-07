@@ -1,8 +1,12 @@
+import os
 import platform
 import threading
 import time
 
 import pynput
+from screeninfo import get_monitors
+
+
 class MouseController:
 
     def __init__(self):
@@ -15,6 +19,31 @@ class MouseController:
         self.__mouse = pynput.mouse.Controller()
         self.last_position = self.__mouse.position
         self.focus = True
+        self.ui = None
+        if is_wayland():
+            from evdev import UInput, ecodes, AbsInfo
+            monitors = get_monitors()
+            # 定义鼠标设备的能力
+            capabilities = {
+                ecodes.EV_KEY: [
+                    ecodes.BTN_LEFT,
+                    ecodes.BTN_RIGHT,
+                    ecodes.BTN_MIDDLE,
+                ],
+                ecodes.EV_ABS: [
+                    (ecodes.ABS_X, AbsInfo(value=0, min=0, max=monitors[0].width, fuzz=0, flat=0, resolution=0)),
+                    (ecodes.ABS_Y, AbsInfo(value=0, min=0, max=monitors[0].height, fuzz=0, flat=0, resolution=0)),
+                ],
+                ecodes.EV_REL: [
+                    ecodes.REL_X,
+                    ecodes.REL_Y,
+                    ecodes.REL_WHEEL,
+                ],
+            }
+
+            # 创建虚拟鼠标设备
+            self.ui = UInput(capabilities, name="virtual_mouse")
+            self.position = (0,0)
 
 
     def update_last_position(self):
@@ -27,11 +56,26 @@ class MouseController:
         return self.__mouse.position
 
     def move_to(self, position: tuple):
-        self.__mouse.position = position
+        if is_wayland():
+            from evdev import ecodes
+            self.ui.write(ecodes.EV_ABS, ecodes.ABS_X, position[0])
+            self.ui.write(ecodes.EV_ABS, ecodes.ABS_Y, position[1])
+            self.ui.syn()
+            self.position = position
+        else:
+            self.__mouse.position = position
 
     def move(self, dx, dy):
-        self.__mouse.move(dx, dy)
-        return self.__mouse.position
+        if is_wayland():
+            from evdev import ecodes
+            self.ui.write(ecodes.EV_REL, ecodes.REL_X, dx)
+            self.ui.write(ecodes.EV_REL, ecodes.REL_Y, dy)
+            self.ui.syn()
+            self.position = (self.position[0] + dx, self.position[1] + dy)
+            return self.position
+        else:
+            self.__mouse.move(dx, dy)
+            return self.__mouse.position
 
     def scroll(self, dx, dy):
         self.__mouse.scroll(dx, dy)
@@ -119,3 +163,6 @@ def get_click_button(btn: str):
     elif btn == 'Button.middle':
         return pynput.mouse.Button.middle
     return pynput.mouse.Button.unknown
+
+def is_wayland():
+    return os.getenv('WAYLAND_DISPLAY') is not None

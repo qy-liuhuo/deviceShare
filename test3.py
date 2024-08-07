@@ -1,3 +1,5 @@
+import os
+
 from evdev import UInput, ecodes, AbsInfo
 import time
 
@@ -39,6 +41,8 @@ def simulate_mouse_wheel(direction):
     ui.write(ecodes.EV_REL, ecodes.REL_WHEEL, direction)
     ui.syn()
     time.sleep(0.1)
+
+
 
 # 示例：模拟鼠标操作
 try:
