@@ -85,7 +85,7 @@ class MouseController:
             from evdev import ecodes
             self.ui.write(ecodes.EV_REL, ecodes.REL_X, dx)
             self.ui.write(ecodes.EV_REL, ecodes.REL_Y, dy)
-            return self.position
+            return (self.position[0] + dx, self.position[1] + dy)
         else:
             self.__mouse.move(dx, dy)
             return self.__mouse.position

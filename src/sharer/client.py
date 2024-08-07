@@ -169,7 +169,6 @@ class Client:
                 msg = Message.from_bytes(data)
                 if msg.msg_type == MsgType.MOUSE_MOVE:
                     position = self._mouse.move(msg.data['x'], msg.data['y'])
-                    print("moved new position"+str(position))
                     if self.judge_move_out(position[0],
                                            position[1]) and self.be_added and self.server_ip and self._mouse.focus:
                         msg = Message(MsgType.MOUSE_BACK, {"x": position[0], "y": position[1]})
