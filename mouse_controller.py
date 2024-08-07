@@ -106,11 +106,19 @@ class MouseController:
 
 if __name__ == '__main__':
 
-    mouseController = MouseController()
-    mouseController.mouse_listener(None, None, None, suppress=True)
-    for i in range(10):
-        mouseController.click('Button.left', 'press')
-        time.sleep(0.01)
-        mouseController.click('Button.left', 'release')
-        time.sleep(1)
-    mouseController.stop_listener()
+    # mouseController = MouseController()
+    # mouseController.mouse_listener(None, None, None, suppress=True)
+    # for i in range(10):
+    #     mouseController.click('Button.left', 'press')
+    #     time.sleep(0.01)
+    #     mouseController.click('Button.left', 'release')
+    #     time.sleep(1)
+    # mouseController.stop_listener()
+    ui = UInput()
+    def move_mouse(dx,dy):
+        ui.write(ecodes.EV_REL, ecodes.REL_X, dx)
+        ui.write(ecodes.EV_REL, ecodes.REL_Y, dy)
+        ui.syn()
+    
+    move_mouse(100, 100)
+    ui.close()

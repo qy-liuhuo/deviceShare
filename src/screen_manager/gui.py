@@ -373,11 +373,18 @@ class MainWindow(QMainWindow):
 
     def ask_access_require(self, id):
         self.show()
-        reply = QMessageBox.information(None,
-                                        "连接请求处理",
-                                        "是否允许设备" + id + "连接？",
-                                        QMessageBox.Yes | QMessageBox.No)
-        self.hide()
+        msgBox = QMessageBox()
+        msgBox.setIcon(QMessageBox.Question)
+        msgBox.setWindowTitle( "连接请求处理")
+        msgBox.setText("是否允许设备" + id + "连接？")
+        msgBox.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+        msgBox.setStyleSheet("QMessageBox { background-color: #000000 !important}")
+        reply = msgBox.exec_() 
+        # msgBox.Question(None,
+        #                             "连接请求处理",
+        #                             "是否允许设备" + id + "连接？",
+        #                             QMessageBox.Yes | QMessageBox.No)
+        # self.hide()
         return reply == QMessageBox.Yes
 
     def set_configure_interface(self, configure_interface):
@@ -388,7 +395,7 @@ class Gui:
     def __init__(self, update_flag, request_queue=None, response_queue=None):
         self.app = QApplication(sys.argv)
         self.mainWin = MainWindow()
-        qt_material.apply_stylesheet(self.app, theme='dark_blue.xml')
+        qt_material.apply_stylesheet(self.app, theme='light_blue.xml')
         self.trayIcon = QSystemTrayIcon(self.mainWin)
         self.initTrayIcon()
         self.request_queue = request_queue
