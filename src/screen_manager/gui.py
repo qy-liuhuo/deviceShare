@@ -354,6 +354,10 @@ class MainWindow(QMainWindow):
         self.setWindowIcon(
             QIcon("./resources/devicelink.ico"))  # 确保你的项目目录下有一个icon.png文件
         self.resize(1280, 1000)
+        qr = self.frameGeometry()  # 获取对话框的几何框架
+        cp = QApplication.primaryScreen().availableGeometry().center()  # 获取屏幕中心点
+        qr.moveCenter(cp)  # 将对话框几何框架的中心移动到屏幕中心
+        self.move(qr.topLeft())  # 将对话框的左上角移动到新的位置
         menubar = self.menuBar()
         authorization_list = menubar.addMenu('授权列表')
         show_list = QAction('授权列表', self)

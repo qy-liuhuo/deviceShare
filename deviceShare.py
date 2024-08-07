@@ -15,7 +15,10 @@ class RoleSelectionDialog(QDialog):
 
         self.setWindowTitle("身份选择")
         self.layout = QVBoxLayout()
-
+        qr = self.frameGeometry()  # 获取对话框的几何框架
+        cp = QApplication.primaryScreen().availableGeometry().center()  # 获取屏幕中心点
+        qr.moveCenter(cp)  # 将对话框几何框架的中心移动到屏幕中心
+        self.move(qr.topLeft())  # 将对话框的左上角移动到新的位置
         self.server_button = QPushButton("主控机")
         self.client_button = QPushButton("被控机")
 
