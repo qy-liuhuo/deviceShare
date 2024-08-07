@@ -1,8 +1,7 @@
 import sys
 
-
-from PyQt5.QtWidgets import QApplication, QDialog, QVBoxLayout, QPushButton, QLabel
 import qt_material
+from PyQt5.QtWidgets import QApplication, QDialog, QVBoxLayout, QPushButton, QLabel
 from src.sharer.client import Client
 from src.sharer.server import Server
 
@@ -43,7 +42,7 @@ class RoleSelectionDialog(QDialog):
 
 def main():
     app = QApplication(sys.argv)
-    qt_material.apply_stylesheet(app, theme='dark_blue.xml')
+    qt_material.apply_stylesheet(app, theme='light_blue.xml')
     selected_role = 'client'
     # 显示身份选择弹窗
     role_dialog = RoleSelectionDialog()

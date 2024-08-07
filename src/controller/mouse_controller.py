@@ -59,7 +59,6 @@ class MouseController:
                             ecodes.EV_KEY]:
                             self.mouse_devices.append(device)
 
-
     def update_last_position(self):
         self.last_position = self.get_position()
 
@@ -83,9 +82,7 @@ class MouseController:
         if is_wayland():
             from evdev import ecodes
             self.ui.write(ecodes.EV_REL, ecodes.REL_X, dx)
-            self.ui.write(ecodes.EV_REL, ecodes.REL_Y, dy)
-            self.ui.syn()
-            self.position = (self.position[0] + dx, self.position[1] + dy)
+            self.ui.write(ecodes.EVself.mouse_devicesosition[0] + dx, self.position[1] + dy)
             return self.position
         else:
             self.__mouse.move(dx, dy)
@@ -152,11 +149,11 @@ class MouseController:
                         queue.put((event.value, 0))
                     elif event.code == ecodes.REL_Y:
                         queue.put((0, event.value))
-
+        self.event_puter = []
         for mouse in self.mouse_devices:
-            self.listener.append(threading.Thread(target=on_move,
+            self.event_puter.append(threading.Thread(target=on_move,
                                                   args=(mouse,stop_put_event)))
-        for i in self.listener:
+        for i in self.event_puter:
             i.start()
 
 

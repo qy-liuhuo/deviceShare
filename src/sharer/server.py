@@ -343,6 +343,7 @@ class Server:
                 while True:
                     dx, dy = queue.get()
                     position = (position[0] + dx, position[1] + dy)
+                    print(position)
                     move_out = self.judge_move_out(position[0], position[1])
                     if move_out and self.cur_device is None:
                         self._mouse.focus = False
