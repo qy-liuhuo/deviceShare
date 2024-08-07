@@ -6,10 +6,11 @@ import time
 import uuid
 from queue import Queue
 
-from PyQt5.QtCore import QTimer
 from screeninfo import get_monitors
 import pynput
 from zeroconf import ServiceInfo, Zeroconf
+
+from src.controller.clipboard_controller import get_clipboard_controller
 from src.controller.keyboard_controller import KeyboardController, KeyFactory
 from src.device.device import Device
 from src.screen_manager.gui import Gui, GuiMessage
@@ -18,7 +19,6 @@ from src.my_socket.message import Message, MsgType
 from src.controller.mouse_controller import MouseController
 from src.my_socket.my_socket import Udp, UDP_PORT, TCP_PORT, read_data_from_tcp_socket, send_data_to_tcp_socket, \
     TcpClient
-import pyperclip
 
 from src.screen_manager.screen import Screen
 from src.sharer.client_state import ClientState
@@ -32,6 +32,7 @@ class Server:
     def __init__(self):
         create_table()
         self.init_screen_info()
+        self.clipboard_controller = get_clipboard_controller()
         self.server_queue = Queue()
         self.request_queue = Queue()
         self.response_queue = Queue()
@@ -52,7 +53,6 @@ class Server:
         self.tcp_server.listen(10)
         self.thread_list.append(threading.Thread(target=self.tcp_listener))
         self.thread_list.append(threading.Thread(target=self.msg_receiver))
-        self.last_clipboard_text = ''
         self.service_register()
         self.thread_list.append(threading.Thread(target=self.clipboard_listener))
         self.thread_list.append(threading.Thread(target=self.valid_checker))
@@ -106,8 +106,8 @@ class Server:
                 if msg.msg_type == MsgType.CLIENT_HEARTBEAT:
                     device_storage.update_heartbeat(ip=addr[0])
                 elif msg.msg_type == MsgType.CLIPBOARD_UPDATE:
-                    self.last_clipboard_text = msg.data['text']
-                    pyperclip.copy(self.last_clipboard_text)
+                    self.clipboard_controller.copy(msg.data['text'])
+                    self.clipboard_controller.update_last_clipboard_text(msg.data['text'])
         except InterruptedError:
             device_storage.close()
 
@@ -203,9 +203,9 @@ class Server:
                 self.lock.release()
                 send_data_to_tcp_socket(client_socket, Message(MsgType.TCP_ECHO).to_bytes())
             elif msg.msg_type == MsgType.CLIPBOARD_UPDATE:
-                self.last_clipboard_text = msg.data['text']
-                pyperclip.copy(self.last_clipboard_text)
-                self.broadcast_clipboard(self.last_clipboard_text)
+                self.clipboard_controller.copy(msg.data['text'])
+                self.clipboard_controller.update_last_clipboard_text(msg.data['text'])
+                self.broadcast_clipboard(msg.data['text'])
         except ConnectionResetError:
             print(f"Connection from {addr} closed")
         finally:
@@ -213,9 +213,9 @@ class Server:
 
     def clipboard_listener(self):
         while True:
-            new_clip_text = pyperclip.paste()
-            if new_clip_text != '' and new_clip_text != self.last_clipboard_text:
-                self.last_clipboard_text = new_clip_text
+            new_clip_text = self.clipboard_controller.paste()
+            if new_clip_text != '' and new_clip_text != self.clipboard_controller.get_last_clipboard_text():
+                self.clipboard_controller.update_last_clipboard_text(new_clip_text)
                 self.broadcast_clipboard(new_clip_text)
             time.sleep(1)
 

@@ -6,6 +6,8 @@ import time
 import pynput
 from screeninfo import get_monitors
 
+from src.utils.plantform import is_wayland
+
 
 class MouseController:
 
@@ -163,6 +165,3 @@ def get_click_button(btn: str):
     elif btn == 'Button.middle':
         return pynput.mouse.Button.middle
     return pynput.mouse.Button.unknown
-
-def is_wayland():
-    return os.getenv('WAYLAND_DISPLAY') is not None
