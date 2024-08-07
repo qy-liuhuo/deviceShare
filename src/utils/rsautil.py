@@ -5,11 +5,21 @@ from src.utils.device_name import get_device_name
 
 
 def encrypt(public_key, data: bytes):
-    return rsa.encrypt(data, rsa.PublicKey.load_pkcs1(public_key))
+    public_key = rsa.PublicKey.load_pkcs1(public_key)
+    result = []
+    for n in range(0, len(data), 245):
+        part = data[n:n + 245]
+        result.append(rsa.encrypt(part, public_key))
+    return b''.join(result)
 
 
 def decrypt(private_key, data: bytes):
-    return rsa.decrypt(data, rsa.PrivateKey.load_pkcs1(private_key))
+    private_key = rsa.PrivateKey.load_pkcs1(private_key)
+    result = bytearray()
+    for n in range(0, len(data), 256):
+        part = data[n:n + 256]
+        result.extend(rsa.decrypt(part, private_key))
+    return result.decode()
 
 
 class RsaUtil:
@@ -47,10 +57,18 @@ class RsaUtil:
             f.write(self.private_key.save_pkcs1())
 
     def encrypt(self, data: bytes):
-        return rsa.encrypt(data, self.public_key)
+        result = []
+        for n in range(0, len(data), 245):
+            part = data[n:n+245]
+            result.append(rsa.encrypt(part, self.public_key))
+        return b''.join(result)
 
     def decrypt(self, data: bytes):
-        return rsa.decrypt(data, self.private_key)
+        result = bytearray()
+        for n in range(0, len(data), 256):
+            part = data[n:n+256]
+            result.extend(rsa.decrypt(part, self.private_key))
+        return result
 
     def sign(self, data: bytes):
         return rsa.sign(data, self.private_key, 'SHA-1')
@@ -61,3 +79,17 @@ class RsaUtil:
 
 if __name__ == '__main__':
     rsa_util = RsaUtil()
+    e = rsa_util.encrypt(bytes(('''    def decrypt(self, data: bytes):
+        result = bytearray()
+        for n in range(0, len(data), 256):
+            part = data[n:n+256]
+            result.extend(rsa.decrypt(part, self.private_key))
+        return result.decode()
+
+    def sign(self, data: bytes):
+        return rsa.sign(data, self.private_key, 'SHA-1')
+
+    def verify(self, data: bytes, signature: bytes):
+        return rsa.verify(data, signature, self.public_key)
+    ''').encode()))
+    print(rsa_util.decrypt(e))
