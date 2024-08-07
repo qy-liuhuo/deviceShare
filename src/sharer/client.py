@@ -19,7 +19,7 @@ from src.utils.service_listener import ServiceListener
 
 class Client:
 
-    def __init__(self):
+    def __init__(self,app):
         self.init_screen_info()
         self.clipboard_controller = get_clipboard_controller()
         self.device_id = get_device_name()
@@ -37,7 +37,7 @@ class Client:
         self.server_ip = None
         self.zeroconf = Zeroconf()
         threading.Thread(target=self.wait_for_connect, daemon=True).start()
-        self.gui = ClientGUI()
+        self.gui = ClientGUI(app)
         self.gui.run()
         self.send_offline_msg()
 

@@ -46,13 +46,11 @@ def main():
     role_dialog = RoleSelectionDialog()
     if role_dialog.exec_() == QDialog.Accepted:
         selected_role = role_dialog.selected_role
-    # 销毁 GUI
-    app.exit()
     if selected_role == 'server':
-        Server()
+        Server(app)
     elif selected_role == 'client':
-        Client()
-
+        Client(app)
+    app.exec_()
 
 if __name__ == "__main__":
     main()

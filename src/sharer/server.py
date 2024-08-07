@@ -29,7 +29,7 @@ from src.utils.rsautil import encrypt
 
 
 class Server:
-    def __init__(self):
+    def __init__(self,app):
         create_table()
         self.init_screen_info()
         self.clipboard_controller = get_clipboard_controller()
@@ -38,7 +38,7 @@ class Server:
         self.response_queue = Queue()
         self.thread_list = []
         self.update_flag = threading.Event()
-        self.manager_gui = Gui(update_flag=self.update_flag, request_queue=self.request_queue,
+        self.manager_gui = Gui(app,update_flag=self.update_flag, request_queue=self.request_queue,
                                response_queue=self.response_queue)
         self.cur_device = None
         self._mouse = MouseController()

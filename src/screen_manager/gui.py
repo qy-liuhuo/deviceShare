@@ -392,8 +392,8 @@ class MainWindow(QMainWindow):
 
 
 class Gui:
-    def __init__(self, update_flag, request_queue=None, response_queue=None):
-        self.app = QApplication(sys.argv)
+    def __init__(self,app, update_flag, request_queue=None, response_queue=None):
+        self.app = app
         self.mainWin = MainWindow()
         qt_material.apply_stylesheet(self.app, theme='light_blue.xml')
         self.trayIcon = QSystemTrayIcon(self.mainWin)
