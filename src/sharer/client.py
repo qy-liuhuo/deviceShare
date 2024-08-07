@@ -1,9 +1,9 @@
 import socket
 import threading
 import time
-import pyperclip
-import rsa
 from zeroconf import Zeroconf, ServiceBrowser
+
+from src.controller.clipboard_controller import get_clipboard_controller
 from src.controller.keyboard_controller import KeyboardController
 from src.screen_manager.client_gui import ClientGUI
 from src.screen_manager.position import Position
@@ -21,7 +21,7 @@ class Client:
 
     def __init__(self):
         self.init_screen_info()
-        self.last_clipboard_text = ''
+        self.clipboard_controller = get_clipboard_controller()
         self.device_id = get_device_name()
         self.position = None
         self.udp = Udp(UDP_PORT)
@@ -74,13 +74,12 @@ class Client:
             data = read_data_from_tcp_socket(client_socket)
             msg = Message.from_bytes(data)
             if msg.msg_type == MsgType.CLIPBOARD_UPDATE:
-                self.last_clipboard_text = self.rsa_util.decrypt(bytes.fromhex(msg.data['text']))
-                pyperclip.copy(self.last_clipboard_text.decode())
+                new_text = self.rsa_util.decrypt(bytes.fromhex(msg.data['text'])).decode()
+                self.clipboard_controller.copy(new_text)
         except Exception as e:
             print(e)
         finally:
             client_socket.close()
-
 
     def request_access(self):
         while not self.be_added:
@@ -121,9 +120,9 @@ class Client:
 
     def clipboard_listener(self):
         while True:
-            new_clip_text = pyperclip.paste()
-            if new_clip_text != '' and new_clip_text != self.last_clipboard_text:
-                self.last_clipboard_text = new_clip_text
+            new_clip_text = self.clipboard_controller.paste()
+            if new_clip_text != '' and new_clip_text != self.clipboard_controller.get_last_clipboard_text():
+                self.clipboard_controller.update_last_clipboard_text(new_clip_text)
                 tcp_client = TcpClient((self.server_ip, TCP_PORT))
                 msg = Message(MsgType.CLIPBOARD_UPDATE, {'text': new_clip_text})
                 tcp_client.send(msg.to_bytes())
@@ -163,6 +162,7 @@ class Client:
                     tcp_client.close()
                     self._mouse.focus = False
             elif msg.msg_type == MsgType.MOUSE_MOVE_TO:  # 跨屏初始位置
+                print("moved into")
                 self._mouse.focus = True
                 self._mouse.move_to((msg.data['x'], msg.data['y']))
             elif msg.msg_type == MsgType.MOUSE_CLICK:
@@ -171,8 +171,5 @@ class Client:
                 self._keyboard.click(msg.data['type'], msg.data['keyData'])
             elif msg.msg_type == MsgType.MOUSE_SCROLL:
                 self._mouse.scroll(msg.data['dx'], msg.data['dy'])
-            elif msg.msg_type == MsgType.CLIPBOARD_UPDATE:
-                self.last_clipboard_text = msg.data['text']
-                pyperclip.copy(self.last_clipboard_text)
             elif msg.msg_type == MsgType.POSITION_CHANGE:
                 self.position = Position(int(msg.data['position']))
