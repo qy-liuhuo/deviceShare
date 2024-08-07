@@ -268,6 +268,7 @@ class Server:
             if self.cur_device:
                 self.udp.sendto(msg.to_bytes(), self.cur_device.get_udp_address())
         def on_move_linux(dx, dy):
+            print(dx,dy)
             if self.cur_device:
                 msg = Message(MsgType.MOUSE_MOVE, {'x': dx, 'y': dy})
                 self.udp.sendto(msg.to_bytes(), self.cur_device.get_udp_address())
