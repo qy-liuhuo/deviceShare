@@ -193,6 +193,7 @@ class Client:
             self.udp.close()
 
     def close(self):
+        self.gui.exit()
         self.send_offline_msg()
         self.udp.close()
         self.tcp_server.close()

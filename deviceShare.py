@@ -49,10 +49,14 @@ def main():
     role_dialog = RoleSelectionDialog()
     if role_dialog.exec_() == QDialog.Accepted:
         selected_role = role_dialog.selected_role
-    if selected_role == 'server':
-        Server(app).run()
-    elif selected_role == 'client':
-        Client(app).run()
-
+    try:
+        if selected_role == 'server':
+            Server(app).run()
+        elif selected_role == 'client':
+            Client(app).run()
+    except Exception as e:
+        print(e)
+    finally:
+        app.quit()
 if __name__ == "__main__":
     main()

@@ -385,6 +385,7 @@ class Server:
                     self._mouse.focus = True
 
     def close(self):
+        self.manager_gui.exit()
         delete_table()
         self.udp.close()
         self.tcp_server.close()
