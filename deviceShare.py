@@ -47,10 +47,9 @@ def main():
     if role_dialog.exec_() == QDialog.Accepted:
         selected_role = role_dialog.selected_role
     if selected_role == 'server':
-        Server(app)
+        Server(app).run()
     elif selected_role == 'client':
-        Client(app)
-    app.exec_()
+        Client(app).run()
 
 if __name__ == "__main__":
     main()

@@ -53,14 +53,21 @@ class Server:
         self.tcp_server.listen(10)
         self.thread_list.append(threading.Thread(target=self.tcp_listener))
         self.thread_list.append(threading.Thread(target=self.msg_receiver))
-        self.service_register()
         self.thread_list.append(threading.Thread(target=self.clipboard_listener))
         self.thread_list.append(threading.Thread(target=self.valid_checker))
         self.thread_list.append(threading.Thread(target=self.main_loop))
         self.thread_list.append(threading.Thread(target=self.update_position))
-        self.start_all_threads()
-        self.manager_gui.run()
-        delete_table()
+
+    def run(self):
+        try:
+            self.service_register()
+            self.start_all_threads()
+            self.manager_gui.run()
+        except Exception as e:
+            print(e)
+        finally:
+            self.close()
+
 
     def valid_checker(self):
         device_storage = DeviceStorage()
@@ -110,6 +117,8 @@ class Server:
                     self.clipboard_controller.update_last_clipboard_text(msg.data['text'])
         except InterruptedError:
             device_storage.close()
+        finally:
+            self.udp.close()
 
     def tcp_listener(self):
         while True:
@@ -376,7 +385,8 @@ class Server:
                     self._mouse.focus = True
 
     def close(self):
+        delete_table()
         self.udp.close()
-        # self.tcp.close()
+        self.tcp_server.close()
         self.zeroconf.unregister_all_services()
         self.zeroconf.close()
