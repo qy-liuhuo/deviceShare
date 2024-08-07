@@ -163,6 +163,7 @@ class Client:
                     tcp_client.close()
                     self._mouse.focus = False
             elif msg.msg_type == MsgType.MOUSE_MOVE_TO:  # 跨屏初始位置
+                print("moved into")
                 self._mouse.focus = True
                 self._mouse.move_to((msg.data['x'], msg.data['y']))
             elif msg.msg_type == MsgType.MOUSE_CLICK:
