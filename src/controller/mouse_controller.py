@@ -2,6 +2,7 @@ import os
 import platform
 import threading
 import time
+from queue import Queue
 
 import pynput
 from screeninfo import get_monitors
@@ -46,6 +47,17 @@ class MouseController:
             # 创建虚拟鼠标设备
             self.ui = UInput(capabilities, name="virtual_mouse")
             self.position = (0,0)
+            from evdev import InputDevice, categorize, ecodes, list_devices, UInput
+            devices = [InputDevice(path) for path in list_devices()]
+            self.stop_event = threading.Event()
+            self.mouse_devices = []
+            for device in devices:
+                capabilities = device.capabilities()
+                if ecodes.EV_REL in capabilities and ecodes.EV_KEY in capabilities:
+                    if ecodes.REL_X in capabilities[ecodes.EV_REL] and ecodes.REL_Y in capabilities[ecodes.EV_REL]:
+                        if ecodes.BTN_LEFT in capabilities[ecodes.EV_KEY] or ecodes.BTN_RIGHT in capabilities[
+                            ecodes.EV_KEY]:
+                            self.mouse_devices.append(device)
 
 
     def update_last_position(self):
@@ -130,18 +142,28 @@ class MouseController:
         self.pynput_listener = pynput.mouse.Listener(on_click=on_click, on_move=on_move, on_scroll=on_scroll,suppress=suppress)
         return self.pynput_listener
 
+    def put_move_event_to_queue(self,queue:Queue,stop_put_event:threading.Event):
+        from evdev import ecodes
+        def on_move(mouse,stop_put_event):
+            while not stop_put_event.is_set():
+                event = mouse.read_one()
+                if event and event.type == ecodes.EV_REL:
+                    if event.code == ecodes.REL_X:
+                        queue.put((event.value, 0))
+                    elif event.code == ecodes.REL_Y:
+                        queue.put((0, event.value))
+
+        for mouse in self.mouse_devices:
+            self.listener.append(threading.Thread(target=on_move,
+                                                  args=(mouse,stop_put_event)))
+        for i in self.listener:
+            i.start()
+
+
+
+
+
     def mouse_listener_linux(self, on_click, on_move, on_scroll, suppress=False):
-        from evdev import InputDevice, categorize, ecodes, list_devices, UInput
-        devices = [InputDevice(path) for path in list_devices()]
-        self.stop_event = threading.Event()
-        self.mouse_devices = []
-        for device in devices:
-            capabilities = device.capabilities()
-            if ecodes.EV_REL in capabilities and ecodes.EV_KEY in capabilities:
-                if ecodes.REL_X in capabilities[ecodes.EV_REL] and ecodes.REL_Y in capabilities[ecodes.EV_REL]:
-                    if ecodes.BTN_LEFT in capabilities[ecodes.EV_KEY] or ecodes.BTN_RIGHT in capabilities[
-                        ecodes.EV_KEY]:
-                        self.mouse_devices.append(device)
         self.listener = []
         for mouse in self.mouse_devices:
             print(f"监听设备: {mouse.name} at {mouse.path}")
