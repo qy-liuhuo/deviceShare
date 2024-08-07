@@ -2,8 +2,6 @@ import os
 import platform
 import threading
 import time
-
-import pynput
 import screeninfo
 from screeninfo import get_monitors
 
@@ -13,14 +11,15 @@ from src.utils.plantform import is_wayland
 class MouseController:
 
     def __init__(self):
-        
         # 解决windows下缩放偏移问题
         if platform.system().lower() == 'windows':
             import ctypes
             awareness = ctypes.c_int()
             ctypes.windll.shcore.SetProcessDpiAwareness(2)
-        self.__mouse = pynput.mouse.Controller()
-        self.last_position = self.__mouse.position
+        if not is_wayland():
+            import pynput
+            self.__mouse = pynput.mouse.Controller()
+            self.last_position = self.__mouse.position
         self.focus = True
         self.ui = None
         if is_wayland():
@@ -55,11 +54,11 @@ class MouseController:
         mouse_devices = []
         for device in devices:
             capabilities = device.capabilities()
-            if ecodes.EV_REL in capabilities and ecodes.EV_KEY in capabilities:
+            if ecodes.EV_REL in capabilities and ecodes.EV_KEY in capabilities and "virtual" not in device.name:
                 if ecodes.REL_X in capabilities[ecodes.EV_REL] and ecodes.REL_Y in capabilities[ecodes.EV_REL]:
                     if ecodes.BTN_LEFT in capabilities[ecodes.EV_KEY] or ecodes.BTN_RIGHT in capabilities[
                         ecodes.EV_KEY]:
-                        self.mouse_devices.append(device)
+                        mouse_devices.append(device)
         return mouse_devices 
 
     def update_last_position(self):
@@ -139,6 +138,7 @@ class MouseController:
                 mouse.ungrab()
 
     def mouse_listener(self, on_click, on_move,on_scroll,suppress=False):
+        import pynput
         self.pynput_listener = pynput.mouse.Listener(on_click=on_click, on_move=on_move, on_scroll=on_scroll,suppress=suppress)
         return self.pynput_listener
 
@@ -150,7 +150,7 @@ class MouseController:
             if self.position is None:
                 self.move_to((monitor.width // 2, monitor.height // 2))  # 同时也更新了self.position
             try:
-                mouse.grab()
+                # mouse.grab()
                 while not self.stop_event_put.is_set():
                     dx = 0
                     dy = 0
@@ -159,13 +159,13 @@ class MouseController:
                         if event:
                             if event.type == ecodes.EV_REL:
                                 if event.code == ecodes.REL_X:
-                                    self.ui.write(ecodes.EV_REL, ecodes.REL_X, event.value)
+                                    # self.ui.write(ecodes.EV_REL, ecodes.REL_X, event.value)
                                     dx += event.value
                                 elif event.code == ecodes.REL_Y:
                                     dy += event.value
-                                    self.ui.write(ecodes.EV_REL, ecodes.REL_Y, event.value)
-                            else:
-                                self.ui.write(event.type , event.code, event.value)
+                                    # self.ui.write(ecodes.EV_REL, ecodes.REL_Y, event.value)
+                            # else:
+                            #     self.ui.write(event.type , event.code, event.value)
                     old_x = self.position[0]
                     old_y = self.position[1]
                     new_x = old_x + dx
@@ -182,9 +182,10 @@ class MouseController:
             except Exception as e:
                 print(e)
             finally:
-                mouse.ungrab()
+                # mouse.ungrab()
+                pass
         self.event_puter = []
-        for mouse in self.mouse_devices:
+        for mouse in self.get_mouse_devices():
             self.event_puter.append(threading.Thread(target=on_move,
                                                   args=(mouse,)))
         for i in self.event_puter:
@@ -201,7 +202,7 @@ class MouseController:
     def mouse_listener_linux(self, on_click, on_move, on_scroll, suppress=False):
         self.stop_event = threading.Event()
         self.listener = []
-        for mouse in self.mouse_devices:
+        for mouse in self.get_mouse_devices():
             print(f"监听设备: {mouse.name} at {mouse.path}")
             self.listener.append(threading.Thread(target=self.run_mouse_listener,
                                                   args=(mouse, on_click, on_move, on_scroll, suppress)))
@@ -216,6 +217,7 @@ class MouseController:
 
 
 def get_click_button(btn: str):
+    import pynput
     if btn == 'Button.left':
         return pynput.mouse.Button.left
     elif btn == 'Button.right':
