@@ -168,6 +168,7 @@ class Client:
                     continue
                 msg = Message.from_bytes(data)
                 if msg.msg_type == MsgType.MOUSE_MOVE:
+                    print(msg.data['x'], msg.data['y'])
                     position = self._mouse.move(msg.data['x'], msg.data['y'])
                     if self.judge_move_out(position[0],
                                            position[1]) and self.be_added and self.server_ip and self._mouse.focus:
