@@ -87,7 +87,6 @@ class MouseController:
     def mouse_listener_linux(self, on_click, on_move, on_scroll, suppress=False):
         from evdev import InputDevice, categorize, ecodes, list_devices, UInput
         devices = [InputDevice(path) for path in list_devices()]
-        print(devices)
         self.stop_event = threading.Event()
         self.mouse_devices = []
         for device in devices:
