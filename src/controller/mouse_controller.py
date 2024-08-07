@@ -143,16 +143,24 @@ class MouseController:
     def update_position_by_listeners(self,stop_put_event:threading.Event):
         from evdev import ecodes
         def on_move(mouse,stop_put_event):
+            monitor = get_monitors()[0]
             while not stop_put_event.is_set():
                 event = mouse.read_one()
                 if event and event.type == ecodes.EV_REL:
                     if self.position is None:
-                        monitor = get_monitors()[0]
                         self.move_to((monitor.width // 2, monitor.height // 2))  # 同时也更新了self.position
                     if event.code == ecodes.REL_X:
-                        self.position = (self.position[0] + event.value, self.position[1] )
+                        temp = (self.position[0] + event.value, self.position[1] )
+                        if temp[0] < 0:
+                            self.position = (0, temp[1])
+                        if temp[0] > monitor.width:
+                            self.position = (monitor.width, temp[1])
                     elif event.code == ecodes.REL_Y:
-                        self.position = (self.position[0], self.position[1] + event.value)
+                        temp = (self.position[0], self.position[1] + event.value)
+                        if temp[1] < 0:
+                            self.position = (temp[0], 0)
+                        if temp[1] > monitor.height:
+                            self.position = (temp[0], monitor.height)
         self.event_puter = []
         for mouse in self.mouse_devices:
             self.event_puter.append(threading.Thread(target=on_move,

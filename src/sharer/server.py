@@ -338,7 +338,10 @@ class Server:
                 stop_event = threading.Event()
                 self._mouse.update_position_by_listeners(stop_event)
                 while True:
+                    if self._mouse.position is None:
+                        continue
                     x,y = self._mouse.position
+                    print(x,y)
                     move_out = self.judge_move_out(x, y)
                     if move_out and self.cur_device is None:
                         self._mouse.focus = False
