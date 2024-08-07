@@ -2,9 +2,9 @@ import os
 import platform
 import threading
 import time
-from queue import Queue
 
 import pynput
+import screeninfo
 from screeninfo import get_monitors
 
 from src.utils.plantform import is_wayland
@@ -58,6 +58,7 @@ class MouseController:
                         if ecodes.BTN_LEFT in capabilities[ecodes.EV_KEY] or ecodes.BTN_RIGHT in capabilities[
                             ecodes.EV_KEY]:
                             self.mouse_devices.append(device)
+        self.position = None
 
     def update_last_position(self):
         self.last_position = self.get_position()
@@ -139,16 +140,19 @@ class MouseController:
         self.pynput_listener = pynput.mouse.Listener(on_click=on_click, on_move=on_move, on_scroll=on_scroll,suppress=suppress)
         return self.pynput_listener
 
-    def put_move_event_to_queue(self,queue:Queue,stop_put_event:threading.Event):
+    def update_position_by_listeners(self,stop_put_event:threading.Event):
         from evdev import ecodes
         def on_move(mouse,stop_put_event):
             while not stop_put_event.is_set():
                 event = mouse.read_one()
                 if event and event.type == ecodes.EV_REL:
+                    if self.position is None:
+                        monitor = get_monitors()[0]
+                        self.move_to((monitor.width // 2, monitor.height // 2))  # 同时也更新了self.position
                     if event.code == ecodes.REL_X:
-                        queue.put((event.value, 0))
+                        self.position = (self.position[0] + event.value, self.position[1] )
                     elif event.code == ecodes.REL_Y:
-                        queue.put((0, event.value))
+                        self.position = (self.position[0], self.position[1] + event.value)
         self.event_puter = []
         for mouse in self.mouse_devices:
             self.event_puter.append(threading.Thread(target=on_move,
