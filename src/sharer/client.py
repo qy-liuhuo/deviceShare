@@ -91,7 +91,9 @@ class Client:
             client_socket.close()
 
     def request_access(self):
+
         while not self.be_added:
+
             tcp_client = TcpClient((self.server_ip, TCP_PORT))
             try:
                 msg = Message(MsgType.SEND_PUBKEY,
