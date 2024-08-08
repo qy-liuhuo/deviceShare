@@ -7,8 +7,8 @@ from PyQt5.QtWidgets import QApplication, QSystemTrayIcon, QMenu, QAction, QMain
 
 class ClientGUI:
 
-    def __init__(self):
-        self.app = QApplication(sys.argv)
+    def __init__(self,app):
+        self.app = app
         self.window = QMainWindow()
         self.trayIcon = QSystemTrayIcon(self.window)
         self.trayIcon.setIcon(QIcon("./resources/devicelink_client.png"))
