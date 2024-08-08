@@ -3,12 +3,15 @@ import threading
 import os
 import time
 from src.utils.key_code import Key, KeyCode
+from src.utils.plantform import is_wayland
 
 keyChars = r"1!2@3#4$5%6^7&8*9(0)-_=+[{]}\|/?,<.>".strip()
 _keyChars = {keyChars[i]: keyChars[i + 1] for i in range(0, len(keyChars), 2)}
 def get_keyboard_controller():
-    return KeyboardController()
-
+    if is_wayland():
+        return KeyboardControllerWayland()
+    else:
+        return KeyboardController()
 class KeyFactory:
     keyChars = _keyChars
     keyNames = {'cmd': 'alt', 'alt_l': 'cmd'}

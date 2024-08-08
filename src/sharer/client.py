@@ -4,7 +4,7 @@ import time
 from zeroconf import Zeroconf, ServiceBrowser
 
 from src.controller.clipboard_controller import get_clipboard_controller
-from src.controller.keyboard_controller import KeyboardController
+from src.controller.keyboard_controller import KeyboardController, get_keyboard_controller
 from src.screen_manager.client_gui import ClientGUI
 from src.screen_manager.position import Position
 from src.my_socket.message import Message, MsgType
@@ -32,7 +32,7 @@ class Client:
         self.be_added = False
         self._mouse = MouseController()
         self._mouse.focus = False
-        self._keyboard = KeyboardController()
+        self._keyboard = get_keyboard_controller()
         self.rsa_util = RsaUtil()
         self.server_ip = None
         self.zeroconf = Zeroconf()

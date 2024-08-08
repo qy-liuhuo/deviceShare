@@ -10,7 +10,7 @@ from screeninfo import get_monitors
 from zeroconf import ServiceInfo, Zeroconf
 
 from src.controller.clipboard_controller import get_clipboard_controller
-from src.controller.keyboard_controller import KeyboardController, KeyFactory
+from src.controller.keyboard_controller import KeyboardController, KeyFactory, get_keyboard_controller
 from src.device.device import Device
 from src.screen_manager.gui import Gui, GuiMessage
 from src.screen_manager.position import Position
@@ -42,7 +42,7 @@ class Server:
                                response_queue=self.response_queue)
         self.cur_device = None
         self._mouse = MouseController()
-        self._keyboard = KeyboardController()
+        self._keyboard = get_keyboard_controller()
         self._keyboard_factory = KeyFactory()
         self.lock = threading.Lock()
         self.udp = Udp(UDP_PORT)
@@ -303,10 +303,13 @@ class Server:
             msg = Message(MsgType.KEYBOARD_CLICK, {'type': "release", "keyData": (data[0], data[1])})
             if self.cur_device:
                 self.udp.sendto(msg.to_bytes(), self.cur_device.get_udp_address())
-
-        keyboard_listener = self._keyboard.keyboard_listener(on_press, on_release)
-        keyboard_listener.start()
-        return keyboard_listener
+        if is_wayland():
+            self._keyboard.keyboard_listener(on_press, on_release)
+            return None
+        else:
+            keyboard_listener = self._keyboard.keyboard_listener(on_press, on_release)
+            keyboard_listener.start()
+            return keyboard_listener
 
     def judge_move_out(self, x, y):
         if x <= 5:
@@ -377,19 +380,11 @@ class Server:
                         time.sleep(0.1)
                 finally:
                     self._mouse.wait_for_event_puter_stop()
-                # self._mouse.wait_for_event_puter_stop()
                 if not self._mouse.focus:
-                    if platform.system().lower() == "linux":
-                        keyboard_listener = self.add_keyboard_listener()
-                        self.add_mouse_listener_linux()
-                        keyboard_listener.stop()
-                        self._mouse.focus = True
-                    else:
-                        mouse_listener = self.add_mouse_listener()
-                        keyboard_listener = self.add_keyboard_listener()
-                        mouse_listener.join()
-                        keyboard_listener.stop()  # 鼠标监听结束后关闭键盘监听
-                        self._mouse.focus = True
+                    self.add_keyboard_listener()
+                    self.add_mouse_listener_linux()
+                    self._keyboard.stop_event()
+                    self._mouse.focus = True
         else:
             import pynput
             while True:
