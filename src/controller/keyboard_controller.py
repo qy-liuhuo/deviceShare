@@ -4,13 +4,18 @@ import os
 import time
 from pynput.keyboard import Key, KeyCode
 from src.utils.plantform import is_wayland
+
 keyChars = r"1!2@3#4$5%6^7&8*9(0)-_=+[{]}\|/?,<.>".strip()
 _keyChars = {keyChars[i]: keyChars[i + 1] for i in range(0, len(keyChars), 2)}
+
+
 def get_keyboard_controller():
     if is_wayland():
         return KeyboardControllerWayland()
     else:
         return KeyboardController()
+
+
 class KeyFactory:
     keyChars = _keyChars
     keyNames = {'cmd': 'alt', 'alt_l': 'cmd'}
@@ -73,8 +78,7 @@ class KeyboardController:
 
     def keyboard_listener(self, on_press, on_release):
         import pynput
-        return pynput.keyboard.Listener(suppress=True,on_press=on_press, on_release=on_release)
-
+        return pynput.keyboard.Listener(suppress=True, on_press=on_press, on_release=on_release)
 
 
 class KeyboardControllerWayland(KeyboardController):
@@ -107,7 +111,7 @@ class KeyboardControllerWayland(KeyboardController):
         self.ui.syn()
 
     def click(self, click_type, keyData):
-        key = self.codeConvert.pynput_to_evdev(self.keyFactory.outPut(keyData))
+        key = self.codeConvert.pynput_to_evdev_key(self.keyFactory.outPut(keyData))
         if click_type == 'press':
             self.press(key)
         elif click_type == 'release':
@@ -124,9 +128,9 @@ class KeyboardControllerWayland(KeyboardController):
                     if event.type == ecodes.EV_KEY:
                         key_event = categorize(event)
                         if key_event.keystate == key_event.key_down:
-                            on_press(self.codeConvert.evdev_to_pynput(key_event.keycode))
+                            on_press(self.codeConvert.evdev_to_pynput_key(key_event.keycode))
                         elif key_event.keystate == key_event.key_up:
-                            on_release(self.codeConvert.evdev_to_pynput(key_event.keycode))
+                            on_release(self.codeConvert.evdev_to_pynput_key(key_event.keycode))
                 else:
                     time.sleep(0.01)  # 如果没有事件，休眠一段时间，减少 CPU 使用率
         except KeyboardInterrupt:
