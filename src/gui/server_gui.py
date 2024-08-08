@@ -12,7 +12,7 @@ from PyQt5.QtGui import QIcon, QPixmap, QColor, QBrush, QPalette, QStandardItem,
 from PyQt5.QtGui import QIcon, QPixmap, QColor
 from PIL import Image, ImageDraw, ImageFont
 import qt_material
-from src.screen_manager.position import Position
+from src.gui.position import Position
 from src.utils.device_storage import DeviceStorage
 from src.utils.key_storage import KeyStorage
 
@@ -412,7 +412,7 @@ class MainWindow(QMainWindow):
         self.configure_interface = configure_interface
 
 
-class Gui:
+class ServerGUI:
     def __init__(self, app, update_flag, request_queue=None, response_queue=None):
         self.app = app
         self.mainWin = MainWindow()

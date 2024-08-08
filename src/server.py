@@ -9,17 +9,17 @@ from screeninfo import get_monitors
 from zeroconf import ServiceInfo, Zeroconf
 
 from src.controller.clipboard_controller import get_clipboard_controller
-from src.controller.keyboard_controller import KeyboardController, KeyFactory, get_keyboard_controller
+from src.controller.keyboard_controller import KeyFactory, get_keyboard_controller
 from src.device.device import Device
-from src.screen_manager.gui import Gui, GuiMessage
-from src.screen_manager.position import Position
-from src.my_socket.message import Message, MsgType
+from src.gui.server_gui import ServerGUI, GuiMessage
+from src.gui.position import Position
+from src.communication.message import Message, MsgType
 from src.controller.mouse_controller import MouseController
-from src.my_socket.my_socket import Udp, UDP_PORT, TCP_PORT, read_data_from_tcp_socket, send_data_to_tcp_socket, \
+from src.communication.my_socket import Udp, UDP_PORT, TCP_PORT, read_data_from_tcp_socket, send_data_to_tcp_socket, \
     TcpClient
 
-from src.screen_manager.screen import Screen
-from src.sharer.client_state import ClientState
+from src.gui.screen import Screen
+from src.communication.client_state import ClientState
 from src.utils.device_storage import DeviceStorage, create_table, delete_table
 from src.utils.key_storage import KeyStorage
 from src.utils.net import get_local_ip
@@ -37,8 +37,8 @@ class Server:
         self.response_queue = Queue()
         self.thread_list = []
         self.update_flag = threading.Event()
-        self.manager_gui = Gui(app,update_flag=self.update_flag, request_queue=self.request_queue,
-                               response_queue=self.response_queue)
+        self.manager_gui = ServerGUI(app, update_flag=self.update_flag, request_queue=self.request_queue,
+                                     response_queue=self.response_queue)
         self.cur_device = None
         self._mouse = MouseController()
         self._keyboard = get_keyboard_controller()

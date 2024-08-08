@@ -5,11 +5,11 @@ from zeroconf import Zeroconf, ServiceBrowser
 
 from src.controller.clipboard_controller import get_clipboard_controller
 from src.controller.keyboard_controller import KeyboardController, get_keyboard_controller
-from src.screen_manager.client_gui import ClientGUI
-from src.screen_manager.position import Position
-from src.my_socket.message import Message, MsgType
+from src.gui.client_gui import ClientGUI
+from src.gui.position import Position
+from src.communication.message import Message, MsgType
 from src.controller.mouse_controller import MouseController, get_click_button
-from src.my_socket.my_socket import Udp, TcpClient, UDP_PORT, TCP_PORT, read_data_from_tcp_socket
+from src.communication.my_socket import Udp, TcpClient, UDP_PORT, TCP_PORT, read_data_from_tcp_socket
 from screeninfo import get_monitors
 
 from src.utils.device_name import get_device_name

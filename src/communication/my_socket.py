@@ -1,7 +1,7 @@
 import socket
 import struct
 
-from src.my_socket.message import WRONG_MESSAGE
+from src.communication.message import WRONG_MESSAGE
 
 UDP_PORT = 16666
 TCP_PORT = 16667
