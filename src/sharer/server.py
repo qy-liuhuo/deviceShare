@@ -383,7 +383,7 @@ class Server:
                 if not self._mouse.focus:
                     self.add_keyboard_listener()
                     self.add_mouse_listener_linux()
-                    self._keyboard.stop_event()
+                    self._keyboard.stop_listener()
                     self._mouse.focus = True
         else:
             import pynput
