@@ -2,9 +2,8 @@ import sys
 import threading
 import os
 import time
-from src.utils.key_code import Key, KeyCode
+from pynput.keyboard import Key, KeyCode
 from src.utils.plantform import is_wayland
-
 keyChars = r"1!2@3#4$5%6^7&8*9(0)-_=+[{]}\|/?,<.>".strip()
 _keyChars = {keyChars[i]: keyChars[i + 1] for i in range(0, len(keyChars), 2)}
 def get_keyboard_controller():
@@ -110,7 +109,7 @@ class KeyboardControllerWayland(KeyboardController):
     def click(self, click_type, keyData):
         key = self.codeConvert.pynput_to_evdev(self.keyFactory.outPut(keyData))
         if click_type == 'press':
-            self.press( key)
+            self.press(key)
         elif click_type == 'release':
             self.release(key)
 
