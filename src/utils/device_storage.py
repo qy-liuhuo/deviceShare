@@ -1,8 +1,8 @@
 import sqlite3
 import time
 
-from src.device import device
-from src.device.device import Device
+from src.utils import device
+from src.utils.device import Device
 from src.gui.position import Position
 from src.gui.screen import Screen
 

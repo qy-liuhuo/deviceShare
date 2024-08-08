@@ -10,7 +10,7 @@ from zeroconf import ServiceInfo, Zeroconf
 
 from src.controller.clipboard_controller import get_clipboard_controller
 from src.controller.keyboard_controller import KeyFactory, get_keyboard_controller
-from src.device.device import Device
+from src.utils.device import Device
 from src.gui.server_gui import ServerGUI, GuiMessage
 from src.gui.position import Position
 from src.communication.message import Message, MsgType
