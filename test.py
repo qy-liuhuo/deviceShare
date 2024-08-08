@@ -3,18 +3,7 @@ import time
 
 # 创建一个虚拟输入设备
 capabilities = {
-    ecodes.EV_KEY: [
-        ecodes.KEY_A, ecodes.KEY_B, ecodes.KEY_C,
-        ecodes.KEY_D, ecodes.KEY_E, ecodes.KEY_F,
-        ecodes.KEY_G, ecodes.KEY_H, ecodes.KEY_I,
-        ecodes.KEY_J, ecodes.KEY_K, ecodes.KEY_L,
-        ecodes.KEY_M, ecodes.KEY_N, ecodes.KEY_O,
-        ecodes.KEY_P, ecodes.KEY_Q, ecodes.KEY_R,
-        ecodes.KEY_S, ecodes.KEY_T, ecodes.KEY_U,
-        ecodes.KEY_V, ecodes.KEY_W, ecodes.KEY_X,
-        ecodes.KEY_Y, ecodes.KEY_Z,
-        ecodes.KEY_ENTER, ecodes.KEY_SPACE,
-    ]
+    ecodes.EV_KEY: [code for code in ecodes.ecodes.values() if isinstance(code, int) and code >= ecodes.KEY_ESC and code <= ecodes.KEY_MAX]
 }
 
 ui = UInput(capabilities, name="virtual_keyboard")
