@@ -2,7 +2,9 @@
 
 ## 项目介绍
 
-DeviceShare 是一款跨平台的多主机输入设备共享工具，支持 Windows、Linux、MacOS 等操作系统。通过 DeviceShare，您可以在多台主机之间共享鼠标、键盘、剪贴板等输入设备，实现多台主机之间的输入设备共享。
+DeviceShare 是一款跨平台的多主机输入设备共享工具，支持 Windows、Linux、MacOS 等操作系统,支持在Wayland环境下运行。
+
+通过 DeviceShare，您可以在多台主机之间共享鼠标、键盘、剪贴板等输入设备，实现多台主机之间的输入设备共享。
 
 
 ## 功能特性
@@ -13,6 +15,10 @@ DeviceShare 是一款跨平台的多主机输入设备共享工具，支持 Wind
 4. **键盘共享**：支持键盘在多台主机之间的共享。
 5. **剪贴板共享**：支持剪贴板在多台主机之间的共享。
 6. **屏幕位置配置**：支持配置屏幕位置，方便多台主机之间的切换。
+7. **主机发现机制**：支持自动发现局域网内的主机。
+8. **安全性**：支持公私钥加密机制，支持对剪贴板内容加密传输。
+9. **易用性**：支持一键启动，无需复杂配置。
+10. **开源免费**：支持开源免费使用。
 
 **演示环境**
 ![1719817611466.png](https://img.qylh.xyz/blog/1719817611466.png)
@@ -33,10 +39,10 @@ https://github.com/qy-liuhuo/deviceShare/assets/60374114/1b911b8a-976f-4128-9518
 
 若构建的版本无法支持目标机器，可选择源码运行或自行打包。该方案需具备Python3 环境，具体步骤如下：
 1. 获取项目代码
-2. 使用pip install -r requirements.txt命令安装依赖
-3. 选择执行run_server.py 或 run_client.py
-4. 安装pyinstaller
-5. 使用pyinstaller打包目标程序
+2. 使用`pip install -r requirements.txt`命令安装依赖
+3. 执行`python deviceShare.py`启动程序
+4. 安装`pyinstaller`
+5. 使用`pyinstaller`打包目标程序
 
 6. 注意Kylin操作系统在安装python的evdev依赖时可能出现错误，请选择安装预编译版本evdev-binary，参考 https://python-evdev.readthedocs.io/en/latest/install.html
 
@@ -64,10 +70,10 @@ https://github.com/qy-liuhuo/deviceShare/assets/60374114/1b911b8a-976f-4128-9518
 - [x] 鼠标共享功能
 - [x] 键盘共享功能
 - [x] 剪切板共享功能
-- [ ] 文件拖拽共享功能
-- [ ] 剪切板内容加密传输
+- [x] 剪切板内容加密传输
+- [x] 优化屏幕管理功能
+- [x] 优化代码质量，提升代码可读性，提升软件性能和稳定性
+- [x] 测试更多类型操作系统
+- [x] 优化文档
 - [ ] 解耦各设备共享模块，支持用户自定义开关相关功能
-- [ ] 优化屏幕管理功能
-- [ ] 优化代码质量，提升代码可读性，提升软件性能和稳定性
-- [ ] 测试更多类型操作系统
-- [ ] 优化文档
+- [ ] 文件拖拽共享功能
