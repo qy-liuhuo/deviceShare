@@ -1,26 +1,111 @@
-from evdev import UInput, ecodes
-import time
+from evdev import ecodes as e
+from pynput.keyboard import Key
 
-# 创建一个虚拟输入设备
-capabilities = {
-    ecodes.EV_KEY: [code for code in ecodes.ecodes.values() if isinstance(code, int) and code >= ecodes.KEY_ESC and code <= ecodes.KEY_MAX]
+# 创建 pynput 与 evdev 键码的映射字典
+pynput_to_evdev = {
+    Key.esc: e.KEY_ESC,
+    Key.tab: e.KEY_TAB,
+    Key.enter: e.KEY_ENTER,
+    Key.space: e.KEY_SPACE,
+    Key.backspace: e.KEY_BACKSPACE,
+    Key.caps_lock: e.KEY_CAPSLOCK,
+    Key.shift: e.KEY_LEFTSHIFT,
+    Key.shift_r: e.KEY_RIGHTSHIFT,
+    Key.ctrl: e.KEY_LEFTCTRL,
+    Key.ctrl_r: e.KEY_RIGHTCTRL,
+    Key.alt: e.KEY_LEFTALT,
+    Key.alt_gr: e.KEY_RIGHTALT,
+    Key.cmd: e.KEY_LEFTMETA,
+    Key.cmd_r: e.KEY_RIGHTMETA,
+    Key.up: e.KEY_UP,
+    Key.down: e.KEY_DOWN,
+    Key.left: e.KEY_LEFT,
+    Key.right: e.KEY_RIGHT,
+    Key.page_up: e.KEY_PAGEUP,
+    Key.page_down: e.KEY_PAGEDOWN,
+    Key.home: e.KEY_HOME,
+    Key.end: e.KEY_END,
+    Key.insert: e.KEY_INSERT,
+    Key.delete: e.KEY_DELETE,
+    Key.f1: e.KEY_F1,
+    Key.f2: e.KEY_F2,
+    Key.f3: e.KEY_F3,
+    Key.f4: e.KEY_F4,
+    Key.f5: e.KEY_F5,
+    Key.f6: e.KEY_F6,
+    Key.f7: e.KEY_F7,
+    Key.f8: e.KEY_F8,
+    Key.f9: e.KEY_F9,
+    Key.f10: e.KEY_F10,
+    Key.f11: e.KEY_F11,
+    Key.f12: e.KEY_F12,
+    Key.num_lock: e.KEY_NUMLOCK,
+    Key.print_screen: e.KEY_SYSRQ,
+    Key.scroll_lock: e.KEY_SCROLLLOCK,
+    Key.pause: e.KEY_PAUSE,
+    Key.menu: e.KEY_MENU,
+    'a': e.KEY_A,
+    'b': e.KEY_B,
+    'c': e.KEY_C,
+    'd': e.KEY_D,
+    'e': e.KEY_E,
+    'f': e.KEY_F,
+    'g': e.KEY_G,
+    'h': e.KEY_H,
+    'i': e.KEY_I,
+    'j': e.KEY_J,
+    'k': e.KEY_K,
+    'l': e.KEY_L,
+    'm': e.KEY_M,
+    'n': e.KEY_N,
+    'o': e.KEY_O,
+    'p': e.KEY_P,
+    'q': e.KEY_Q,
+    'r': e.KEY_R,
+    's': e.KEY_S,
+    't': e.KEY_T,
+    'u': e.KEY_U,
+    'v': e.KEY_V,
+    'w': e.KEY_W,
+    'x': e.KEY_X,
+    'y': e.KEY_Y,
+    'z': e.KEY_Z,
+    '1': e.KEY_1,
+    '2': e.KEY_2,
+    '3': e.KEY_3,
+    '4': e.KEY_4,
+    '5': e.KEY_5,
+    '6': e.KEY_6,
+    '7': e.KEY_7,
+    '8': e.KEY_8,
+    '9': e.KEY_9,
+    '0': e.KEY_0,
+    Key.numpad0: e.KEY_KP0,
+    Key.numpad1: e.KEY_KP1,
+    Key.numpad2: e.KEY_KP2,
+    Key.numpad3: e.KEY_KP3,
+    Key.numpad4: e.KEY_KP4,
+    Key.numpad5: e.KEY_KP5,
+    Key.numpad6: e.KEY_KP6,
+    Key.numpad7: e.KEY_KP7,
+    Key.numpad8: e.KEY_KP8,
+    Key.numpad9: e.KEY_KP9,
+    Key.numpad_divide: e.KEY_KPSLASH,
+    Key.numpad_multiply: e.KEY_KPASTERISK,
+    Key.numpad_subtract: e.KEY_KPMINUS,
+    Key.numpad_add: e.KEY_KPPLUS,
+    Key.numpad_enter: e.KEY_KPENTER,
+    Key.numpad_decimal: e.KEY_KPDOT,
 }
 
-ui = UInput(capabilities, name="virtual_keyboard")
+# 将 pynput 键码转换为 evdev 键码的函数
+def pynput_to_evdev_key(key):
+    try:
+        return pynput_to_evdev[key]
+    except KeyError:
+        return None
 
-# 函数：模拟按键
-def simulate_key_press(key_code):
-    ui.write(ecodes.EV_KEY, key_code, 1)  # 按下按键
-    ui.syn()
-    time.sleep(0.1)  # 模拟按键按下的时间
-    ui.write(ecodes.EV_KEY, key_code, 0)  # 松开按键
-    ui.syn()
-
-# 模拟输入 "HELLO"
-keys = [ecodes.KEY_H, ecodes.KEY_E, ecodes.KEY_L, ecodes.KEY_L, ecodes.KEY_O]
-for key in keys:
-    simulate_key_press(key)
-    time.sleep(0.2)  # 模拟每个按键之间的时间间隔
-
-# 关闭虚拟设备
-ui.close()
+# 示例：转换 pynput 的 Key.space 到 evdev 的键码
+key = Key.space
+evdev_key = pynput_to_evdev_key(key)
+print(f'pynput key {key} maps to evdev key {evdev_key}')
