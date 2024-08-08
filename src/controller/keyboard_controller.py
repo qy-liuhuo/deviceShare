@@ -125,8 +125,6 @@ class KeyboardControllerWayland(KeyboardController):
                     if event.type == ecodes.EV_KEY:
                         key_event = categorize(event)
                         if key_event.keystate == key_event.key_down:
-                            print(key_event.keycode)
-                            print(self.codeConvert.evdev_to_pynput(key_event.keycode))
                             on_press(self.codeConvert.evdev_to_pynput(key_event.keycode))
                         elif key_event.keystate == key_event.key_up:
                             on_release(self.codeConvert.evdev_to_pynput(key_event.keycode))

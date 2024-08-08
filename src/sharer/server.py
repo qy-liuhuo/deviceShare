@@ -252,9 +252,9 @@ class Server:
                 self.udp.sendto(msg.to_bytes(), self.cur_device.get_udp_address())
             # if self._mouse.get_position()[0] >= self.screen_size.width - 10: # 向右移出
             #     self.udp.sendto(msg.to_bytes(), self.device_manager.cur_device.get_udp_address())
-            # if not self._mouse.focus and self._mouse.get_position()[0] <= 200 or self._mouse.get_position()[1] <= 200 or \
-            #         self._mouse.get_position()[0] >= self.screen_size_width - 200 or self._mouse.get_position()[1] >= self.screen_size_height - 200:
-            #     self._mouse.move_to((int(self.screen_size_width / 2), int(self.screen_size_height / 2)))
+            if not self._mouse.focus and self._mouse.get_position()[0] <= 200 or self._mouse.get_position()[1] <= 200 or \
+                    self._mouse.get_position()[0] >= self.screen_size_width - 200 or self._mouse.get_position()[1] >= self.screen_size_height - 200:
+                self._mouse.move_to((int(self.screen_size_width / 2), int(self.screen_size_height / 2)))
             self._mouse.update_last_position()
 
         def on_move_linux(dx, dy):
@@ -429,6 +429,7 @@ class Server:
                     if platform.system().lower() == "linux":
                         keyboard_listener = self.add_keyboard_listener()
                         self.add_mouse_listener_linux()
+
                         keyboard_listener.stop()
                         self._mouse.focus = True
                     else:
