@@ -36,16 +36,25 @@ class Client:
         self.rsa_util = RsaUtil()
         self.server_ip = None
         self.zeroconf = Zeroconf()
-        threading.Thread(target=self.wait_for_connect, daemon=True).start()
         self.gui = ClientGUI(app)
-        self.gui.run()
-        self.send_offline_msg()
+
+    def run(self):
+        threading.Thread(target=self.wait_for_connect, daemon=True).start()
+        try:
+            self.gui.run()
+        except Exception as e:
+            print(e)
+        finally:
+            self.close()
+
 
     def send_offline_msg(self):
-        msg = Message(MsgType.CLIENT_OFFLINE, {'device_id': self.device_id})
-        # 使用tcp发送离线消息
-        tcp_client = TcpClient((self.server_ip, TCP_PORT))
-        tcp_client.send(msg.to_bytes())
+        if self.server_ip is not None:
+            msg = Message(MsgType.CLIENT_OFFLINE, {'device_id': self.device_id})
+            # 使用tcp发送离线消息
+            tcp_client = TcpClient((self.server_ip, TCP_PORT))
+            tcp_client.send(msg.to_bytes())
+            tcp_client.close()
 
     def init_screen_info(self):
         monitors = get_monitors()
@@ -84,51 +93,45 @@ class Client:
     def request_access(self):
 
         while not self.be_added:
-        tcp_client = TcpClient((self.server_ip, TCP_PORT))
-        msg = Message(MsgType.SEND_PUBKEY,
-                      {"device_id": self.device_id, 'public_key': self.rsa_util.public_key.save_pkcs1().decode()})
-        tcp_client.send(msg.to_bytes())
 
-        data, _ = tcp_client.recv()
-
-        msg = Message.from_bytes(data)
-        if msg.msg_type == MsgType.KEY_CHECK:
-            decrypt_key = self.rsa_util.decrypt(bytes.fromhex(msg.data['key']))
-            msg = Message(MsgType.KEY_CHECK_RESPONSE,
-                          {'key': decrypt_key.hex(), 'device_id': self.device_id,
-                           'screen_width': self.screen_size_width,
-                           'screen_height': self.screen_size_height})
-            tcp_client.send(msg.to_bytes())
-            data = tcp_client.recv()
-            if data is None:
-                tcp_client.close()
-                continue
-            msg = Message.from_bytes(data)
-            if msg.msg_type == MsgType.KEY_CHECK:
-                decrypt_key = self.rsa_util.decrypt(bytes.fromhex(msg.data['key']))
-                msg = Message(MsgType.KEY_CHECK_RESPONSE,
-                              {'key': decrypt_key.hex(), 'device_id': self.device_id,
-                               'screen_width': self.screen_size_width,
-                               'screen_height': self.screen_size_height})
+            tcp_client = TcpClient((self.server_ip, TCP_PORT))
+            try:
+                msg = Message(MsgType.SEND_PUBKEY,
+                              {"device_id": self.device_id, 'public_key': self.rsa_util.public_key.save_pkcs1().decode()})
                 tcp_client.send(msg.to_bytes())
                 data = tcp_client.recv()
                 if data is None:
                     tcp_client.close()
                     continue
                 msg = Message.from_bytes(data)
-                if msg.msg_type == MsgType.ACCESS_ALLOW:
-                    print('Access allow')
-                    self.be_added = True
-                    self.position = Position(int(msg.data['position']))
+                if msg.msg_type == MsgType.KEY_CHECK:
+                    decrypt_key = self.rsa_util.decrypt(bytes.fromhex(msg.data['key']))
+                    msg = Message(MsgType.KEY_CHECK_RESPONSE,
+                                  {'key': decrypt_key.hex(), 'device_id': self.device_id,
+                                   'screen_width': self.screen_size_width,
+                                   'screen_height': self.screen_size_height})
+                    tcp_client.send(msg.to_bytes())
+                    data = tcp_client.recv()
+                    if data is None:
+                        tcp_client.close()
+                        continue
+                    msg = Message.from_bytes(data)
+                    if msg.msg_type == MsgType.ACCESS_ALLOW:
+                        print('Access allow')
+                        self.be_added = True
+                        self.position = Position(int(msg.data['position']))
+                    elif msg.msg_type == MsgType.ACCESS_DENY:
+                        print('Access denied')
+                        tcp_client.close()
+                        break
                 elif msg.msg_type == MsgType.ACCESS_DENY:
                     print('Access denied')
                     tcp_client.close()
                     break
-            elif msg.msg_type == MsgType.ACCESS_DENY:
-                print('Access denied')
+            except Exception as e:
+                print(e)
+            finally:
                 tcp_client.close()
-                break
-            tcp_client.close()
 
     def clipboard_listener(self):
         while True:
@@ -138,6 +141,7 @@ class Client:
                 tcp_client = TcpClient((self.server_ip, TCP_PORT))
                 msg = Message(MsgType.CLIPBOARD_UPDATE, {'text': new_clip_text})
                 tcp_client.send(msg.to_bytes())
+                tcp_client.close()
             time.sleep(1)
 
     def heartbeat(self):
@@ -159,29 +163,40 @@ class Client:
         return False
 
     def msg_receiver(self):
-        while True:
-            data, addr = self.udp.recv()
-            if data is None:
-                continue
-            msg = Message.from_bytes(data)
-            if msg.msg_type == MsgType.MOUSE_MOVE:
-                position = self._mouse.move(msg.data['x'], msg.data['y'])
-                if self.judge_move_out(position[0],
-                                       position[1]) and self.be_added and self.server_ip and self._mouse.focus:
-                    msg = Message(MsgType.MOUSE_BACK, {"x": position[0], "y": position[1]})
-                    tcp_client = TcpClient((self.server_ip, TCP_PORT))
-                    tcp_client.send(msg.to_bytes())
-                    tcp_client.close()
-                    self._mouse.focus = False
-            elif msg.msg_type == MsgType.MOUSE_MOVE_TO:  # 跨屏初始位置
-                print("moved into")
-                self._mouse.focus = True
-                self._mouse.move_to((msg.data['x'], msg.data['y']))
-            elif msg.msg_type == MsgType.MOUSE_CLICK:
-                self._mouse.click(get_click_button(msg.data['button']), msg.data['pressed'])
-            elif msg.msg_type == MsgType.KEYBOARD_CLICK:
-                self._keyboard.click(msg.data['type'], msg.data['keyData'])
-            elif msg.msg_type == MsgType.MOUSE_SCROLL:
-                self._mouse.scroll(msg.data['dx'], msg.data['dy'])
-            elif msg.msg_type == MsgType.POSITION_CHANGE:
-                self.position = Position(int(msg.data['position']))
+        try:
+            while True:
+                data, addr = self.udp.recv()
+                if data is None:
+                    continue
+                msg = Message.from_bytes(data)
+                if msg.msg_type == MsgType.MOUSE_MOVE:
+                    print(msg.data['x'], msg.data['y'])
+                    position = self._mouse.move(msg.data['x'], msg.data['y'])
+                    if self.judge_move_out(position[0],
+                                           position[1]) and self.be_added and self.server_ip and self._mouse.focus:
+                        msg = Message(MsgType.MOUSE_BACK, {"x": position[0], "y": position[1]})
+                        tcp_client = TcpClient((self.server_ip, TCP_PORT))  
+                        tcp_client.send(msg.to_bytes())
+                        tcp_client.close()
+                        self._mouse.focus = False
+                elif msg.msg_type == MsgType.MOUSE_MOVE_TO:  # 跨屏初始位置
+                    print("moved into")
+                    self._mouse.focus = True
+                    self._mouse.move_to((msg.data['x'], msg.data['y']))
+                elif msg.msg_type == MsgType.MOUSE_CLICK:
+                    self._mouse.click(msg.data['button'], msg.data['pressed'])
+                elif msg.msg_type == MsgType.KEYBOARD_CLICK:
+                    self._keyboard.click(msg.data['type'], msg.data['keyData'])
+                elif msg.msg_type == MsgType.MOUSE_SCROLL:
+                    self._mouse.scroll(msg.data['dx'], msg.data['dy'])
+                elif msg.msg_type == MsgType.POSITION_CHANGE:
+                    self.position = Position(int(msg.data['position']))
+        except Exception as e:
+            print(e)
+            self.udp.close()
+
+    def close(self):
+        self.gui.exit()
+        self.send_offline_msg()
+        self.udp.close()
+        self.tcp_server.close()

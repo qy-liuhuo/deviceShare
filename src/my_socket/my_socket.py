@@ -22,17 +22,21 @@ class Udp:
         self._udp.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
 
     def sendto(self, data: bytes, target: tuple):
-        if target is None:
-            return
-        total_packets = (len(data) + Udp.packet_size - 1) // Udp.packet_size
-        packet_id = 0
-        while data:
-            chunk = data[:Udp.packet_size]
-            data = data[Udp.packet_size:]
-            header = struct.pack('!IHH', packet_id, total_packets, len(chunk))
-            packet = header + chunk
-            self._udp.sendto(packet, target)
-            packet_id += 1
+        try:
+            if target is None:
+                return
+            total_packets = (len(data) + Udp.packet_size - 1) // Udp.packet_size
+            packet_id = 0
+            while data:
+                chunk = data[:Udp.packet_size]
+                data = data[Udp.packet_size:]
+                header = struct.pack('!IHH', packet_id, total_packets, len(chunk))
+                packet = header + chunk
+                self._udp.sendto(packet, target)
+                packet_id += 1
+        except Exception as e:
+            print(e)
+            self.close()
 
     def recv(self):
         fragments = {}
@@ -55,6 +59,7 @@ class Udp:
                     break
         except Exception as e:
             print(e)
+            self.close()
         finally:
             return data, addr
 
@@ -70,49 +75,68 @@ class TcpClient:
         self._tcp.connect(target)
 
     def send(self, data: bytes):
-        # 先发送数据长度
-        data_len = struct.pack('!I', len(data))
-        self._tcp.sendall(data_len)
-        # 再发送实际数据
-        self._tcp.sendall(data)
+        try:
+            # 先发送数据长度
+            data_len = struct.pack('!I', len(data))
+            self._tcp.sendall(data_len)
+            # 再发送实际数据
+            self._tcp.sendall(data)
+        except Exception as e:
+            print(e)
+            self.close()
+
 
     def close(self):
         self._tcp.close()
 
     def recv(self):
+        try:
+            # 先接收数据长度
+            raw_data_len = self._tcp.recv(4)
+            if not raw_data_len:
+                return WRONG_MESSAGE
+            data_len = struct.unpack('!I', raw_data_len)[0]
+            # 接收实际数据
+            received_data = bytearray()
+            while len(received_data) < data_len:
+                packet = self._tcp.recv(data_len - len(received_data))
+                if not packet:
+                    break
+                received_data.extend(packet)
+            return received_data
+        except Exception as e:
+            print(e)
+            self.close()
+
+
+
+
+def read_data_from_tcp_socket(client_socket):
+    try:
         # 先接收数据长度
-        raw_data_len = self._tcp.recv(4)
+        raw_data_len = client_socket.recv(4)
         if not raw_data_len:
             return WRONG_MESSAGE
         data_len = struct.unpack('!I', raw_data_len)[0]
         # 接收实际数据
         received_data = bytearray()
         while len(received_data) < data_len:
-            packet = self._tcp.recv(data_len - len(received_data))
+            packet = client_socket.recv(data_len - len(received_data))
             if not packet:
                 break
             received_data.extend(packet)
         return received_data
-
-
-def read_data_from_tcp_socket(client_socket):
-    # 先接收数据长度
-    raw_data_len = client_socket.recv(4)
-    if not raw_data_len:
+    except Exception as e:
+        print(e)
         return WRONG_MESSAGE
-    data_len = struct.unpack('!I', raw_data_len)[0]
-    # 接收实际数据
-    received_data = bytearray()
-    while len(received_data) < data_len:
-        packet = client_socket.recv(data_len - len(received_data))
-        if not packet:
-            break
-        received_data.extend(packet)
-    return received_data
 
 def send_data_to_tcp_socket(client_socket, data: bytes):
-    # 先发送数据长度
-    data_len = struct.pack('!I', len(data))
-    client_socket.sendall(data_len)
-    # 再发送实际数据
-    client_socket.sendall(data)
+    try:
+        # 先发送数据长度
+        data_len = struct.pack('!I', len(data))
+        client_socket.sendall(data_len)
+        # 再发送实际数据
+        client_socket.sendall(data)
+    except Exception as e:
+        print(e)
+        client_socket.close()
