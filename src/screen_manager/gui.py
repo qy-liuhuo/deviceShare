@@ -1,17 +1,19 @@
 import enum
 import json
+import os
 import sys
 import copy
 import time
 
 from PyQt5 import QtCore, QtWidgets
-from PyQt5.QtCore import QStringListModel, Qt, QTimer
+from PyQt5.QtCore import QStringListModel, Qt, QTimer, QFileInfo
 from PyQt5.QtWidgets import QApplication, QMainWindow, QAction, QMenu, QMessageBox, QToolBar, QLabel, QVBoxLayout, \
     QWidget, QSystemTrayIcon, QStyle, QGraphicsOpacityEffect, QGraphicsDropShadowEffect, QGraphicsEffect, QListView, \
     QStyledItemDelegate, QPushButton
 from PyQt5.QtGui import QIcon, QPixmap, QColor, QBrush, QPalette, QStandardItem, QStandardItemModel, QFont, QPainter, \
     QPainterPath, QCursor
 from PyQt5.QtGui import QIcon, QPixmap, QColor
+from PIL import Image, ImageDraw, ImageFont
 import qt_material
 from src.screen_manager.position import Position
 from src.utils.device_storage import DeviceStorage
@@ -57,7 +59,7 @@ class ClientScreen(QLabel):
         if device_id == "":
             self.setPixmap(QPixmap(""))
         else:
-            self.setPixmap(self.create_round_pixmap())
+            self.setPixmap(self.create_round_pixmap(device_id[:10]))
         return original_client
 
     def mousePressEvent(self, e):
@@ -87,7 +89,7 @@ class ClientScreen(QLabel):
 
     def leave(self):
         if self.device_id != "":
-            self.setPixmap(QPixmap("./resources/background1.jpg"))
+            self.setPixmap(self.create_round_pixmap(self.device_id[:10]))
             self.set_opacity(0.5)
         self.setStyleSheet('border-width: 0px;border-style: solid;border-color: black;border-radius: 9')
 
@@ -113,8 +115,12 @@ class ClientScreen(QLabel):
         effect_opacity.setOpacity(opacity)
         self.setGraphicsEffect(effect_opacity)
 
-    def create_round_pixmap(self):
-        pixmap = QPixmap("./resources/background1.jpg")  # 替换为你的图片路径
+    def create_round_pixmap(self, device_id):
+        if not os.path.exists("./temp/"):
+            os.makedirs("./temp/")
+        if not QFileInfo('./temp/' + device_id + ".jpg").exists():
+            self.new_image(device_id)
+        pixmap = QPixmap("./temp/" + device_id + ".jpg")
         size = self.size()
         rounded_pixmap = QPixmap(size)
         rounded_pixmap.fill(Qt.transparent)
@@ -127,6 +133,25 @@ class ClientScreen(QLabel):
         painter.end()
 
         return rounded_pixmap
+
+    def new_image(self, device_id):
+        font = ImageFont.truetype('resources/GenJyuuGothic-Normal.ttf', 30)
+        w, h = font.getsize(device_id)
+        H = DEFAULT_HEIGHT
+        W = DEFAULT_WIDTH
+        img = Image.new('RGB', (DEFAULT_WIDTH, DEFAULT_HEIGHT), (116, 125, 140))
+        drawer = ImageDraw.Draw(img)
+
+        # def draw_round_rectangle(x, y, w, h, r):
+        #     drawer.ellipse((x, y, x + r * 2, y + r * 2), fill="gray")
+        #     drawer.ellipse((x + w - r * 2, y, x + w, y + r * 2), fill="gray")
+        #     drawer.ellipse((x, y + h - r * 2, x + r * 2, y + h), fill="gray")
+        #     drawer.ellipse((x + w - r * 2, y + h - r * 2, x + w, y + h), fill="gray")
+        #     drawer.rectangle((x + r, y, x + w - r, y + h), fill="gray")
+        #     drawer.rectangle((x, y + r, x + w, y + h - r), fill="gray")
+        # # draw_round_rectangle(x=(W - w) / 2 - 30, y=(H - h) / 2 - 20, w=w + 60, h=h + 40, r=30)
+        drawer.text(((W - w) / 2, (H - h) / 2), device_id, (255, 255, 255), font=font)
+        img.save("./temp/" + device_id + ".jpg")
 
 
 class ClientList(QListView):
@@ -169,7 +194,7 @@ class ClientList(QListView):
         keyReader = KeyStorage()
         key_name_list = keyReader.get_all_key_name()
         keyReader.close()
-        offline_devices = list(filter(lambda key_name: key_name not in online_devices,key_name_list))
+        offline_devices = list(filter(lambda key_name: key_name not in online_devices, key_name_list))
         for device_id in offline_devices:
             text = device_id + " -离线"
             new_item = QStandardItem(text)
@@ -215,7 +240,6 @@ class ConfigurationInterface(QWidget):
         self.resize(1250, 850)
         self.center_image = QLabel("", self)
         self.center_image.resize(DEFAULT_WIDTH, DEFAULT_HEIGHT)
-        self.center_image.setPixmap(self.create_round_pixmap())
         self.center_image.setStyleSheet('border-width: 0px;border-style: solid;border-color: black;border-radius: 12')
         self.center_image.setPixmap(self.create_round_pixmap())
         self.center_image.resize(DEFAULT_WIDTH, DEFAULT_HEIGHT)
@@ -319,7 +343,7 @@ class ConfigurationInterface(QWidget):
         QMessageBox.information(self, "DeviceShare", "配置保存成功", QMessageBox.Ok)
 
     def create_round_pixmap(self):
-        pixmap = QPixmap("./resources/background.jpg")  # 替换为你的图片路径
+        pixmap = QPixmap("./resources/Host.jpg")  # 替换为你的图片路径
         size = self.center_image.size()
         rounded_pixmap = QPixmap(size)
         rounded_pixmap.fill(Qt.transparent)
@@ -375,11 +399,11 @@ class MainWindow(QMainWindow):
         self.show()
         msgBox = QMessageBox()
         msgBox.setIcon(QMessageBox.Question)
-        msgBox.setWindowTitle( "连接请求处理")
+        msgBox.setWindowTitle("连接请求处理")
         msgBox.setText("是否允许设备" + id + "连接？")
         msgBox.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
         msgBox.setStyleSheet("QMessageBox { background-color: #000000 !important}")
-        reply = msgBox.exec_() 
+        reply = msgBox.exec_()
         # msgBox.Question(None,
         #                             "连接请求处理",
         #                             "是否允许设备" + id + "连接？",
@@ -392,7 +416,7 @@ class MainWindow(QMainWindow):
 
 
 class Gui:
-    def __init__(self,app, update_flag, request_queue=None, response_queue=None):
+    def __init__(self, app, update_flag, request_queue=None, response_queue=None):
         self.app = app
         self.mainWin = MainWindow()
         qt_material.apply_stylesheet(self.app, theme='light_blue.xml')
@@ -448,11 +472,94 @@ class Gui:
 
     def device_show_online_require(self, device_id):
         if sys.platform == 'linux':
-            self.trayIcon.showMessage("申请", "设备" + device_id + "申请加入链接,点击处理", QSystemTrayIcon.Critical,5000)
+            self.trayIcon.showMessage("申请", "设备" + device_id + "申请加入链接,点击处理", QSystemTrayIcon.Critical, 5000)
         else:
-            self.trayIcon.showMessage("申请", "设备" + device_id + "申请加入链接,点击处理", QSystemTrayIcon.Information,5000)
+            self.trayIcon.showMessage("申请", "设备" + device_id + "申请加入链接,点击处理", QSystemTrayIcon.Information, 5000)
 
     def update_devices(self):
         self.configureInterface.client_init()
 
+
+
+    def __init__(self,update_func=None):
+        self.client_list = []
+        self.image_list = []
+        self.create_systray_icon()
+        self.icon = None
+        self.root = ttkb.Window(themename="superhero")
+        self.root.title("主机屏幕排列")
+        self.root.geometry('1200x800')
+        self.root.update_idletasks()
+        self.root.protocol('WM_DELETE_WINDOW', self.hide)
+        self.frame = ttkb.Frame(self.root)
+        self.frame.pack(fill=tk.BOTH, expand=True)
+        self.center_image = DraggableImage(self.frame, './resources/background.jpg', None, center_image=True)
+
+        def on_done_click():
+            for i in range(len(self.client_list)):
+                self.client_list[i].location = self.image_list[i].get_relative_position()  # 更新位置
+                print("设备id:", self.client_list[i].id, "相对于主机的位置 ", self.client_list[i].location)
+            # 将位置location写回配置文件
+            rewrite("./devices.json", self.client_list)
+            update_func()
+            self.hide()
+
+        # Done
+        btn_done = ttk.Button(self.root, text="Done", command=on_done_click)
+        btn_done.pack(side=tk.BOTTOM, padx=15, pady=15)
+        self.update()
+        self.hide()
+        self.root.mainloop()
+
+    def update(self):
+        for widget in self.frame.winfo_children():
+            widget.destroy()
+        self.center_image = DraggableImage(self.frame, './resources/background.jpg', None, center_image=True)
+        # 从配置文件中读取
+        device_dict = {}
+        self.client_list = []
+        self.image_list = []
+        try:
+            with open("./devices.json", "r", encoding="utf-8") as f:
+                device_dict = json.load(f)
+        except Exception as e:
+            print("读取配置文件失败", e)
+        idx = 1
+        for device_ip in device_dict:
+            client = Client(idx, device_ip,Position(device_dict[device_ip][2]))
+            idx = idx + 1
+            self.client_list.append(client)
+        for client in self.client_list:
+            self.image_list.append(
+                DraggableImage(self.frame, './resources/background1.jpg', client, other_image=self.center_image))
+        self.root.update()
+        self.center_image.update_position()
+
+    def create_systray_icon(self):
+        """
+        使用 Pystray 创建系统托盘图标
+        """
+
+        # 创建图标对象
+        image = Image.open("./resources/devicelink.png")  # 打开 ICO 图像文件并创建一个 Image 对象
+        menu = (pystray.MenuItem(text='设置', action=self.show),  # 创建菜单项元组
+                pystray.MenuItem(text='退出', action=self.quit))  # 创建菜单项元组
+        self.icon = pystray.Icon("name", image, "DeviceShare", menu)  # 创建 PyStray Icon 对象，并传入关键参数
+        threading.Thread(target=self.icon.run, daemon=True).start()
+
+    def hide(self):
+        self.root.withdraw()
+
+    def show(self):
+        self.update()
+        self.root.deiconify()
+
+    def quit(self):
+        # self.icon.stop()
+        self.root.quit()
+        self.root.destroy()
+
+
+if __name__ == '__main__':
+    gui = Gui()
 
