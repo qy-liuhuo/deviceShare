@@ -3,7 +3,11 @@ import time
 
 
 # 创建一个虚拟输入设备
-capabilities = {ecodes.EV_KEY: [code for code in ecodes.ecodes if isinstance(code, int) and code >= ecodes.KEY_ESC and code <= ecodes.KEY_MAX]}
+capabilities = {
+    ecodes.EV_KEY: [ecodes.KEY_H, ecodes.KEY_E, ecodes.KEY_L, ecodes.KEY_L, ecodes.KEY_O]
+}
+
+
 ui = UInput(capabilities, name="virtual_keyboard")
 
 # 函数：模拟按键
