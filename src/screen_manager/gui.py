@@ -1,5 +1,6 @@
 import enum
 import json
+import os
 import sys
 import copy
 import time
@@ -58,7 +59,7 @@ class ClientScreen(QLabel):
         if device_id == "":
             self.setPixmap(QPixmap(""))
         else:
-            self.setPixmap(self.create_round_pixmap(device_id))
+            self.setPixmap(self.create_round_pixmap(device_id[:10]))
         return original_client
 
     def mousePressEvent(self, e):
@@ -88,7 +89,7 @@ class ClientScreen(QLabel):
 
     def leave(self):
         if self.device_id != "":
-            self.setPixmap(self.create_round_pixmap(self.device_id))
+            self.setPixmap(self.create_round_pixmap(self.device_id[:10]))
             self.set_opacity(0.5)
         self.setStyleSheet('border-width: 0px;border-style: solid;border-color: black;border-radius: 9')
 
@@ -115,9 +116,11 @@ class ClientScreen(QLabel):
         self.setGraphicsEffect(effect_opacity)
 
     def create_round_pixmap(self, device_id):
-        if not QFileInfo('./resources/' + device_id + ".jpg").exists():
+        if not os.path.exists("./temp/"):
+            os.makedirs("./temp/")
+        if not QFileInfo('./temp/' + device_id + ".jpg").exists():
             self.new_image(device_id)
-        pixmap = QPixmap("./resources/" + device_id + ".jpg")
+        pixmap = QPixmap("./temp/" + device_id + ".jpg")
         size = self.size()
         rounded_pixmap = QPixmap(size)
         rounded_pixmap.fill(Qt.transparent)
@@ -132,23 +135,23 @@ class ClientScreen(QLabel):
         return rounded_pixmap
 
     def new_image(self, device_id):
-        font = ImageFont.truetype('simsun.ttc', 36)
+        font = ImageFont.truetype('resources/GenJyuuGothic-Normal.ttf', 30)
         w, h = font.getsize(device_id)
         H = DEFAULT_HEIGHT
         W = DEFAULT_WIDTH
-        img = Image.new('RGB', (DEFAULT_WIDTH, DEFAULT_HEIGHT), (185, 185, 185))
+        img = Image.new('RGB', (DEFAULT_WIDTH, DEFAULT_HEIGHT), (116, 125, 140))
         drawer = ImageDraw.Draw(img)
 
-        def draw_round_rectangle(x, y, w, h, r):
-            drawer.ellipse((x, y, x + r * 2, y + r * 2), fill="gray")
-            drawer.ellipse((x + w - r * 2, y, x + w, y + r * 2), fill="gray")
-            drawer.ellipse((x, y + h - r * 2, x + r * 2, y + h), fill="gray")
-            drawer.ellipse((x + w - r * 2, y + h - r * 2, x + w, y + h), fill="gray")
-            drawer.rectangle((x + r, y, x + w - r, y + h), fill="gray")
-            drawer.rectangle((x, y + r, x + w, y + h - r), fill="gray")
-        draw_round_rectangle(x=(W - w) / 2 - 30, y=(H - h) / 2 - 20, w=w + 60, h=h + 40, r=30)
-        drawer.text(((W - w) / 2, (H - h) / 2), device_id, (0, 0, 0), font=font)
-        img.save("./resources/" + device_id + ".jpg")
+        # def draw_round_rectangle(x, y, w, h, r):
+        #     drawer.ellipse((x, y, x + r * 2, y + r * 2), fill="gray")
+        #     drawer.ellipse((x + w - r * 2, y, x + w, y + r * 2), fill="gray")
+        #     drawer.ellipse((x, y + h - r * 2, x + r * 2, y + h), fill="gray")
+        #     drawer.ellipse((x + w - r * 2, y + h - r * 2, x + w, y + h), fill="gray")
+        #     drawer.rectangle((x + r, y, x + w - r, y + h), fill="gray")
+        #     drawer.rectangle((x, y + r, x + w, y + h - r), fill="gray")
+        # # draw_round_rectangle(x=(W - w) / 2 - 30, y=(H - h) / 2 - 20, w=w + 60, h=h + 40, r=30)
+        drawer.text(((W - w) / 2, (H - h) / 2), device_id, (255, 255, 255), font=font)
+        img.save("./temp/" + device_id + ".jpg")
 
 
 class ClientList(QListView):
@@ -340,7 +343,7 @@ class ConfigurationInterface(QWidget):
         QMessageBox.information(self, "DeviceShare", "配置保存成功", QMessageBox.Ok)
 
     def create_round_pixmap(self):
-        pixmap = QPixmap("./resources/background.jpg")  # 替换为你的图片路径
+        pixmap = QPixmap("./resources/Host.jpg")  # 替换为你的图片路径
         size = self.center_image.size()
         rounded_pixmap = QPixmap(size)
         rounded_pixmap.fill(Qt.transparent)
