@@ -83,10 +83,22 @@ class Client:
 
 
     def request_access(self):
+
         while not self.be_added:
-            tcp_client = TcpClient((self.server_ip, TCP_PORT))
-            msg = Message(MsgType.SEND_PUBKEY,
-                          {"device_id": self.device_id, 'public_key': self.rsa_util.public_key.save_pkcs1().decode()})
+        tcp_client = TcpClient((self.server_ip, TCP_PORT))
+        msg = Message(MsgType.SEND_PUBKEY,
+                      {"device_id": self.device_id, 'public_key': self.rsa_util.public_key.save_pkcs1().decode()})
+        tcp_client.send(msg.to_bytes())
+
+        data, _ = tcp_client.recv()
+
+        msg = Message.from_bytes(data)
+        if msg.msg_type == MsgType.KEY_CHECK:
+            decrypt_key = self.rsa_util.decrypt(bytes.fromhex(msg.data['key']))
+            msg = Message(MsgType.KEY_CHECK_RESPONSE,
+                          {'key': decrypt_key.hex(), 'device_id': self.device_id,
+                           'screen_width': self.screen_size_width,
+                           'screen_height': self.screen_size_height})
             tcp_client.send(msg.to_bytes())
             data = tcp_client.recv()
             if data is None:

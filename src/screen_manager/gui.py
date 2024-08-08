@@ -449,3 +449,86 @@ class Gui:
         self.configureInterface.client_init()
 
 
+
+    def __init__(self,update_func=None):
+        self.client_list = []
+        self.image_list = []
+        self.create_systray_icon()
+        self.icon = None
+        self.root = ttkb.Window(themename="superhero")
+        self.root.title("主机屏幕排列")
+        self.root.geometry('1200x800')
+        self.root.update_idletasks()
+        self.root.protocol('WM_DELETE_WINDOW', self.hide)
+        self.frame = ttkb.Frame(self.root)
+        self.frame.pack(fill=tk.BOTH, expand=True)
+        self.center_image = DraggableImage(self.frame, './resources/background.jpg', None, center_image=True)
+
+        def on_done_click():
+            for i in range(len(self.client_list)):
+                self.client_list[i].location = self.image_list[i].get_relative_position()  # 更新位置
+                print("设备id:", self.client_list[i].id, "相对于主机的位置 ", self.client_list[i].location)
+            # 将位置location写回配置文件
+            rewrite("./devices.json", self.client_list)
+            update_func()
+            self.hide()
+
+        # Done
+        btn_done = ttk.Button(self.root, text="Done", command=on_done_click)
+        btn_done.pack(side=tk.BOTTOM, padx=15, pady=15)
+        self.update()
+        self.hide()
+        self.root.mainloop()
+
+    def update(self):
+        for widget in self.frame.winfo_children():
+            widget.destroy()
+        self.center_image = DraggableImage(self.frame, './resources/background.jpg', None, center_image=True)
+        # 从配置文件中读取
+        device_dict = {}
+        self.client_list = []
+        self.image_list = []
+        try:
+            with open("./devices.json", "r", encoding="utf-8") as f:
+                device_dict = json.load(f)
+        except Exception as e:
+            print("读取配置文件失败", e)
+        idx = 1
+        for device_ip in device_dict:
+            client = Client(idx, device_ip,Position(device_dict[device_ip][2]))
+            idx = idx + 1
+            self.client_list.append(client)
+        for client in self.client_list:
+            self.image_list.append(
+                DraggableImage(self.frame, './resources/background1.jpg', client, other_image=self.center_image))
+        self.root.update()
+        self.center_image.update_position()
+
+    def create_systray_icon(self):
+        """
+        使用 Pystray 创建系统托盘图标
+        """
+
+        # 创建图标对象
+        image = Image.open("./resources/devicelink.png")  # 打开 ICO 图像文件并创建一个 Image 对象
+        menu = (pystray.MenuItem(text='设置', action=self.show),  # 创建菜单项元组
+                pystray.MenuItem(text='退出', action=self.quit))  # 创建菜单项元组
+        self.icon = pystray.Icon("name", image, "DeviceShare", menu)  # 创建 PyStray Icon 对象，并传入关键参数
+        threading.Thread(target=self.icon.run, daemon=True).start()
+
+    def hide(self):
+        self.root.withdraw()
+
+    def show(self):
+        self.update()
+        self.root.deiconify()
+
+    def quit(self):
+        # self.icon.stop()
+        self.root.quit()
+        self.root.destroy()
+
+
+if __name__ == '__main__':
+    gui = Gui()
+
