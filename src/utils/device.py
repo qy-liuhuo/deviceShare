@@ -1,7 +1,7 @@
 import time
-from src.screen_manager.position import Position
-from src.screen_manager.screen import Screen
-from src.my_socket.my_socket import UDP_PORT
+from src.gui.position import Position
+from src.gui.screen import Screen
+from src.communication.my_socket import UDP_PORT
 
 
 class Device:

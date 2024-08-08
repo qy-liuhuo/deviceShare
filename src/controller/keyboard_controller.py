@@ -2,21 +2,30 @@ import sys
 import threading
 import os
 import time
-from src.utils.key_code import Key, KeyCode
+from pynput.keyboard import Key, KeyCode
+from src.utils.plantform import is_wayland
 
 keyChars = r"1!2@3#4$5%6^7&8*9(0)-_=+[{]}\|/?,<.>".strip()
 _keyChars = {keyChars[i]: keyChars[i + 1] for i in range(0, len(keyChars), 2)}
+
+
 def get_keyboard_controller():
-    return KeyboardController()
+    if is_wayland():
+        return KeyboardControllerWayland()
+    else:
+        return KeyboardController()
+
 
 class KeyFactory:
     keyChars = _keyChars
     keyNames = {'cmd': 'alt', 'alt_l': 'cmd'}
 
     def __init__(self):
-        self.shiftRelease = True
+        self.shiftRelease = True 
 
     def input(self, key):
+        if isinstance(key,str):
+            key = KeyCode.from_char(key)
         if 'name' in dir(key):
             if 'shift' in key.name:
                 self.shiftRelease = not self.shiftRelease
@@ -71,8 +80,7 @@ class KeyboardController:
 
     def keyboard_listener(self, on_press, on_release):
         import pynput
-        return pynput.keyboard.Listener(suppress=True,on_press=on_press, on_release=on_release)
-
+        return pynput.keyboard.Listener(suppress=True, on_press=on_press, on_release=on_release)
 
 
 class KeyboardControllerWayland(KeyboardController):
@@ -90,9 +98,10 @@ class KeyboardControllerWayland(KeyboardController):
             if ecodes.EV_KEY in capabilities and ecodes.EV_SYN in capabilities:
                 if ecodes.KEY_A in capabilities[ecodes.EV_KEY]:  # 检查是否有键盘按键
                     self.keyboard_devices.append(device)
-        capabilities = {ecodes.EV_KEY: list(ecodes.keys.keys())}
-        self.ui = UInput(capabilities, name="virtual_keyboard")
         self.codeConvert = CodeConverter()
+        capabilities = { ecodes.EV_KEY: [code for code in self.codeConvert.pynput_to_evdev_dict.values()]}
+        self.ui = UInput(capabilities, name="virtual_keyboard")
+        
 
     def press(self, key):
         from evdev import ecodes
@@ -105,9 +114,11 @@ class KeyboardControllerWayland(KeyboardController):
         self.ui.syn()
 
     def click(self, click_type, keyData):
-        key = self.codeConvert.pynput_to_evdev(self.keyFactory.outPut(keyData))
+        key = self.codeConvert.pynput_to_evdev_key(self.keyFactory.outPut(keyData))
+        if key is None:
+            return
         if click_type == 'press':
-            self.press( key)
+            self.press(key)
         elif click_type == 'release':
             self.release(key)
 
@@ -122,9 +133,9 @@ class KeyboardControllerWayland(KeyboardController):
                     if event.type == ecodes.EV_KEY:
                         key_event = categorize(event)
                         if key_event.keystate == key_event.key_down:
-                            on_press(self.codeConvert.evdev_to_pynput(key_event.keycode))
+                            on_press(self.codeConvert.evdev_to_pynput_key(key_event.scancode))
                         elif key_event.keystate == key_event.key_up:
-                            on_release(self.codeConvert.evdev_to_pynput(key_event.keycode))
+                            on_release(self.codeConvert.evdev_to_pynput_key(key_event.scancode))
                 else:
                     time.sleep(0.01)  # 如果没有事件，休眠一段时间，减少 CPU 使用率
         except KeyboardInterrupt:
@@ -136,6 +147,7 @@ class KeyboardControllerWayland(KeyboardController):
                 keyboard.ungrab()
 
     def keyboard_listener(self, on_press, on_release, suppress=False):
+        self.stop_event.clear()
         self.listener = []
         for keyboard in self.keyboard_devices:
             print(f"监听设备: {keyboard.name} at {keyboard.path}")
@@ -150,4 +162,8 @@ class KeyboardControllerWayland(KeyboardController):
         self.listener.clear()
 
     def __del__(self):
-        self.ui.close()
+        try:
+            self.ui.close()
+        except:
+            pass
+    

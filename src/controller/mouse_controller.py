@@ -1,8 +1,6 @@
-import os
 import platform
 import threading
 import time
-import screeninfo
 from screeninfo import get_monitors
 
 from src.utils.plantform import is_wayland
@@ -124,9 +122,11 @@ class MouseController:
 
     def run_mouse_listener(self, mouse, on_click, on_move, on_scroll, suppress=False):
         from evdev import InputDevice, categorize, ecodes, list_devices, UInput
+        monitor = get_monitors()[0]
         try:
             if suppress:
                 mouse.grab()
+                self.move_to((monitor.width // 2, monitor.height // 2))
             while not self.stop_event.is_set():
                 event = mouse.read_one()  # 非阻塞读取事件
                 if event:

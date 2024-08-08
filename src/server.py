@@ -1,6 +1,5 @@
 import platform
 import socket
-import sys
 import threading
 import time
 import uuid
@@ -10,17 +9,17 @@ from screeninfo import get_monitors
 from zeroconf import ServiceInfo, Zeroconf
 
 from src.controller.clipboard_controller import get_clipboard_controller
-from src.controller.keyboard_controller import KeyboardController, KeyFactory
-from src.device.device import Device
-from src.screen_manager.gui import Gui, GuiMessage
-from src.screen_manager.position import Position
-from src.my_socket.message import Message, MsgType
+from src.controller.keyboard_controller import KeyFactory, get_keyboard_controller
+from src.utils.device import Device
+from src.gui.server_gui import ServerGUI, GuiMessage
+from src.gui.position import Position
+from src.communication.message import Message, MsgType
 from src.controller.mouse_controller import MouseController
-from src.my_socket.my_socket import Udp, UDP_PORT, TCP_PORT, read_data_from_tcp_socket, send_data_to_tcp_socket, \
+from src.communication.my_socket import Udp, UDP_PORT, TCP_PORT, read_data_from_tcp_socket, send_data_to_tcp_socket, \
     TcpClient
 
-from src.screen_manager.screen import Screen
-from src.sharer.client_state import ClientState
+from src.gui.screen import Screen
+from src.communication.client_state import ClientState
 from src.utils.device_storage import DeviceStorage, create_table, delete_table
 from src.utils.key_storage import KeyStorage
 from src.utils.net import get_local_ip
@@ -38,11 +37,11 @@ class Server:
         self.response_queue = Queue()
         self.thread_list = []
         self.update_flag = threading.Event()
-        self.manager_gui = Gui(app,update_flag=self.update_flag, request_queue=self.request_queue,
-                               response_queue=self.response_queue)
+        self.manager_gui = ServerGUI(app, update_flag=self.update_flag, request_queue=self.request_queue,
+                                     response_queue=self.response_queue)
         self.cur_device = None
         self._mouse = MouseController()
-        self._keyboard = KeyboardController()
+        self._keyboard = get_keyboard_controller()
         self._keyboard_factory = KeyFactory()
         self.lock = threading.Lock()
         self.udp = Udp(UDP_PORT)
@@ -252,9 +251,9 @@ class Server:
                 self.udp.sendto(msg.to_bytes(), self.cur_device.get_udp_address())
             # if self._mouse.get_position()[0] >= self.screen_size.width - 10: # 向右移出
             #     self.udp.sendto(msg.to_bytes(), self.device_manager.cur_device.get_udp_address())
-            # if not self._mouse.focus and self._mouse.get_position()[0] <= 200 or self._mouse.get_position()[1] <= 200 or \
-            #         self._mouse.get_position()[0] >= self.screen_size_width - 200 or self._mouse.get_position()[1] >= self.screen_size_height - 200:
-            #     self._mouse.move_to((int(self.screen_size_width / 2), int(self.screen_size_height / 2)))
+            if not self._mouse.focus and self._mouse.get_position()[0] <= 200 or self._mouse.get_position()[1] <= 200 or \
+                    self._mouse.get_position()[0] >= self.screen_size_width - 200 or self._mouse.get_position()[1] >= self.screen_size_height - 200:
+                self._mouse.move_to((int(self.screen_size_width / 2), int(self.screen_size_height / 2)))
             self._mouse.update_last_position()
 
         def on_move_linux(dx, dy):
@@ -303,10 +302,13 @@ class Server:
             msg = Message(MsgType.KEYBOARD_CLICK, {'type': "release", "keyData": (data[0], data[1])})
             if self.cur_device:
                 self.udp.sendto(msg.to_bytes(), self.cur_device.get_udp_address())
-
-        keyboard_listener = self._keyboard.keyboard_listener(on_press, on_release)
-        keyboard_listener.start()
-        return keyboard_listener
+        if is_wayland():
+            self._keyboard.keyboard_listener(on_press, on_release,True)
+            return None
+        else:
+            keyboard_listener = self._keyboard.keyboard_listener(on_press, on_release)
+            keyboard_listener.start()
+            return keyboard_listener
 
     def judge_move_out(self, x, y):
         if x <= 5:
@@ -377,19 +379,12 @@ class Server:
                         time.sleep(0.1)
                 finally:
                     self._mouse.wait_for_event_puter_stop()
-                # self._mouse.wait_for_event_puter_stop()
+
                 if not self._mouse.focus:
-                    if platform.system().lower() == "linux":
-                        keyboard_listener = self.add_keyboard_listener()
-                        self.add_mouse_listener_linux()
-                        keyboard_listener.stop()
-                        self._mouse.focus = True
-                    else:
-                        mouse_listener = self.add_mouse_listener()
-                        keyboard_listener = self.add_keyboard_listener()
-                        mouse_listener.join()
-                        keyboard_listener.stop()  # 鼠标监听结束后关闭键盘监听
-                        self._mouse.focus = True
+                    self.add_keyboard_listener()
+                    self.add_mouse_listener_linux()
+                    self._keyboard.stop_listener()
+                    self._mouse.focus = True
         else:
             import pynput
             while True:
@@ -434,6 +429,7 @@ class Server:
                     if platform.system().lower() == "linux":
                         keyboard_listener = self.add_keyboard_listener()
                         self.add_mouse_listener_linux()
+
                         keyboard_listener.stop()
                         self._mouse.focus = True
                     else:

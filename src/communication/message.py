@@ -1,7 +1,5 @@
 import enum
-import time
 import json
-import pynput
 
 
 class MsgType(enum.IntEnum):

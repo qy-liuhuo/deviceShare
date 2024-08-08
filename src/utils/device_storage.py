@@ -1,10 +1,10 @@
 import sqlite3
 import time
 
-from src.device import device
-from src.device.device import Device
-from src.screen_manager.position import Position
-from src.screen_manager.screen import Screen
+from src.utils import device
+from src.utils.device import Device
+from src.gui.position import Position
+from src.gui.screen import Screen
 
 
 def create_table():

@@ -1,9 +1,8 @@
 import sys
-
-from PyQt5.QtWidgets import QApplication, QDialog, QVBoxLayout, QPushButton, QLabel
+from PyQt5.QtWidgets import QApplication, QDialog, QVBoxLayout, QPushButton
 import qt_material
-from src.sharer.client import Client
-from src.sharer.server import Server
+from src.client import Client
+from src.server import Server
 
 
 class RoleSelectionDialog(QDialog):

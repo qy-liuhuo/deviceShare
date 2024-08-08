@@ -4,12 +4,12 @@ import time
 from zeroconf import Zeroconf, ServiceBrowser
 
 from src.controller.clipboard_controller import get_clipboard_controller
-from src.controller.keyboard_controller import KeyboardController
-from src.screen_manager.client_gui import ClientGUI
-from src.screen_manager.position import Position
-from src.my_socket.message import Message, MsgType
+from src.controller.keyboard_controller import KeyboardController, get_keyboard_controller
+from src.gui.client_gui import ClientGUI
+from src.gui.position import Position
+from src.communication.message import Message, MsgType
 from src.controller.mouse_controller import MouseController, get_click_button
-from src.my_socket.my_socket import Udp, TcpClient, UDP_PORT, TCP_PORT, read_data_from_tcp_socket
+from src.communication.my_socket import Udp, TcpClient, UDP_PORT, TCP_PORT, read_data_from_tcp_socket
 from screeninfo import get_monitors
 
 from src.utils.device_name import get_device_name
@@ -32,7 +32,7 @@ class Client:
         self.be_added = False
         self._mouse = MouseController()
         self._mouse.focus = False
-        self._keyboard = KeyboardController()
+        self._keyboard = get_keyboard_controller()
         self.rsa_util = RsaUtil()
         self.server_ip = None
         self.zeroconf = Zeroconf()
@@ -170,7 +170,6 @@ class Client:
                     continue
                 msg = Message.from_bytes(data)
                 if msg.msg_type == MsgType.MOUSE_MOVE:
-                    print(msg.data['x'], msg.data['y'])
                     position = self._mouse.move(msg.data['x'], msg.data['y'])
                     if self.judge_move_out(position[0],
                                            position[1]) and self.be_added and self.server_ip and self._mouse.focus:
