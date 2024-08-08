@@ -1,9 +1,6 @@
 import enum
-import json
 import os
 import sys
-import copy
-import time
 
 from PyQt5 import QtCore, QtWidgets
 from PyQt5.QtCore import QStringListModel, Qt, QTimer, QFileInfo

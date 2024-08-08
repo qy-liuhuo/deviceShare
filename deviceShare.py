@@ -1,6 +1,4 @@
 import sys
-
-
 from PyQt5.QtWidgets import QApplication, QDialog, QVBoxLayout, QPushButton, QLabel
 import qt_material
 from src.sharer.client import Client

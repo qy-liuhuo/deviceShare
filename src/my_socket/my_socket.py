@@ -1,7 +1,5 @@
-import queue
 import socket
 import struct
-import threading
 
 from src.my_socket.message import WRONG_MESSAGE
 

@@ -1,8 +1,6 @@
-import os
 import platform
 import threading
 import time
-import screeninfo
 from screeninfo import get_monitors
 
 from src.utils.plantform import is_wayland
