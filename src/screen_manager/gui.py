@@ -5,16 +5,17 @@ import copy
 import time
 
 from PyQt5 import QtCore, QtWidgets
-from PyQt5.QtCore import QStringListModel, Qt
+from PyQt5.QtCore import QStringListModel, Qt, QTimer
 from PyQt5.QtWidgets import QApplication, QMainWindow, QAction, QMenu, QMessageBox, QToolBar, QLabel, QVBoxLayout, \
     QWidget, QSystemTrayIcon, QStyle, QGraphicsOpacityEffect, QGraphicsDropShadowEffect, QGraphicsEffect, QListView, \
     QStyledItemDelegate, QPushButton
 from PyQt5.QtGui import QIcon, QPixmap, QColor, QBrush, QPalette, QStandardItem, QStandardItemModel, QFont, QPainter, \
-    QPainterPath
+    QPainterPath, QCursor
 from PyQt5.QtGui import QIcon, QPixmap, QColor
 import qt_material
 from src.screen_manager.position import Position
 from src.utils.device_storage import DeviceStorage
+from src.utils.key_storage import KeyStorage
 
 DEFAULT_WIDTH = 384
 DEFAULT_HEIGHT = 216
@@ -39,11 +40,13 @@ class ClientScreen(QLabel):
         self.device_id = ""
         self._x = x
         self._y = y
+        self.isMoving = False
         self.resize(DEFAULT_WIDTH, DEFAULT_HEIGHT)
         self.location = location
         self.setAcceptDrops(True)
         self.setFrameShape(QtWidgets.QFrame.Box)
-
+        self.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.customContextMenuRequested.connect(self.create_menu)
         self.setStyleSheet('border-width: 0px;border-style: solid;border-color: black;border-radius: 12')
         self.setAlignment(QtCore.Qt.AlignVCenter)
         self.move(x, y)
@@ -54,65 +57,61 @@ class ClientScreen(QLabel):
         if device_id == "":
             self.setPixmap(QPixmap(""))
         else:
-            # self.setPixmap(QPixmap("./resources/background1.jpg"))
             self.setPixmap(self.create_round_pixmap())
         return original_client
 
     def mousePressEvent(self, e):
-        if e.buttons() == QtCore.Qt.LeftButton and self.device_id != "":
-            self.relative_position = e.pos()
-            self.master.prepare_modify(self)
+        if e.buttons() == QtCore.Qt.LeftButton:
+            if self.device_id != "":
+                self.isMoving = True
+                self.relative_position = e.pos()
+                self.master.prepare_modify(self)
 
     def mouseMoveEvent(self, e):
-        if self.device_id != "":
-            self.move(self.mapToParent(e.pos()) - self.relative_position)
-            self.master.track_move(self.x(), self.y())
+        if e.buttons() == QtCore.Qt.LeftButton:
+            if self.device_id != "":
+                self.move(self.mapToParent(e.pos()) - self.relative_position)
+                self.master.track_move(self.x(), self.y())
 
-    def mouseReleaseEvent(self, QMouseEvent):
-        if self.device_id != "":
+    def mouseReleaseEvent(self, e):
+        if self.isMoving:
             self.master.finish_modify(self.x(), self.y(), self)
             self.setParent(None)
             self.deleteLater()
+            self.isMoving = False
 
     def enter(self):
         if self.device_id != "":
             self.setPixmap(QPixmap(""))
-
         self.setStyleSheet('border-width: 2px;border-style: solid;border-color:  #0984e3;;border-radius: 9')
-        # self.add_shadow()
 
     def leave(self):
         if self.device_id != "":
             self.setPixmap(QPixmap("./resources/background1.jpg"))
             self.set_opacity(0.5)
-
         self.setStyleSheet('border-width: 0px;border-style: solid;border-color: black;border-radius: 9')
-        # self.clear_shadow()
+
+    def create_menu(self):
+        if self.device_id != "":
+            self.menu = QMenu(self)
+
+            self.delete = QAction(u'强制下线', self)  # 创建菜单选项对象
+            # self.actionA.setShortcut('del')  # 设置动作A的快捷键
+            self.menu.addAction(self.delete)  # 把动作A选项对象添加到菜单self.groupBox_menu上
+            self.delete.triggered.connect(self.device_offline)
+            self.menu.popup(QCursor.pos())
+
+    def device_offline(self):
+        sqlWriter = DeviceStorage()
+        sqlWriter.delete_device(self.device_id)
+        sqlWriter.close()
+        QMessageBox.information(self, "DeviceShare", "设备" + self.device_id + "已强制下线", QMessageBox.Ok)
+        self.master.client_init()
 
     def set_opacity(self, opacity):
         effect_opacity = QGraphicsOpacityEffect()
         effect_opacity.setOpacity(opacity)
         self.setGraphicsEffect(effect_opacity)
-
-    def add_shadow(self):
-        effect_shadow = QGraphicsDropShadowEffect()
-        effect_shadow.setOffset(0, 0)  # 偏移
-        effect_shadow.setBlurRadius(0)  # 阴影半径
-        effect_shadow.setColor(QColor(255, 0, 0))
-        effect_shadow.setBlurRadius(100)
-        self.setGraphicsEffect(effect_shadow)
-
-    def clear_shadow(self):
-        effect_shadow = QGraphicsDropShadowEffect()
-        effect_shadow.setOffset(0, 0)  # 偏移
-        effect_shadow.setBlurRadius(0)  # 阴影半径
-        effect_shadow.setColor(QColor(255, 0, 0))
-        effect_shadow.setBlurRadius(0)
-        self.setGraphicsEffect(effect_shadow)
-
-    def remove_client(self):
-        self.setPixmap(QPixmap(""))
-        self.device_id = ""
 
     def create_round_pixmap(self):
         pixmap = QPixmap("./resources/background1.jpg")  # 替换为你的图片路径
@@ -130,11 +129,88 @@ class ClientScreen(QLabel):
         return rounded_pixmap
 
 
+class ClientList(QListView):
+    def __init__(self, master):
+        super().__init__(master)
+        self.master = master
+        self.model = QStandardItemModel(self)
+        self.init()
+
+    def init(self):
+        class CustomDelegate(QStyledItemDelegate):
+            def paint(self, painter, option, index):
+                # 设置文本居中对齐
+                option.displayAlignment = Qt.AlignCenter
+                super().paint(painter, option, index)
+
+            def sizeHint(self, option, index):
+                size = super().sizeHint(option, index)
+                size.setHeight(40)
+                return size
+
+        self.raise_()
+        self.setItemDelegate(CustomDelegate(self))
+        self.setGeometry(0, 0, 312, 300)
+        # self.setContextMenuPolicy(Qt.CustomContextMenu)
+        # self.customContextMenuRequested.connect(self.create_menu)
+        self.hide()
+
+    def update_data(self):
+        deviceReader = DeviceStorage()
+        device_list = deviceReader.get_all_devices()
+        deviceReader.close()
+        online_devices = []
+        self.model.clear()
+        for device in device_list:
+            text = device.device_id + " -在线"
+            new_item = QStandardItem(text)
+            self.model.appendRow(new_item)
+            online_devices.append(device.device_id)
+        keyReader = KeyStorage()
+        key_name_list = keyReader.get_all_key_name()
+        keyReader.close()
+        offline_devices = list(filter(lambda key_name: key_name not in online_devices,key_name_list))
+        for device_id in offline_devices:
+            text = device_id + " -离线"
+            new_item = QStandardItem(text)
+            self.model.appendRow(new_item)
+        self.setModel(self.model)
+
+    def mousePressEvent(self, e):
+        if e.buttons() == QtCore.Qt.RightButton:
+            index = self.indexAt(e.pos())
+            if index.isValid():
+                # 如果是有效的item区域内点击，则调用父类的mousePressEvent处理
+                super().mousePressEvent(e)
+                self.create_menu()
+
+    def create_menu(self):
+        index = self.currentIndex()
+        if index:
+            menu = QMenu(self)
+            action_delete = QAction("删除", self)
+            menu.addAction(action_delete)
+            action_delete.triggered.connect(self.delete_item)
+            menu.exec_(QCursor.pos())
+
+    def delete_item(self):
+        index = self.currentIndex()
+        keyWriter = KeyStorage()
+        id = index.data().split()[0]
+        keyWriter.delete_key(id)
+        keyWriter.close()
+        deviceWriter = DeviceStorage()
+        if deviceWriter.get_device(id):
+            deviceWriter.delete_device(id)
+        deviceWriter.close()
+        self.master.client_init()
+        QMessageBox.information(self, "DeviceShare", "设备" + id + "已被删除", QMessageBox.Ok)
+
+
 class ConfigurationInterface(QWidget):
     def __init__(self, master, update_flag):
         super().__init__(master)
         self.update_flag = update_flag
-        self.online_clients_number = 0
         self.last_potential_location = None
         self.resize(1250, 850)
         self.center_image = QLabel("", self)
@@ -145,8 +221,7 @@ class ConfigurationInterface(QWidget):
         self.center_image.resize(DEFAULT_WIDTH, DEFAULT_HEIGHT)
         self.center_image.move(int(self.width() / 2 - self.center_image.width() / 2),
                                int(self.height() / 2 - self.center_image.height() / 2))
-        self.client_list = QListView(self)
-        self.client_list_init()
+        self.client_list = ClientList(self)
         self.clients = {
             Position["TOP"]: ClientScreen(self, self.center_image.x(), self.center_image.y() - DEFAULT_HEIGHT - 10,
                                           Position["TOP"]),
@@ -156,7 +231,6 @@ class ConfigurationInterface(QWidget):
                                             Position["RIGHT"]),
             Position["BOTTOM"]: ClientScreen(self, self.center_image.x(), self.center_image.y() + DEFAULT_HEIGHT + 10,
                                              Position["BOTTOM"])}
-        self.model = QStandardItemModel(self.client_list)
         self.client_init()
         self.done = QPushButton(self, text="确认")
         self.done.setGeometry(600, 810, 110, 60)
@@ -174,45 +248,11 @@ class ConfigurationInterface(QWidget):
         sqlReader = DeviceStorage()
         device_list = sqlReader.get_all_devices()
         sqlReader.close()
-        self.model.clear()
         for screen in self.clients.values():
             screen.set_client("")
-
         for device in device_list:
-            text = device.device_id
-            new_item = QStandardItem(text)
-            self.model.insertRow(0, new_item)
             self.clients[device.position].set_client(device.device_id)
-            # if client.online:
-            #     text = client.ip_addr + " -在线"
-            #     new_item = QStandardItem(text)
-            #     new_item.setBackground(QBrush(QColor("#b1f4a4")))
-            #     self.model.insertRow(0, new_item)
-            #     self.online_clients_number += 1
-            # else:
-            #     self.clients[client.location].set_opacity(0.4)
-            #     text = client.ip_addr + " -离线"
-            #     new_item = QStandardItem(text)
-            #     new_item.setBackground(QBrush(QColor("gray")))
-            #     self.model.insertRow(self.online_clients_number, new_item)
-        self.client_list.setModel(self.model)
-
-    def client_list_init(self):
-        class CustomDelegate(QStyledItemDelegate):
-            def paint(self, painter, option, index):
-                # 设置文本居中对齐
-                option.displayAlignment = Qt.AlignCenter
-                super().paint(painter, option, index)
-
-            def sizeHint(self, option, index):
-                size = super().sizeHint(option, index)
-                size.setHeight(40)
-                return size
-
-        self.client_list.raise_()
-        self.client_list.setItemDelegate(CustomDelegate(self.client_list))
-        self.client_list.setGeometry(0, 0, int(self.width() * 0.25), 300)
-        self.client_list.hide()
+        self.client_list.update_data()
 
     def prepare_modify(self, currentClient):
         for client in self.clients.values():
@@ -268,7 +308,6 @@ class ConfigurationInterface(QWidget):
         sqlReaderWriter = DeviceStorage()
         for screen in self.clients.values():
             if screen.device_id != "":
-                # todo: how to process if the device offline during configuration?
                 temp = sqlReaderWriter.get_device(screen.device_id)
                 if temp:
                     temp.position = screen.location
@@ -277,6 +316,7 @@ class ConfigurationInterface(QWidget):
             sqlReaderWriter.update_device(device)
         sqlReaderWriter.close()
         self.update_flag.set()
+        QMessageBox.information(self, "DeviceShare", "配置保存成功", QMessageBox.Ok)
 
     def create_round_pixmap(self):
         pixmap = QPixmap("./resources/background.jpg")  # 替换为你的图片路径
@@ -302,10 +342,6 @@ class ConfigurationInterface(QWidget):
         new_item = QStandardItem(text)
         self.model.insertRow(0, new_item)
         self.client_list.setModel(self.model)
-
-    def offline_update(self, device_id):
-        screen = filter(lambda x: x.device_id == device_id, self.clients.values())[0]
-        screen.remove_client()
 
 
 class MainWindow(QMainWindow):
@@ -364,7 +400,7 @@ class Gui:
 
     def initTrayIcon(self):
         # 创建托盘图标
-        self.trayIcon.setIcon(QIcon("D:\\Project\\PythonProject\\DeviceShare\\resources\\devicelink.ico"))
+        self.trayIcon.setIcon(QIcon("./resources/devicelink.ico"))
         # 创建托盘菜单
         trayMenu = QMenu(self.mainWin)
         # 添加显示窗口动作
@@ -404,20 +440,13 @@ class Gui:
         self.trayIcon.showMessage("提醒", "设备" + device_id + "已上线", QSystemTrayIcon.Information, 5000)
 
     def device_show_online_require(self, device_id):
-        if (sys.platform == 'Linux'):
-            self.trayIcon.showMessage("申请", "设备" + device_id + "申请加入链接,点击处理", QSystemTrayIcon.Critical,
-                                      5000)
-        self.trayIcon.showMessage("申请", "设备" + device_id + "申请加入链接,点击处理", QSystemTrayIcon.Information,
-                                  5000)
+        if sys.platform == 'linux':
+            self.trayIcon.showMessage("申请", "设备" + device_id + "申请加入链接,点击处理", QSystemTrayIcon.Critical,5000)
+        else:
+            self.trayIcon.showMessage("申请", "设备" + device_id + "申请加入链接,点击处理", QSystemTrayIcon.Information,5000)
 
     def update_devices(self):
         self.configureInterface.client_init()
-
-    def device_online_update(self, device_id):
-        self.configureInterface.online_update(device_id)
-
-    def device_offline_update(self, device_id):
-        self.configureInterface.offline_update(device_id)
 
 
 

@@ -20,5 +20,15 @@ class KeyStorage:
         self.cursor.execute("INSERT OR REPLACE INTO keys (device_id, key) VALUES (?, ?)", (key_name, key))
         self.conn.commit()
 
+    def delete_key(self, key_name):
+        self.cursor.execute("DELETE FROM keys WHERE device_id = ?", (key_name,))
+        self.conn.commit()
+
+    def get_all_key_name(self):
+        self.cursor.execute("SELECT device_id FROM keys")
+        devices = self.cursor.fetchall()
+        id_list = [tup[0] for tup in devices]
+        return id_list
+
     def close(self):
         self.conn.close()

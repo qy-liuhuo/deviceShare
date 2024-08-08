@@ -20,7 +20,10 @@ def create_table():
 def delete_table():
     conn = sqlite3.connect("temp.db")
     cursor = conn.cursor()
-    cursor.execute("DROP TABLE devices")
+    # 存在devices表才删除
+    cursor.execute("SELECT * FROM sqlite_master WHERE type='table' AND name='devices'")
+    if cursor.fetchone():
+        cursor.execute("DROP TABLE devices")
     conn.commit()
     conn.close()
 

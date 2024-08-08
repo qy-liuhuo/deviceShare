@@ -5,6 +5,7 @@ import time
 import uuid
 from queue import Queue
 
+from PyQt5.QtCore import QTimer
 from screeninfo import get_monitors
 import pynput
 from zeroconf import ServiceInfo, Zeroconf
@@ -14,7 +15,8 @@ from src.screen_manager.gui import Gui, GuiMessage
 from src.screen_manager.position import Position
 from src.my_socket.message import Message, MsgType
 from src.controller.mouse_controller import MouseController
-from src.my_socket.my_socket import Udp, Tcp, UDP_PORT, TCP_PORT
+from src.my_socket.my_socket import Udp, UDP_PORT, TCP_PORT, read_data_from_tcp_socket, send_data_to_tcp_socket, \
+    TcpClient
 import pyperclip
 
 from src.screen_manager.screen import Screen
@@ -34,7 +36,7 @@ class Server:
         self.response_queue = Queue()
         self.thread_list = []
         self.update_flag = threading.Event()
-        self.manager_gui = Gui(update_flag = self.update_flag, request_queue=self.request_queue,
+        self.manager_gui = Gui(update_flag=self.update_flag, request_queue=self.request_queue,
                                response_queue=self.response_queue)
         self.cur_device = None
         self._mouse = MouseController()
@@ -96,16 +98,15 @@ class Server:
         device_storage = DeviceStorage()
         try:
             while True:
-                recv_data = self.udp.recv()
-                if recv_data is None:
+                data, addr = self.udp.recv()
+                if data is None:
                     continue
-                data, addr = recv_data
                 msg = Message.from_bytes(data)
                 if msg.msg_type == MsgType.CLIENT_HEARTBEAT:
                     device_storage.update_heartbeat(ip=addr[0])
                 elif msg.msg_type == MsgType.CLIPBOARD_UPDATE:
                     self.last_clipboard_text = msg.data['text']
-                    pyperclip.copy(msg.data['text'])
+                    pyperclip.copy(self.last_clipboard_text)
         except InterruptedError:
             device_storage.close()
 
@@ -116,72 +117,98 @@ class Server:
             client_handler = threading.Thread(target=self.handle_client, args=(client, addr), daemon=True)
             client_handler.start()
 
-    def handle_client(self, client_socket, addr):
-
+    def handle_access(self, access_client_socket, msg, addr):
         keys_manager = KeyStorage()
         state = ClientState.WAITING_FOR_KEY
         random_key = None
-        new_device = Device(ip=addr[0], screen = None, position=Position.NONE)
-        while True:
-            try:
-                data = client_socket.recv(1024)
-                if not data:
-                    break
-                msg = Message.from_bytes(data)
-                if msg.msg_type == MsgType.MOUSE_BACK:
-                    self.lock.acquire()
-                    if self.cur_device is not None:
-                        device_position = self.cur_device.position
-                        self.cur_device = None
-                        self._mouse.focus = True
-                        if device_position == Position.RIGHT:
-                            self._mouse.move_to((self.screen_size_width - 30, msg.data['y']))
-                        elif device_position == Position.LEFT:
-                            self._mouse.move_to((30, msg.data['y']))
-                        elif device_position == Position.TOP:
-                            self._mouse.move_to((msg.data['x'], 30))
-                        elif device_position == Position.BOTTOM:
-                            self._mouse.move_to((msg.data['x'], self.screen_size_height - 30))
-                    self.lock.release()
-                    client_socket.send(Message(MsgType.TCP_ECHO).to_bytes())
-                elif msg.msg_type == MsgType.SEND_PUBKEY and state == ClientState.WAITING_FOR_KEY:
-                    client_id = msg.data['device_id']
-                    public_key = msg.data['public_key']
-                    new_device.pub_key = public_key
-                    new_device.device_id = client_id
-                    temp = keys_manager.get_key(client_id)
-                    if temp is None or temp != public_key:
-                        self.manager_gui.device_show_online_require(addr[0])
-                        self.manager_gui.request_queue.put(
-                            GuiMessage(GuiMessage.MessageType.ACCESS_REQUIRE, {"device_id": client_id}))
-                        result = self.response_queue.get()
-                        if result.data['result']:
-                            keys_manager.set_key(client_id, public_key)
-                            pass
-                        else:
-                            client_socket.send(Message(MsgType.ACCESS_DENY, {'result': 'access_deny'}).to_bytes())
-                            continue
-                    random_key = uuid.uuid1().bytes
-                    client_socket.send(
-                        Message(MsgType.KEY_CHECK, {'key': encrypt(public_key, random_key).hex()}).to_bytes())
-                    state = ClientState.WAITING_FOR_CHECK
-                elif msg.msg_type == MsgType.KEY_CHECK_RESPONSE and state == ClientState.WAITING_FOR_CHECK:
-                    if msg.data['key'] == random_key.hex():
-                        new_device.screen = Screen(screen_width=msg.data['screen_width'], screen_height=msg.data['screen_height'])
-                        device_storage = DeviceStorage()
-                        device_storage.add_device(new_device)  # 同时会更新device的position
-                        device_storage.close()
-                        client_socket.send(Message(MsgType.ACCESS_ALLOW, {'position': int(new_device.position)}).to_bytes())
-                        self.manager_gui.device_online_notify(new_device.device_id)
-                        self.manager_gui.update_devices()
-                        state = ClientState.CONNECT
-                    else:
-                        client_socket.send(Message(MsgType.ACCESS_DENY, {'result': 'access_deny'}).to_bytes())
-                        state = ClientState.WAITING_FOR_KEY
-            except ConnectionResetError:
-                print(f"Connection from {addr} closed")
-                break
-        client_socket.close()
+        new_device = Device(ip=addr[0], screen=None, position=Position.NONE)
+        if msg.msg_type == MsgType.SEND_PUBKEY and state == ClientState.WAITING_FOR_KEY:
+            client_id = msg.data['device_id']
+            public_key = msg.data['public_key']
+            new_device.pub_key = public_key
+            new_device.device_id = client_id
+            temp = keys_manager.get_key(client_id)
+            if temp is None or temp != public_key:
+                self.manager_gui.device_show_online_require(addr[0])
+                self.manager_gui.request_queue.put(
+                    GuiMessage(GuiMessage.MessageType.ACCESS_REQUIRE, {"device_id": client_id}))
+                result = self.response_queue.get()
+                if result.data['result']:
+                    keys_manager.set_key(client_id, public_key)
+
+                else:
+                    send_data_to_tcp_socket(access_client_socket,
+                                            Message(MsgType.ACCESS_DENY, {'result': 'access_deny'}).to_bytes())
+                    return
+            random_key = uuid.uuid1().bytes
+            send_data_to_tcp_socket(access_client_socket, Message(MsgType.KEY_CHECK,
+                                                                  {'key': encrypt(public_key,
+                                                                                  random_key).hex()}).to_bytes())
+            state = ClientState.WAITING_FOR_CHECK
+            data = read_data_from_tcp_socket(access_client_socket)
+            msg = Message.from_bytes(data)
+            if msg.msg_type == MsgType.KEY_CHECK_RESPONSE and state == ClientState.WAITING_FOR_CHECK:
+                if msg.data['key'] == random_key.hex():
+                    new_device.screen = Screen(screen_width=msg.data['screen_width'],
+                                               screen_height=msg.data['screen_height'])
+                    device_storage = DeviceStorage()
+                    device_storage.add_device(new_device)  # 同时会更新device的position
+                    device_storage.close()
+                    send_data_to_tcp_socket(access_client_socket, Message(MsgType.ACCESS_ALLOW,
+                                                                          {'position': int(
+                                                                              new_device.position)}).to_bytes())
+                    self.manager_gui.device_online_notify(new_device.device_id)
+                    self.manager_gui.update_devices()
+                    state = ClientState.CONNECT
+                else:
+                    send_data_to_tcp_socket(access_client_socket,
+                                            Message(MsgType.ACCESS_DENY, {'result': 'access_deny'}).to_bytes())
+                    state = ClientState.WAITING_FOR_KEY
+            else:
+                send_data_to_tcp_socket(access_client_socket,
+                                        Message(MsgType.ACCESS_DENY, {'result': 'access_deny'}).to_bytes())
+        else:
+            send_data_to_tcp_socket(access_client_socket,
+                                    Message(MsgType.ACCESS_DENY, {'result': 'access_deny'}).to_bytes())
+
+    def handle_client(self, client_socket, addr):
+        data = read_data_from_tcp_socket(client_socket)
+        msg = Message.from_bytes(data)
+        try:
+            if msg.msg_type == MsgType.SEND_PUBKEY:
+                self.handle_access(client_socket, msg, addr)
+            elif msg.msg_type == MsgType.CLIENT_OFFLINE:
+                device_storage = DeviceStorage()
+                device_storage.delete_device(msg.data['device_id'])
+                device_storage.close()
+                self.manager_gui.device_offline_notify(msg.data['device_id'])
+                if self.cur_device and self.cur_device.device_id == msg.data['device_id']:
+                    self.cur_device = None
+                self.manager_gui.update_devices()
+            elif msg.msg_type == MsgType.MOUSE_BACK:
+                self.lock.acquire()
+                if self.cur_device is not None:
+                    device_position = self.cur_device.position
+                    self.cur_device = None
+                    self._mouse.focus = True
+                    if device_position == Position.RIGHT:
+                        self._mouse.move_to((self.screen_size_width - 30, msg.data['y']))
+                    elif device_position == Position.LEFT:
+                        self._mouse.move_to((30, msg.data['y']))
+                    elif device_position == Position.TOP:
+                        self._mouse.move_to((msg.data['x'], 30))
+                    elif device_position == Position.BOTTOM:
+                        self._mouse.move_to((msg.data['x'], self.screen_size_height - 30))
+                self.lock.release()
+                send_data_to_tcp_socket(client_socket, Message(MsgType.TCP_ECHO).to_bytes())
+            elif msg.msg_type == MsgType.CLIPBOARD_UPDATE:
+                self.last_clipboard_text = msg.data['text']
+                pyperclip.copy(self.last_clipboard_text)
+                self.broadcast_clipboard(self.last_clipboard_text)
+        except ConnectionResetError:
+            print(f"Connection from {addr} closed")
+        finally:
+            client_socket.close()
 
     def clipboard_listener(self):
         while True:
@@ -192,8 +219,14 @@ class Server:
             time.sleep(1)
 
     def broadcast_clipboard(self, text):
-        msg = Message(MsgType.CLIPBOARD_UPDATE, {'text': text})
-        self.udp.sendto(msg.to_bytes(), ('<broadcast>', UDP_PORT))
+        device_storage = DeviceStorage()
+        for device in device_storage.get_all_devices():
+            text_encrypted = encrypt(device.pub_key, text.encode()).hex()
+            msg = Message(MsgType.CLIPBOARD_UPDATE, {'text': text_encrypted})
+            tcp_client = TcpClient((device.ip, TCP_PORT))
+            tcp_client.send(msg.to_bytes())
+            tcp_client.close()
+
 
     def add_mouse_listener(self):
         def on_click(x, y, button, pressed):
