@@ -304,7 +304,7 @@ class Server:
             if self.cur_device:
                 self.udp.sendto(msg.to_bytes(), self.cur_device.get_udp_address())
         if is_wayland():
-            self._keyboard.keyboard_listener(on_press, on_release)
+            self._keyboard.keyboard_listener(on_press, on_release,True)
             return None
         else:
             keyboard_listener = self._keyboard.keyboard_listener(on_press, on_release)
@@ -380,6 +380,7 @@ class Server:
                         time.sleep(0.1)
                 finally:
                     self._mouse.wait_for_event_puter_stop()
+
                 if not self._mouse.focus:
                     self.add_keyboard_listener()
                     self.add_mouse_listener_linux()
