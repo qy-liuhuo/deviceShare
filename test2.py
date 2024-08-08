@@ -18,7 +18,7 @@ class KeyboardControllerWayland:
             if ecodes.EV_KEY in capabilities and ecodes.EV_SYN in capabilities:
                 if ecodes.KEY_A in capabilities[ecodes.EV_KEY]:  # 检查是否有键盘按键
                     self.keyboard_devices.append(device)
-        capabilities = {ecodes.EV_KEY: list(ecodes.keys.keys())}
+        capabilities = {ecodes.EV_KEY: [code for code in ecodes.ecodes.values() if isinstance(code, int) and code >=ecodes.KEY_ESC and code <= ecodes.KEY_MAX]}
         self.ui = UInput(capabilities, name="virtual_keyboard")
         self.codeConvert = CodeConverter()
 
@@ -83,10 +83,14 @@ class KeyboardControllerWayland:
     def __del__(self):
         self.ui.close()
 
+    def simulate_key_press(self,key_code):
+        self.ui.write(ecodes.EV_KEY, key_code, 1)  # 按下按键
+        self.ui.syn()
+        time.sleep(0.1)  # 模拟按键按下的时间
+        self.ui.write(ecodes.EV_KEY, key_code, 0)  # 松开按键
+        self.ui.syn()
+
 
 kc = KeyboardControllerWayland()
-
 for i in range(10):
-    kc.press(ecodes.KEY_0)
-    kc.release(ecodes.KEY_0)
-    time.sleep(2)
+    kc.simulate_key_press(ecodes.KEY_H)
