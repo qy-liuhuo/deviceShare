@@ -3,8 +3,6 @@
 ## 项目介绍
 ![](https://img.qylh.xyz/blog/1723181688963.png)
 DeviceShare 是一款跨平台的多主机输入设备共享工具，支持 Windows、Linux、MacOS 等操作系统,支持在Wayland环境下运行。
-
-
 通过 DeviceShare，您可以在多台主机之间共享鼠标、键盘、剪贴板等输入设备，实现多台主机之间的输入设备共享。
 
 
