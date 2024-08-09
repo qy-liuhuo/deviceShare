@@ -1,3 +1,4 @@
+import logging
 import platform
 import socket
 import threading
@@ -32,6 +33,7 @@ class Server:
     服务端类
     """
     def __init__(self,app):
+        self.logging = logging.getLogger(__name__)
         create_table() # 创建数据库表
         self.init_screen_info() # 初始化屏幕信息
         self.clipboard_controller = get_clipboard_controller() # 获取剪贴板控制器
@@ -70,7 +72,7 @@ class Server:
             self.start_all_threads() # 启动所有线程
             self.manager_gui.run() # 运行GUI
         except Exception as e:
-            print(e)
+            self.logging.error(e)
         finally:
             self.close() # 关闭
 
@@ -153,7 +155,7 @@ class Server:
         """
         while True:
             client, addr = self.tcp_server.accept()
-            print(f"Connection from {addr}")
+            self.logging.info(f"Connection from {addr}")
             client_handler = threading.Thread(target=self.handle_client, args=(client, addr), daemon=True)
             client_handler.start()
 
@@ -259,7 +261,7 @@ class Server:
                 self.clipboard_controller.update_last_clipboard_text(msg.data['text'])
                 self.broadcast_clipboard(msg.data['text'])
         except ConnectionResetError:
-            print(f"Connection from {addr} closed")
+            self.logging.warning(f"Connection from {addr} closed")
         finally:
             client_socket.close()
 

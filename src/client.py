@@ -1,3 +1,4 @@
+import logging
 import socket
 import threading
 import time
@@ -22,6 +23,7 @@ class Client:
     被控机类
     """
     def __init__(self,app):
+        self.logging = logging.getLogger(__name__)
         self.init_screen_info() # 初始化屏幕信息
         self.clipboard_controller = get_clipboard_controller() # 获取剪切板控制器
         self._keyboard = get_keyboard_controller() # 键盘控制器
@@ -50,7 +52,7 @@ class Client:
         try:
             self.gui.run()
         except Exception as e:
-            print(e)
+            self.logging.error(e)
         finally:
             self.close()
 
@@ -101,7 +103,7 @@ class Client:
         """
         while True:
             client, addr = self.tcp_server.accept()
-            print(f"Connection from {addr}")
+            self.logging.info(f"Connection from {addr}")
             client_handler = threading.Thread(target=self.handle_client, args=(client, addr), daemon=True) # 处理客户端请求线程
             client_handler.start()
 
@@ -120,7 +122,7 @@ class Client:
                 new_text = self.rsa_util.decrypt(bytes.fromhex(msg.data['text'])).decode()
                 self.clipboard_controller.copy(new_text)
         except Exception as e:
-            print(e)
+            self.logging.error(e)
         finally:
             client_socket.close()
 
@@ -154,19 +156,19 @@ class Client:
                         continue
                     msg = Message.from_bytes(data)
                     if msg.msg_type == MsgType.ACCESS_ALLOW: # 服务端允许连接
-                        print('Access allow')
+                        self.logging.info('Access allow')
                         self.be_added = True
                         self.position = Position(int(msg.data['position']))
                     elif msg.msg_type == MsgType.ACCESS_DENY: # 服务端拒绝连接
-                        print('Access denied')
+                        self.logging.info('Access denied')
                         tcp_client.close()
                         break
                 elif msg.msg_type == MsgType.ACCESS_DENY:
-                    print('Access denied')
+                    self.logging.info('Access denied')
                     tcp_client.close()
                     break
             except Exception as e:
-                print(e)
+                self.logging.error(e)
             finally:
                 tcp_client.close()
 
@@ -239,7 +241,7 @@ class Client:
                         tcp_client.close()
                         self._mouse.focus = False
                 elif msg.msg_type == MsgType.MOUSE_MOVE_TO:  # 跨屏初始位置
-                    print("moved into")
+                    self.logging.info(f"Move to {msg.data['x']}, {msg.data['y']}")
                     self._mouse.focus = True
                     self._mouse.move_to((msg.data['x'], msg.data['y']))
                 elif msg.msg_type == MsgType.MOUSE_CLICK: # 鼠标点击
@@ -251,7 +253,7 @@ class Client:
                 elif msg.msg_type == MsgType.POSITION_CHANGE: # 屏幕位置改变
                     self.position = Position(int(msg.data['position']))
         except Exception as e:
-            print(e)
+            self.logging.error(e)
             self.udp.close()
 
     def close(self):
