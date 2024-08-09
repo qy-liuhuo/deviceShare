@@ -1,6 +1,10 @@
 import netifaces
 
 def get_local_ip():
+    """
+    获取本地ip
+    :return: ip
+    """
     interfaces = netifaces.interfaces()
     for interface in interfaces:
         addresses = netifaces.ifaddresses(interface)

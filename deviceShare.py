@@ -6,6 +6,9 @@ from src.server import Server
 
 
 class RoleSelectionDialog(QDialog):
+    """
+    身份选择对话框
+    """
     def __init__(self):
         super().__init__()
 
@@ -31,10 +34,18 @@ class RoleSelectionDialog(QDialog):
         self.selected_role = None
 
     def select_server(self):
+        """
+        选择主控机
+        :return:
+        """
         self.selected_role = "server"
         self.accept()
 
     def select_client(self):
+        """
+        选择被控机
+        :return:
+        """
         self.selected_role = "client"
         self.accept()
 
@@ -56,5 +67,7 @@ def main():
         print(e)
     finally:
         app.quit()
+
+
 if __name__ == "__main__":
     main()
