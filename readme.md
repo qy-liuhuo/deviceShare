@@ -35,14 +35,17 @@ https://github.com/qy-liuhuo/deviceShare/assets/60374114/1b911b8a-976f-4128-9518
 
 
 ## 使用说明
-针对x86架构的Windows、Kylin、Debian操作系统以及MacOS系统，我们打包构建了可执行程序，可在Github Release界面下载合适的版本。 
+针对x86架构的Windows、OpenKylin操作系统，我们打包构建了可执行程序，可在Release界面下载合适的版本。 
 
 若构建的版本无法支持目标机器，可选择源码运行或自行打包。该方案需具备Python3 环境，具体步骤如下：
 1. 获取项目代码
 2. 使用`pip install -r requirements.txt`命令安装依赖
 3. 执行`python deviceShare.py`启动程序
-4. 安装`pyinstaller`
-5. 使用`pyinstaller`打包目标程序
+4. 安装`pyinstaller`: `pip install pyinstaller`
+5. 使用`pyinstaller`打包目标程序: `pyinstaller deviceShare.spec`
+6. 运行`dist`目录下生成的可执行文件
+7. 将`resources`目录复制到dist目录下
+8. 若在Linux下运行，采用脚本`run.sh`启动程序，将`run.sh`复制到dist目录下，执行`sudo chmod 777 run.sh`赋予执行权限，执行`bash run.sh`启动程序,windows下无需执行此步骤,直接运行exe文件即可
 
 6. 注意Kylin操作系统在安装python的evdev依赖时可能出现错误，请选择安装预编译版本evdev-binary，参考 https://python-evdev.readthedocs.io/en/latest/install.html
 
@@ -92,6 +95,8 @@ DeviceShare
 │   ├── client.py # 客户端,被控设备
 │   └── server.py # 服务端,主控设备
 ├── deviceShare.py # 启动程序
+├── run.sh # linux启动脚本
+├── deviceShare.spec # pyinstaller打包配置
 ├── keys.db # RSA密钥存储，自动生成
 ├── readme.md # 说明文档
 ├── requirements.txt # 依赖
