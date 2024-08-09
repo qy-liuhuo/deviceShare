@@ -1,0 +1,1 @@
+windows下直接点击运行deviceShare.exe文件即可运行
