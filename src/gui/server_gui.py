@@ -21,17 +21,39 @@ DEFAULT_HEIGHT = 216
 
 
 class GuiMessage:
+    """
+    GuiMessage class to store message information
+    """
     class MessageType(enum.IntEnum):
-        ACCESS_REQUIRE = enum.auto()
-        ACCESS_RESPONSE = enum.auto()
+        """
+        MessageType class to store message type
+        """
+        ACCESS_REQUIRE = enum.auto() # 申请连接
+        ACCESS_RESPONSE = enum.auto() # 连接响应
 
     def __init__(self, msg_type, data):
+        """
+        初始化
+        :param msg_type: 消息类型
+        :param data: 数据
+        """
         self.msg_type = msg_type
         self.data = data
 
 
 class ClientScreen(QLabel):
+    """
+    ClientScreen class to store client screen information
+    """
     def __init__(self, master, x, y, location, *__args):
+        """
+        初始化
+        :param master: 主窗口
+        :param x: x
+        :param y: y
+        :param location: 位置
+        :param __args: 参数
+        """
         super().__init__(master, *__args)
         self.master = master
         # self.client_ip = ""
@@ -51,6 +73,11 @@ class ClientScreen(QLabel):
         self.move(x, y)
 
     def set_client(self, device_id):
+        """
+        设置客户端
+        :param device_id:  设备id
+        :return:
+        """
         original_client = self.device_id
         self.device_id = device_id
         if device_id == "":
@@ -60,6 +87,11 @@ class ClientScreen(QLabel):
         return original_client
 
     def mousePressEvent(self, e):
+        """
+        鼠标按下事件
+        :param e:
+        :return:
+        """
         if e.buttons() == QtCore.Qt.LeftButton:
             if self.device_id != "":
                 self.isMoving = True
@@ -67,12 +99,22 @@ class ClientScreen(QLabel):
                 self.master.prepare_modify(self)
 
     def mouseMoveEvent(self, e):
+        """
+        鼠标移动事件
+        :param e:
+        :return:
+        """
         if e.buttons() == QtCore.Qt.LeftButton:
             if self.device_id != "":
                 self.move(self.mapToParent(e.pos()) - self.relative_position)
                 self.master.track_move(self.x(), self.y())
 
     def mouseReleaseEvent(self, e):
+        """
+        鼠标释放事件
+        :param e:
+        :return:
+        """
         if self.isMoving:
             self.master.finish_modify(self.x(), self.y(), self)
             self.setParent(None)
@@ -80,17 +122,29 @@ class ClientScreen(QLabel):
             self.isMoving = False
 
     def enter(self):
+        """
+        进入
+        :return:
+        """
         if self.device_id != "":
             self.setPixmap(QPixmap(""))
         self.setStyleSheet('border-width: 2px;border-style: solid;border-color:  #0984e3;;border-radius: 9')
 
     def leave(self):
+        """
+        离开
+        :return:
+        """
         if self.device_id != "":
             self.setPixmap(self.create_round_pixmap(self.device_id[:10]))
             self.set_opacity(0.5)
         self.setStyleSheet('border-width: 0px;border-style: solid;border-color: black;border-radius: 9')
 
     def create_menu(self):
+        """
+        创建菜单
+        :return:
+        """
         if self.device_id != "":
             self.menu = QMenu(self)
 
@@ -101,6 +155,10 @@ class ClientScreen(QLabel):
             self.menu.popup(QCursor.pos())
 
     def device_offline(self):
+        """
+        设备下线
+        :return:
+        """
         sqlWriter = DeviceStorage()
         sqlWriter.delete_device(self.device_id)
         sqlWriter.close()
@@ -108,11 +166,21 @@ class ClientScreen(QLabel):
         self.master.client_init()
 
     def set_opacity(self, opacity):
+        """
+        设置透明度
+        :param opacity:
+        :return:
+        """
         effect_opacity = QGraphicsOpacityEffect()
         effect_opacity.setOpacity(opacity)
         self.setGraphicsEffect(effect_opacity)
 
     def create_round_pixmap(self, device_id):
+        """
+        创建圆形图片
+        :param device_id:   设备id
+        :return:
+        """
         if not os.path.exists("./temp/"):
             os.makedirs("./temp/")
         if not QFileInfo('./temp/' + device_id + ".jpg").exists():
@@ -132,6 +200,11 @@ class ClientScreen(QLabel):
         return rounded_pixmap
 
     def new_image(self, device_id):
+        """
+        创建新图片
+        :param device_id:  设备id
+        :return:
+        """
         font = ImageFont.truetype('resources/GenJyuuGothic-Normal.ttf', 30)
         w, h = font.getsize(device_id)
         H = DEFAULT_HEIGHT
@@ -152,6 +225,9 @@ class ClientScreen(QLabel):
 
 
 class ClientList(QListView):
+    """
+    ClientList class to store client list
+    """
     def __init__(self, master):
         super().__init__(master)
         self.master = master
@@ -159,6 +235,10 @@ class ClientList(QListView):
         self.init()
 
     def init(self):
+        """
+        初始化
+        :return:
+        """
         class CustomDelegate(QStyledItemDelegate):
             def paint(self, painter, option, index):
                 # 设置文本居中对齐
@@ -178,6 +258,10 @@ class ClientList(QListView):
         self.hide()
 
     def update_data(self):
+        """
+        更新数据
+        :return:
+        """
         deviceReader = DeviceStorage()
         device_list = deviceReader.get_all_devices()
         deviceReader.close()
@@ -199,6 +283,11 @@ class ClientList(QListView):
         self.setModel(self.model)
 
     def mousePressEvent(self, e):
+        """
+        鼠标按下事件
+        :param e:
+        :return:
+        """
         if e.buttons() == QtCore.Qt.RightButton:
             index = self.indexAt(e.pos())
             if index.isValid():
@@ -207,6 +296,10 @@ class ClientList(QListView):
                 self.create_menu()
 
     def create_menu(self):
+        """
+        创建菜单
+        :return:
+        """
         index = self.currentIndex()
         if index:
             menu = QMenu(self)
@@ -216,6 +309,10 @@ class ClientList(QListView):
             menu.exec_(QCursor.pos())
 
     def delete_item(self):
+        """
+        删除item
+        :return:
+        """
         index = self.currentIndex()
         keyWriter = KeyStorage()
         id = index.data().split()[0]
@@ -230,7 +327,15 @@ class ClientList(QListView):
 
 
 class ConfigurationInterface(QWidget):
+    """
+    ConfigurationInterface class to store configuration interface
+    """
     def __init__(self, master, update_flag):
+        """
+        初始化
+        :param master:
+        :param update_flag:
+        """
         super().__init__(master)
         self.update_flag = update_flag
         self.last_potential_location = None
@@ -265,6 +370,10 @@ class ConfigurationInterface(QWidget):
         self.show()
 
     def client_init(self):
+        """
+        客户端初始化
+        :return:
+        """
         # device_dict = {}
         sqlReader = DeviceStorage()
         device_list = sqlReader.get_all_devices()
@@ -276,6 +385,11 @@ class ConfigurationInterface(QWidget):
         self.client_list.update_data()
 
     def prepare_modify(self, currentClient):
+        """
+        准备修改
+        :param currentClient:
+        :return:
+        """
         for client in self.clients.values():
             if currentClient != client and client.device_id != "":
                 client.set_opacity(0.5)
@@ -284,6 +398,12 @@ class ConfigurationInterface(QWidget):
         self.clients[currentClient.location] = tempScreen
 
     def track_move(self, x, y):
+        """
+        跟踪移动
+        :param x:
+        :param y:
+        :return:
+        """
         potential_target_location = self.get_target_location(x, y)
         if potential_target_location != self.last_potential_location:
             if self.last_potential_location:
@@ -293,6 +413,13 @@ class ConfigurationInterface(QWidget):
                 self.clients[self.last_potential_location].enter()
 
     def finish_modify(self, x, y, current_client):
+        """
+        完成修改
+        :param x:
+        :param y:
+        :param current_client:
+        :return:
+        """
         if self.last_potential_location:
             self.clients[self.last_potential_location].leave()
         self.last_potential_location = None
@@ -307,6 +434,12 @@ class ConfigurationInterface(QWidget):
             self.clients[current_client.location].set_client(exchange_ip)
 
     def get_target_location(self, x, y):
+        """
+        获取目标位置
+        :param x:
+        :param y:
+        :return:
+        """
         if self.center_image.y() - y > 120 and abs(x - self.center_image.x()) < 180:
             return Position["TOP"]
         elif y - self.center_image.y() > 120 and abs(x - self.center_image.x()) < 180:
@@ -319,12 +452,20 @@ class ConfigurationInterface(QWidget):
             return None
 
     def display_client_list(self):
+        """
+        显示客户端列表
+        :return:
+        """
         if self.client_list.isVisible():
             self.client_list.hide()
         else:
             self.client_list.show()
 
     def save_configuration(self):
+        """
+        保存配置
+        :return:
+        """
         devices = []
         sqlReaderWriter = DeviceStorage()
         for screen in self.clients.values():
@@ -340,6 +481,10 @@ class ConfigurationInterface(QWidget):
         QMessageBox.information(self, "DeviceShare", "配置保存成功", QMessageBox.Ok)
 
     def create_round_pixmap(self):
+        """
+        创建圆形图片
+        :return:
+        """
         pixmap = QPixmap("./resources/Host.jpg")  # 替换为你的图片路径
         size = self.center_image.size()
         rounded_pixmap = QPixmap(size)
@@ -355,6 +500,11 @@ class ConfigurationInterface(QWidget):
         return rounded_pixmap
 
     def online_update(self, device_id):
+        """
+        在线更新
+        :param device_id:
+        :return:
+        """
         for screen in self.clients.values():
             if screen.device_id == "":
                 screen.set_client(device_id)
@@ -366,11 +516,18 @@ class ConfigurationInterface(QWidget):
 
 
 class MainWindow(QMainWindow):
+    """
+    MainWindow class to store main window
+    """
     def __init__(self):
         super().__init__()
         self.initUI()
 
     def initUI(self):
+        """
+        初始化UI
+        :return:
+        """
         self.setWindowTitle('DeviceShare')
         self.setWindowIcon(
             QIcon("./resources/devicelink.ico"))  # 确保你的项目目录下有一个icon.png文件
@@ -382,17 +539,36 @@ class MainWindow(QMainWindow):
         authorization_list.addAction(show_list)
 
     def show_list(self):
+        """
+        显示列表
+        :return:
+        """
         self.configure_interface.display_client_list()
 
     def closeEvent(self, event):
+        """
+        关闭事件
+        :param event:
+        :return:
+        """
         self.hide()
         event.ignore()
 
     def showEvent(self, event):
+        """
+        显示事件
+        :param event:
+        :return:
+        """
         self.configure_interface.client_init()
         event.accept()
 
     def ask_access_require(self, id):
+        """
+        询问访问需求
+        :param id:
+        :return:
+        """
         self.show()
         msgBox = QMessageBox()
         msgBox.setIcon(QMessageBox.Question)
@@ -409,6 +585,11 @@ class MainWindow(QMainWindow):
         return reply == QMessageBox.Yes
 
     def set_configure_interface(self, configure_interface):
+        """
+        设置配置界面
+        :param configure_interface:
+        :return:
+        """
         self.configure_interface = configure_interface
 
 
@@ -416,7 +597,7 @@ class ServerGUI:
     def __init__(self, app, update_flag, request_queue=None, response_queue=None):
         self.app = app
         self.mainWin = MainWindow()
-        qt_material.apply_stylesheet(self.app, theme='light_blue.xml')
+        qt_material.apply_stylesheet(self.app, theme='light_blue.xml') # Apply the light blue theme
         self.trayIcon = QSystemTrayIcon(self.mainWin)
         self.initTrayIcon()
         self.request_queue = request_queue
@@ -427,6 +608,10 @@ class ServerGUI:
         self.mainWin.show()
 
     def initTrayIcon(self):
+        """
+        初始化托盘图标
+        :return:
+        """
         # 创建托盘图标
         self.trayIcon.setIcon(QIcon("./resources/devicelink.ico"))
         # 创建托盘菜单
@@ -446,13 +631,24 @@ class ServerGUI:
         self.trayIcon.show()
 
     def run(self):
+        """
+        运行
+        :return:
+        """
         self.app.exec_()
 
     def exit(self):
+        """
+        退出
+        """
         self.trayIcon.setVisible(False)
         self.app.quit()
 
     def process_request(self):
+        """
+        处理请求
+        :return:
+        """
         if self.request_queue.empty():
             return
         request = self.request_queue.get()
@@ -462,18 +658,37 @@ class ServerGUI:
                                                 "device_id": request.data["device_id"]}))
 
     def device_offline_notify(self, device_id):
+        """
+        设备下线通知
+        :param device_id:
+        :return:
+        """
         self.trayIcon.showMessage("提醒", "设备" + device_id + "已下线", QSystemTrayIcon.Information, 5000)
 
     def device_online_notify(self, device_id):
+        """
+        设备上线通知
+        :param device_id:
+        :return:
+        """
         self.trayIcon.showMessage("提醒", "设备" + device_id + "已上线", QSystemTrayIcon.Information, 5000)
 
     def device_show_online_require(self, device_id):
+        """
+        设备显示在线需求
+        :param device_id:
+        :return:
+        """
         if sys.platform == 'linux':
             self.trayIcon.showMessage("申请", "设备" + device_id + "申请加入链接,点击处理", QSystemTrayIcon.Critical, 5000)
         else:
             self.trayIcon.showMessage("申请", "设备" + device_id + "申请加入链接,点击处理", QSystemTrayIcon.Information, 5000)
 
     def update_devices(self):
+        """
+        更新设备
+        :return:
+        """
         self.configureInterface.client_init()
 
 

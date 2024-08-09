@@ -3,7 +3,6 @@
 ./devices.json
 /dist/
 /build/
-*.spec
 **/*.key
 **/*.pyc
 **/*.db

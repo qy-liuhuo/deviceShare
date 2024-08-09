@@ -4,6 +4,9 @@ from evdev import ecodes as e
 
 
 class CodeConverter:
+    """
+    用于 pynput 的键码与evdev 的键码转换
+    """
     def __init__(self):
         # 定义从 pynput 到 evdev 的键码映射
         self.pynput_to_evdev_dict = {
@@ -119,9 +122,19 @@ class CodeConverter:
         
 
     def pynput_to_evdev_key(self,pynput_key):
+        """
+        将pynput的键码转换为evdev的键码
+        :param pynput_key: pynput的键码
+        :return: evdev的键码
+        """
         return self.pynput_to_evdev_dict.get(pynput_key, None)
 
     def evdev_to_pynput_key(self,evdev_key):
+        """
+        将evdev的键码转换为pynput的键码
+        :param evdev_key: evdev的键码
+        :return: pynput的键码
+        """
         return self.evdev_to_pynput_dict.get(evdev_key, None)
 
 

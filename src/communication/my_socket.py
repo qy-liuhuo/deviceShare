@@ -8,18 +8,35 @@ TCP_PORT = 16667
 
 
 class Udp:
-    packet_size = 1024
+    """
+    UDP通信
+    """
+    packet_size = 1024 # 包大小
 
     def __init__(self, port=16666):
+        """
+        初始化
+        :param port: 端口
+        """
         self.msg_listener = None
         self._udp_port = port
         self._udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self._udp.bind(("0.0.0.0", self._udp_port))
 
     def allow_broadcast(self):
+        """
+        允许广播
+        :return:
+        """
         self._udp.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
 
     def sendto(self, data: bytes, target: tuple):
+        """
+        发送数据
+        :param data: 数据
+        :param target: 目标
+        :return:
+        """
         try:
             if target is None:
                 return
@@ -37,6 +54,10 @@ class Udp:
             self.close()
 
     def recv(self):
+        """
+        接收数据
+        :return:
+        """
         fragments = {}
         expected_packets = None
         data = None
@@ -62,17 +83,33 @@ class Udp:
             return data, addr
 
     def close(self):
+        """
+        关闭连接
+        :return:
+        """
         self._udp.close()
 
 
 
 
 class TcpClient:
+    """
+    TCP客户端
+    """
     def __init__(self, target: tuple):
+        """
+        初始化
+        :param target: 目标服务地址
+        """
         self._tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._tcp.connect(target)
 
     def send(self, data: bytes):
+        """
+        发送数据
+        :param data: 数据
+        :return:
+        """
         try:
             # 先发送数据长度
             data_len = struct.pack('!I', len(data))
@@ -85,9 +122,17 @@ class TcpClient:
 
 
     def close(self):
+        """
+        关闭连接
+        :return:
+        """
         self._tcp.close()
 
     def recv(self):
+        """
+        接收数据
+        :return:
+        """
         try:
             # 先接收数据长度
             raw_data_len = self._tcp.recv(4)
@@ -110,6 +155,11 @@ class TcpClient:
 
 
 def read_data_from_tcp_socket(client_socket):
+    """
+    从TCP套接字中读取数据
+    :param client_socket: 客户端套接字
+    :return:
+    """
     try:
         # 先接收数据长度
         raw_data_len = client_socket.recv(4)
@@ -129,6 +179,12 @@ def read_data_from_tcp_socket(client_socket):
         return WRONG_MESSAGE
 
 def send_data_to_tcp_socket(client_socket, data: bytes):
+    """
+    发送数据到TCP套接字
+    :param client_socket: 客户端socket
+    :param data: 数据
+    :return:
+    """
     try:
         # 先发送数据长度
         data_len = struct.pack('!I', len(data))

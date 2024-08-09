@@ -4,8 +4,14 @@ from PyQt5.QtWidgets import QApplication, QSystemTrayIcon, QMenu, QAction, QMain
 
 
 class ClientGUI:
-
+    """
+    客户端GUI
+    """
     def __init__(self,app):
+        """
+        初始化
+        :param app:
+        """
         self.app = app
         self.window = QMainWindow()
         self.trayIcon = QSystemTrayIcon(self.window)
@@ -18,8 +24,16 @@ class ClientGUI:
         self.trayIcon.show()
 
     def exit(self):
+        """
+        退出
+        :return:
+        """
         self.trayIcon.setVisible(False)
         self.app.quit()
 
     def run(self):
+        """
+        运行
+        :return:
+        """
         self.app.exec_()

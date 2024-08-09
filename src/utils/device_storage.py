@@ -8,6 +8,10 @@ from src.gui.screen import Screen
 
 
 def create_table():
+    """
+    创建表
+    :return:
+    """
     delete_table()
     conn = sqlite3.connect("temp.db")
     cursor = conn.cursor()
@@ -18,6 +22,10 @@ def create_table():
 
 
 def delete_table():
+    """
+    删除表
+    :return:
+    """
     conn = sqlite3.connect("temp.db")
     cursor = conn.cursor()
     # 存在devices表才删除
@@ -29,17 +37,32 @@ def delete_table():
 
 
 class DeviceStorage:
-
+    """
+    DeviceStorage class to store device information
+    """
     def __init__(self, db_path="temp.db"):
+        """
+        初始化
+        :param db_path:
+        """
         self.db_path = db_path
         self.conn = sqlite3.connect(self.db_path)
         self.cursor = self.conn.cursor()
 
     def update_heartbeat(self, ip):
+        """
+        更新心跳时间
+        :param ip: device ip
+        :return:
+        """
         self.cursor.execute("UPDATE devices SET last_heartbeat = ? WHERE ip = ?", (time.time(), ip))
         self.conn.commit()
 
     def check_valid(self):
+        """
+        检查是否有效
+        :return: 是否有设备失效
+        """
         flag = False
         self.cursor.execute("SELECT * FROM devices")
         devices = self.get_all_devices()
@@ -51,11 +74,21 @@ class DeviceStorage:
         return flag
 
     def delete_device(self, device_id):
+        """
+        删除设备
+        :param device_id: 设备id
+        :return:
+        """
         self.cursor.execute("DELETE FROM devices WHERE device_id = ?", (device_id,))
         self.conn.commit()
 
 
     def add_device(self, device: device.Device):
+        """
+        添加设备
+        :param device: 设备
+        :return:
+        """
         for p in Position:
             temp = self.get_device_by_position(p)
             if temp is None:
@@ -67,11 +100,20 @@ class DeviceStorage:
         self.conn.commit()
 
     def update_device(self, device: device.Device):
+        """
+        更新设备
+        :param device: 设备
+        :return:
+        """
         self.cursor.execute("UPDATE devices SET position = ? WHERE device_id = ?",
                             (device.position.value, device.device_id))
         self.conn.commit()
 
     def get_all_devices(self):
+        """
+        获取所有设备
+        :return: devices list
+        """
         self.cursor.execute("SELECT * FROM devices")
         devices = self.cursor.fetchall()
         device_list = []
@@ -83,6 +125,11 @@ class DeviceStorage:
 
 
     def get_device(self, device_id):
+        """'
+        获取设备
+        :param device_id: 设备id
+        :return: device
+        """
         self.cursor.execute("SELECT * FROM devices WHERE device_id = ?", (device_id,))
         device = self.cursor.fetchone()
         if device:
@@ -92,6 +139,11 @@ class DeviceStorage:
         return None
 
     def get_device_by_ip(self, ip):
+        """
+        通过ip获取设备
+        :param ip: 设备ip
+        :return: device
+        """
         self.cursor.execute("SELECT * FROM devices WHERE ip = ?", (ip,))
         device = self.cursor.fetchone()
         if device:
@@ -101,6 +153,11 @@ class DeviceStorage:
         return None
 
     def get_device_by_position(self, position):
+        """
+        通过位置获取设备
+        :param position: 位置
+        :return: 设备
+        """
         self.cursor.execute("SELECT * FROM devices WHERE position = ?", (int(position),))
         device = self.cursor.fetchone()
         if device:
@@ -110,4 +167,8 @@ class DeviceStorage:
         return None
 
     def close(self):
+        """
+        关闭
+        :return:
+        """
         self.conn.close()

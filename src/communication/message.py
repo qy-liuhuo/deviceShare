@@ -3,27 +3,33 @@ import json
 
 
 class MsgType(enum.IntEnum):
-    CLIENT_HEARTBEAT = enum.auto()
-    MOUSE_BACK = enum.auto()
-    MOUSE_MOVE = enum.auto()
-    MOUSE_MOVE_TO = enum.auto()
-    MOUSE_CLICK = enum.auto()
-    MOUSE_SCROLL = enum.auto()
-    KEYBOARD_CLICK = enum.auto()
-    CLIPBOARD_UPDATE = enum.auto()
-    POSITION_CHANGE = enum.auto()
-    SEND_PUBKEY = enum.auto()
-    TCP_ECHO = enum.auto()
-    KEY_CHECK = enum.auto()
-    KEY_CHECK_RESPONSE = enum.auto()
-    ACCESS_DENY = enum.auto()
-    ACCESS_ALLOW = enum.auto()
-    CLIENT_OFFLINE = enum.auto()
-    WRONG_MSG = enum.auto()
+    """
+    MsgType enum
+    """
+    CLIENT_HEARTBEAT = enum.auto() # 客户端心跳
+    MOUSE_BACK = enum.auto() # 鼠标返回
+    MOUSE_MOVE = enum.auto() # 鼠标移动
+    MOUSE_MOVE_TO = enum.auto() # 鼠标移动到
+    MOUSE_CLICK = enum.auto() # 鼠标点击
+    MOUSE_SCROLL = enum.auto() # 鼠标滚动
+    KEYBOARD_CLICK = enum.auto() # 键盘点击
+    CLIPBOARD_UPDATE = enum.auto() # 剪贴板更新
+    POSITION_CHANGE = enum.auto() # 位置改变
+    SEND_PUBKEY = enum.auto() # 发送公钥
+    TCP_ECHO = enum.auto() # TCP回声
+    KEY_CHECK = enum.auto() # 键盘检查
+    KEY_CHECK_RESPONSE = enum.auto() # 键盘检查响应
+    ACCESS_DENY = enum.auto() # 拒绝访问
+    ACCESS_ALLOW = enum.auto() # 允许访问
+    CLIENT_OFFLINE = enum.auto() # 客户端离线
+    WRONG_MSG = enum.auto() # 错误消息
 
 
 
 class Message:
+    """
+    Message
+    """
     SPLITTER = "[@~|"
     def __init__(self, msg_type: MsgType, data=None):
         if data is None:
@@ -33,6 +39,11 @@ class Message:
 
     @staticmethod
     def from_bytes(byteData: bytes):
+        """
+        从字节数据中解析消息
+        :param byteData: 字节数据
+        :return: 消息
+        """
         if isinstance(byteData, bytearray):
             byteData = bytes(byteData)
         msg_type, data = byteData.decode().split(Message.SPLITTER)
@@ -72,10 +83,14 @@ class Message:
     #     self.msg_type,self.data = byteData.split(self.SPLITTER)
 
     def to_bytes(self):
+        """
+        转换为字节数据
+        :return:
+        """
         return bytes(f"{int(self.msg_type)}{self.SPLITTER}{json.dumps(self.data)}".encode())
 
     def __str__(self):
         return f"Message({self.msg_type},{self.data})"
 
-
+# 错误消息标志
 WRONG_MESSAGE = Message(MsgType.WRONG_MSG).to_bytes()
