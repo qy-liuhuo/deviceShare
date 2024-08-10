@@ -1,25 +1,3 @@
-# 赛题要求
-
-##### 作品完成和提交方式：选择本赛题的参赛队伍需要首先复刻（Fork）本项目，然后在复刻的项目中添加参赛队员、合作完成作品开发即可，无需提交PR到赛题项目。如果作品为文档形式，也请将作品文档提交到项目代码库中。在作品完成过程中，围绕作品的相关讨论等可以以疑修（Issue）形式发布和讨论，也可使用里程碑对整个任务进行规划管理。
-
-### 1. 赛题说明
-基于openKylin操作系统Wayland环境，实现多主机共享一套hid input设备的技术方案（以一套键鼠为例），形成一套具备安全性、通用性的协议标准。
-
-### 2. 赛题要求
-1)支持一套键鼠控制多台主机（大于等于2）。鼠标可在多主机之间自由移动，键盘可跟随鼠标焦点所在的窗口做输入操作。多套主机在同一时刻仅有1套设备实际响应input操作。
-2)提供配置主机之间相对位置的功能，鼠标移动范围及方向受相对位置限制；
-3)支持主机间剪切板功能共享
-4)额外功能：支持文本文档、图片、word文档等文件的主机间拖拽功能
-
-### 3. 赛题导师
-liujie01@kylinos.cn
-
-### 4. 参考资料
-1)https://www.kernel.org/doc/html/latest/usb/usbip_protocol.html
-2)https://help.ubuntu.com/community/SynergyHowto
-
-
-
 # DeviceShare —— 跨平台多主机输入设备共享
 
 ## 项目介绍
@@ -42,22 +20,39 @@ DeviceShare 是一款跨平台的多主机输入设备共享工具，支持 Wind
 9. **易用性**：支持一键启动，无需复杂配置。
 10. **开源免费**：支持开源免费使用。
 
-**演示环境**
-![1719817611466.png](https://img.qylh.xyz/blog/1719817611466.png)
 
-**双机演示**
-
-https://github.com/qy-liuhuo/deviceShare/assets/60374114/6e126292-22e0-4d91-bab9-272470689ecd
+## 项目演示
 
 
-**三机演示**
+项目在Windows10、Debian12、Ubuntu20.4、MacOS、openKylin等多个平台进行运行演示，服务端主机连接usb键鼠，所有主机以无线局域网的形式连接，测试环境如下图所示：
 
-https://github.com/qy-liuhuo/deviceShare/assets/60374114/1b911b8a-976f-4128-9518-9c64c73a7a39
+![1723257064070.png](https://img.qylh.xyz/blog/1723257064070.png)
+
+演示视频：https://img.qylh.xyz/mobinets_demo.mp4
+
+
+[//]: # (**双机演示**)
+
+[//]: # ()
+[//]: # (https://github.com/qy-liuhuo/deviceShare/assets/60374114/6e126292-22e0-4d91-bab9-272470689ecd)
+
+[//]: # ()
+[//]: # ()
+[//]: # (**演示**)
+
+[//]: # ()
+[//]: # (https://github.com/qy-liuhuo/deviceShare/assets/60374114/1b911b8a-976f-4128-9518-9c64c73a7a39)
 
 
 
-## 使用说明
-针对x86架构的Windows、OpenKylin操作系统，我们打包构建了可执行程序，可在Release界面下载合适的版本。
+## 说明
+针对x86架构的Windows、OpenKylin操作系统，我们打包构建了可执行程序，可在Release界面下载合适的版本。 
+
+1. 若在Linux下运行，采用脚本`run.sh`启动程序，将`run.sh`复制到dist目录下，执行`sudo chmod 777 run.sh`赋予执行权限，执行`bash run.sh`启动程序
+2. 若为windows环境,直接运行exe文件即可
+
+
+### Build说明
 
 若构建的版本无法支持目标机器，可选择源码运行或自行打包。该方案需具备Python3 环境，具体步骤如下：
 1. 获取项目代码
@@ -67,9 +62,16 @@ https://github.com/qy-liuhuo/deviceShare/assets/60374114/1b911b8a-976f-4128-9518
 5. 使用`pyinstaller`打包目标程序: `pyinstaller deviceShare.spec`
 6. 运行`dist`目录下生成的可执行文件
 7. 将`resources`目录复制到dist目录下
-8. 若在Linux下运行，采用脚本`run.sh`启动程序，将`run.sh`复制到dist目录下，执行`sudo chmod 777 run.sh`赋予执行权限，执行`bash run.sh`启动程序,windows下无需执行此步骤,直接运行exe文件即可
 
-6. 注意Kylin操作系统在安装python的evdev依赖时可能出现错误，请选择安装预编译版本evdev-binary，参考 https://python-evdev.readthedocs.io/en/latest/install.html
+**注意**Kylin操作系统在安装python的evdev依赖时可能出现错误，请选择安装预编译版本evdev-binary，参考 https://python-evdev.readthedocs.io/en/latest/install.html
+
+## 使用说明
+1. 将主控机和被控机连接到同一局域网环境下，保证两台机器能够互相ping通，分别按照要求启动软件，选择各自的角色（注意局域网防火墙配置）
+2. 右键单击主控机右下角的桌面托盘，点击设置，可以看到被控机屏幕位置示意图，可拖动修改位置，修改完成后点击确定。
+3.	在主控机上将光标移动到靠近被控机方向的边缘即可进入被控机。
+4.	在被控机上将光标移动到靠近主控机方向的边缘即可回到主控机。
+5.	在主控机和被控机上分别右键单机托盘图标选择退出即可关闭软件
+
 
 ## 控制原理
 
@@ -103,16 +105,16 @@ DeviceShare
 │   │   ├── client_gui.py # 客户端GUI
 │   │   ├── position.py # 屏幕位置
 │   │   ├── screen.py # 屏幕管理
-│   │   └── server_gui.py # 服务端GUI
+│   │   └── server_gui.py # 服务端GUI 
 │   ├── utils # 工具模块
 │   │   ├── device.py # 设备信息
 │   │   ├── device_name.py #  设备名称
-│   │   ├── device_storage.py # 设备存储
-│   │   ├── key_code.py # 键盘按键
+│   │   ├── device_storage.py # 设备存储 
+│   │   ├── key_code.py # 键盘按键 
 │   │   ├── key_storage.py # 键盘存储
-│   │   ├── net.py # 网络工具
+│   │   ├── net.py # 网络工具 
 │   │   ├── plantform.py # 平台信息
-│   │   ├── rsautil.py # RSA加密工具
+│   │   ├── rsautil.py # RSA加密工具 
 │   │   └── service_listener.py # 服务监听
 │   ├── client.py # 客户端,被控设备
 │   └── server.py # 服务端,主控设备
