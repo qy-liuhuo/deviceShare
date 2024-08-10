@@ -1,8 +1,8 @@
 
 ## 运行方式
 linux环境下需采用脚本方式启动，流程如下：
-1. 赋予`run.sh`执行权限:'sudo chmod 777 run.sh'
-2. 执行`run.sh`: 'bash run.sh'
+1. 赋予`run.sh`执行权限`sudo chmod 777 run.sh`
+2. 执行`run.sh`: `bash run.sh`
 3. 软件运行
 4. 选择客户端和服务端身份（确保在同一局域网环境下，且能够互相ping通，注意检查防火墙设置）
 5. 点击右下角桌面托盘退出程序
