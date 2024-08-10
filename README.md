@@ -88,7 +88,7 @@ DeviceShare 是一款跨平台的多主机输入设备共享工具，支持 Wind
 - 网络通信模块用于服务端和客户端的数据传输。
 - 设备控制模块用于读取Hid Input设备信息及控制Hid Input设备。
 
-项目目录结构
+项目代码结构
 ```
 DeviceShare
 ├── resources # 资源文件
