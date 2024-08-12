@@ -28,7 +28,9 @@ DeviceShare 是一款跨平台的多主机输入设备共享工具，支持 Wind
 
 ![1723257064070.png](https://img.qylh.xyz/blog/1723257064070.png)
 
-演示视频：https://img.qylh.xyz/mobinets_demo.mp4
+演示视频：
+
+https://img.qylh.xyz/mobinets_demo.mp4
 
 
 [//]: # (**双机演示**)
