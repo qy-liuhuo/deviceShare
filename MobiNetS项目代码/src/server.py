@@ -280,7 +280,7 @@ class Server:
                 self.clipboard_controller.update_last_clipboard_text(msg.data['text'])
                 self.broadcast_clipboard(msg.data['text'])
             elif msg.msg_type == MsgType.FILE_MSG:
-                self.file_controller.save_file(msg.data['file'])
+                self.file_controller.save_file(msg.data['file.py'])
         except ConnectionResetError:
             self.logging.warning(f"Connection from {addr} closed")
         finally:

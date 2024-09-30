@@ -17,7 +17,7 @@
 import enum
 import json
 
-from src.controller.file_controller import File
+from src.utils.file import File
 
 
 class MsgType(enum.IntEnum):

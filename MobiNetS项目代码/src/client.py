@@ -40,13 +40,14 @@ class Client:
     被控机类
     """
     def __init__(self,app):
+
         self.logging = logging.getLogger(__name__)
         self.init_screen_info() # 初始化屏幕信息
         self.clipboard_controller = get_clipboard_controller() # 获取剪切板控制器
         self._keyboard = get_keyboard_controller() # 键盘控制器
+        self.file_controller = None
         self._mouse = MouseController()  # 鼠标控制器
         self._mouse.focus = False  # 鼠标焦点
-        self.file_controller = FileController_client() # 文件控制器
         self.device_id = get_device_name() # 获取设备名称
         self.position = None # 位置
         self.udp = Udp(UDP_PORT) # udp通信
@@ -108,6 +109,7 @@ class Client:
         while self.server_ip is None:
             time.sleep(1)
         self.request_access()
+        self.file_controller = FileController_client(self.server_ip)
         threading.Thread(target=self.heartbeat).start()  # 心跳机制
         threading.Thread(target=self.msg_receiver).start()  # 消息接收
         threading.Thread(target=self.clipboard_listener).start()  # 剪切板监听
@@ -272,7 +274,7 @@ class Client:
                 elif msg.msg_type == MsgType.POSITION_CHANGE: # 屏幕位置改变
                     self.position = Position(int(msg.data['position']))
                 elif msg.msg_type == MsgType.FILE_MSG:
-                    self.file_controller.save_file(msg.data['file'])
+                    self.file_controller.save_file(msg.data['file.py'])
         except Exception as e:
             self.logging.error(e)
             self.udp.close()

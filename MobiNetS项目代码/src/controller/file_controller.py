@@ -6,20 +6,11 @@ import time
 from src.communication.message import Message, MsgType, File_Message
 from src.communication.my_socket import TcpClient, TCP_PORT
 from src.utils.device_storage import DeviceStorage
+from src.utils.file import File
 from src.utils.net import get_local_ip
 
 
-class File:
 
-    def __init__(self, name, size, host):
-        self.name = name
-        self.size = size
-        self.host = host
-
-    @staticmethod
-    def from_json(json_str):
-        data = json.loads(json_str)
-        return File(data["name"], data["size"], data["host"])
 
 
 def send_to_device(ip, msg):
