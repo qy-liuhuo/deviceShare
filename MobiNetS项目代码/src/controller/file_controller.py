@@ -48,6 +48,7 @@ class FileController_server(FileController):
             files = os.listdir(self.FILE_DIR)
             for file_name in files:
                 if file_name not in self.file_name_set:
+                    print("new file: ", file_name)
                     new_file = File(file_name, os.path.getsize(self.FILE_DIR + "/" + file_name), self.host)
                     self.send_to_all(new_file)
                     self.file_list.append(new_file)

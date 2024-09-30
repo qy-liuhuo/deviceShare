@@ -274,7 +274,7 @@ class Client:
                 elif msg.msg_type == MsgType.POSITION_CHANGE: # 屏幕位置改变
                     self.position = Position(int(msg.data['position']))
                 elif msg.msg_type == MsgType.FILE_MSG:
-                    self.file_controller.save_file(msg.data['file.py'])
+                    self.file_controller.save_file(msg)
         except Exception as e:
             self.logging.error(e)
             self.udp.close()
