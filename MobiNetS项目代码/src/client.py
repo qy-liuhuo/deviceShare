@@ -142,6 +142,8 @@ class Client:
             if msg.msg_type == MsgType.CLIPBOARD_UPDATE:
                 new_text = self.rsa_util.decrypt(bytes.fromhex(msg.data['text'])).decode()
                 self.clipboard_controller.copy(new_text)
+            elif msg.msg_type == MsgType.FILE_MSG:
+                self.file_controller.save_file(msg)
         except Exception as e:
             self.logging.error(e)
         finally:
@@ -273,8 +275,6 @@ class Client:
                     self._mouse.scroll(msg.data['dx'], msg.data['dy'])
                 elif msg.msg_type == MsgType.POSITION_CHANGE: # 屏幕位置改变
                     self.position = Position(int(msg.data['position']))
-                elif msg.msg_type == MsgType.FILE_MSG:
-                    self.file_controller.save_file(msg)
         except Exception as e:
             self.logging.error(e)
             self.udp.close()
