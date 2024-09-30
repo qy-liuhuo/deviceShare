@@ -23,9 +23,8 @@ class FileController:
     FILE_DIR = "shared_files"
 
     def __init__(self):
-        if os.path.exists(self.FILE_DIR):
-            os.removedirs(self.FILE_DIR)
-        os.mkdir(self.FILE_DIR)
+        if not os.path.exists(self.FILE_DIR):
+            os.mkdir(self.FILE_DIR)
         self.file_list = []
         self.file_name_set = set()
         self.host = get_local_ip()
@@ -42,7 +41,6 @@ class FileController:
 class FileController_server(FileController):
     def __init__(self):
         super().__init__()
-        self.device_storage = DeviceStorage()
 
     def file_listener(self):
         while True:
@@ -66,7 +64,8 @@ class FileController_server(FileController):
         self.lock.release()
 
     def send_to_all(self, file_msg):
-        for device in self.device_storage.get_all_devices():
+        device_storage=DeviceStorage()
+        for device in device_storage.get_all_devices():
             if device.ip != self.host:
                 send_to_device(device.ip, file_msg)
 
