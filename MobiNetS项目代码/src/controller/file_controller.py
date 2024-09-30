@@ -24,7 +24,7 @@ class FileController:
 
     def __init__(self):
         if os.path.exists(self.FILE_DIR):
-            os.remove(self.FILE_DIR)
+            os.removedirs(self.FILE_DIR)
         os.mkdir(self.FILE_DIR)
         self.file_list = []
         self.file_name_set = set()
