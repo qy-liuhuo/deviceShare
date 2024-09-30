@@ -21,6 +21,7 @@ import time
 from zeroconf import Zeroconf, ServiceBrowser
 
 from src.controller.clipboard_controller import get_clipboard_controller
+from src.controller.file_controller import FileController_client
 from src.controller.keyboard_controller import KeyboardController, get_keyboard_controller
 from src.gui.client_gui import ClientGUI
 from src.gui.position import Position
@@ -45,6 +46,7 @@ class Client:
         self._keyboard = get_keyboard_controller() # 键盘控制器
         self._mouse = MouseController()  # 鼠标控制器
         self._mouse.focus = False  # 鼠标焦点
+        self.file_controller = FileController_client() # 文件控制器
         self.device_id = get_device_name() # 获取设备名称
         self.position = None # 位置
         self.udp = Udp(UDP_PORT) # udp通信
@@ -110,6 +112,7 @@ class Client:
         threading.Thread(target=self.msg_receiver).start()  # 消息接收
         threading.Thread(target=self.clipboard_listener).start()  # 剪切板监听
         threading.Thread(target=self.tcp_listener).start()  # tcp监听
+        threading.Thread(target=self.file_controller.file_listener).start()  # 文件监听
 
     def tcp_listener(self):
         """
@@ -268,6 +271,8 @@ class Client:
                     self._mouse.scroll(msg.data['dx'], msg.data['dy'])
                 elif msg.msg_type == MsgType.POSITION_CHANGE: # 屏幕位置改变
                     self.position = Position(int(msg.data['position']))
+                elif msg.msg_type == MsgType.FILE_MSG:
+                    self.file_controller.save_file(msg.data['file'])
         except Exception as e:
             self.logging.error(e)
             self.udp.close()
