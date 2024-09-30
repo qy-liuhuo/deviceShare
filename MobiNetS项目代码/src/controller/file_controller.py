@@ -15,7 +15,7 @@ from src.utils.net import get_local_ip
 
 def send_to_device(ip, msg):
     tcp_client = TcpClient((ip, TCP_PORT))
-    tcp_client.send(msg)
+    tcp_client.send(msg.to_bytes())
     tcp_client.close()
 
 
@@ -50,7 +50,8 @@ class FileController_server(FileController):
                 if file_name not in self.file_name_set:
                     print("new file: ", file_name)
                     new_file = File(file_name, os.path.getsize(self.FILE_DIR + "/" + file_name), self.host)
-                    self.send_to_all(new_file)
+                    new_file_data = open("shared_files/" + file_name, "rb").read()
+                    self.send_to_all(File_Message(new_file, new_file_data))
                     self.file_list.append(new_file)
                     self.file_name_set.add(file_name)
             time.sleep(2)

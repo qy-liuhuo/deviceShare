@@ -123,10 +123,9 @@ class File_Message(Message):
         self.msg_type = MsgType.FILE_MSG
         self.file = file
         self.file_data = file_data
-        Message(MsgType.FILE_MSG, json.dumps(file) + File_Message.FILE_SPLITTER )
 
     def to_bytes(self):
-        return bytes(f"{int(self.msg_type)}{self.SPLITTER}{json.dumps(self.file)}{File_Message.FILE_SPLITTER + self.file_data.hex()}".encode())
+        return bytes(f"{int(self.msg_type)}{self.SPLITTER}{json.dumps(self.file.__dict__)}{File_Message.FILE_SPLITTER + self.file_data.hex()}".encode())
 
     def from_bytes(byteData: bytes):
         msg_type, data = byteData.decode().split(Message.SPLITTER)
