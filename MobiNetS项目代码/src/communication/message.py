@@ -67,8 +67,7 @@ class Message:
             byteData = bytes(byteData)
         msg_type, data = byteData.decode().split(Message.SPLITTER)
         if int(msg_type) == MsgType.FILE_MSG:
-            file, file_data = data.split(File_Message.FILE_SPLITTER)
-            return File_Message(File.from_json(file), bytes.fromhex(file_data))
+            return File_Message.from_bytes(byteData)
         return Message(MsgType(int(msg_type)), json.loads(data))
         #
         # if int(msg_type) == MsgType.MOUSE_MOVE:
