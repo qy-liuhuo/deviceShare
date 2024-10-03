@@ -23,6 +23,13 @@ def send_to_device(ip, msg):
     tcp_client.close()
 
 
+def save_file_to_dir(file_path: str, file_data: bytes):
+    if not os.path.exists(os.path.dirname(file_path)):
+        os.makedirs(os.path.dirname(file_path))
+    with open(file_path, "wb") as f:
+        f.write(file_data)
+
+
 class FileController:
     FILE_DIR = "shared_files"
 
@@ -38,10 +45,6 @@ class FileController:
 
     def file_listener(self):
         pass
-
-    def save_file_to_dir(self, file_name: str, file_data: bytes):
-        with open(self.FILE_DIR + "/" + file_name, "wb") as f:
-            f.write(file_data)
 
 
 class FileController_server(FileController):
@@ -64,7 +67,7 @@ class FileController_server(FileController):
 
     def save_file(self, file_msg: File_Message):
         self.lock.acquire()
-        self.save_file_to_dir(file_msg.file.name, file_msg.data)
+        save_file_to_dir(file_msg.file.path, file_msg.data)
         self.file_list.append(file_msg.file)
         self.file_set.add(file_msg.file.path)
         self.send_to_all(file_msg)
@@ -104,7 +107,8 @@ class FileController_client(FileController):
     def save_file(self, file_msg: File_Message):
         self.lock.acquire()
         if file_msg.file.name not in self.file_set:
-            self.save_file_to_dir(file_msg.file.name, file_msg.file_data)
+            save_file_to_dir(file_msg.file.path, file_msg.file_data)
             self.file_list.append(file_msg.file)
             self.file_set.add(file_msg.file.path)
         self.lock.release()
+
