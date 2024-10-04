@@ -101,12 +101,12 @@ class FileController_client(FileController):
 
     def send_to_master(self, file_msg):
         tcp_client = TcpClient((self.master_ip, TCP_PORT))
-        tcp_client.send(file_msg)
+        tcp_client.send(file_msg.to_bytes())
         tcp_client.close()
 
     def save_file(self, file_msg: File_Message):
         self.lock.acquire()
-        if file_msg.file.name not in self.file_set:
+        if file_msg.file.path not in self.file_set:
             save_file_to_dir(file_msg.file.path, file_msg.file_data)
             self.file_list.append(file_msg.file)
             self.file_set.add(file_msg.file.path)
