@@ -26,6 +26,7 @@ from screeninfo import get_monitors
 from zeroconf import ServiceInfo, Zeroconf
 
 from src.controller.clipboard_controller import get_clipboard_controller
+from src.controller.file_controller import FileController_server
 from src.controller.keyboard_controller import KeyFactory, get_keyboard_controller
 from src.utils.device import Device
 from src.gui.server_gui import ServerGUI, GuiMessage
@@ -62,6 +63,7 @@ class Server:
                                      response_queue=self.response_queue) # 服务端GUI
         self.cur_device = None # 当前设备
         self._mouse = MouseController() # 鼠标控制器
+        self.file_controller = FileController_server() # 文件控制器
         self._keyboard = get_keyboard_controller() # 键盘控制器
         self._keyboard_factory = KeyFactory() # 键码转换器
         self.lock = threading.Lock() # 锁
@@ -77,6 +79,7 @@ class Server:
         self.thread_list.append(threading.Thread(target=self.valid_checker)) # 客户端在线检查线程
         self.thread_list.append(threading.Thread(target=self.main_loop)) # 主循环线程
         self.thread_list.append(threading.Thread(target=self.update_position)) # 更新位置线程
+        self.thread_list.append(threading.Thread(target=self.file_controller.file_listener)) # 文件监听线程
 
     def run(self):
         """
@@ -276,6 +279,8 @@ class Server:
                 self.clipboard_controller.copy(msg.data['text'])
                 self.clipboard_controller.update_last_clipboard_text(msg.data['text'])
                 self.broadcast_clipboard(msg.data['text'])
+            elif msg.msg_type == MsgType.FILE_MSG:
+                self.file_controller.save_file(msg)
         except ConnectionResetError:
             self.logging.warning(f"Connection from {addr} closed")
         finally:

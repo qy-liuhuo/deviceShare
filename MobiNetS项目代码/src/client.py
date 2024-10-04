@@ -21,6 +21,7 @@ import time
 from zeroconf import Zeroconf, ServiceBrowser
 
 from src.controller.clipboard_controller import get_clipboard_controller
+from src.controller.file_controller import FileController_client
 from src.controller.keyboard_controller import KeyboardController, get_keyboard_controller
 from src.gui.client_gui import ClientGUI
 from src.gui.position import Position
@@ -39,10 +40,12 @@ class Client:
     被控机类
     """
     def __init__(self,app):
+
         self.logging = logging.getLogger(__name__)
         self.init_screen_info() # 初始化屏幕信息
         self.clipboard_controller = get_clipboard_controller() # 获取剪切板控制器
         self._keyboard = get_keyboard_controller() # 键盘控制器
+        self.file_controller = None
         self._mouse = MouseController()  # 鼠标控制器
         self._mouse.focus = False  # 鼠标焦点
         self.device_id = get_device_name() # 获取设备名称
@@ -106,10 +109,12 @@ class Client:
         while self.server_ip is None:
             time.sleep(1)
         self.request_access()
+        self.file_controller = FileController_client(self.server_ip)
         threading.Thread(target=self.heartbeat).start()  # 心跳机制
         threading.Thread(target=self.msg_receiver).start()  # 消息接收
         threading.Thread(target=self.clipboard_listener).start()  # 剪切板监听
         threading.Thread(target=self.tcp_listener).start()  # tcp监听
+        threading.Thread(target=self.file_controller.file_listener).start()  # 文件监听
 
     def tcp_listener(self):
         """
@@ -137,6 +142,8 @@ class Client:
             if msg.msg_type == MsgType.CLIPBOARD_UPDATE:
                 new_text = self.rsa_util.decrypt(bytes.fromhex(msg.data['text'])).decode()
                 self.clipboard_controller.copy(new_text)
+            elif msg.msg_type == MsgType.FILE_MSG:
+                self.file_controller.save_file(msg)
         except Exception as e:
             self.logging.error(e)
         finally:
