@@ -50,7 +50,7 @@ class Server:
     服务端类
     """
     def __init__(self,app):
-        self.logging = logging.getLogger(__name__)
+        self.logging = logging.getLogger("deviceShare.Server") # 日志
         create_table() # 创建数据库表
         self.init_screen_info() # 初始化屏幕信息
         self.clipboard_controller = get_clipboard_controller() # 获取剪贴板控制器
@@ -248,6 +248,7 @@ class Server:
         """
         data = read_data_from_tcp_socket(client_socket) # 读取数据
         msg = Message.from_bytes(data) # 消息
+        self.logging.info(f"Message from {addr}: {msg}")
         try:
             if msg.msg_type == MsgType.SEND_PUBKEY: # 发送公钥
                 self.handle_access(client_socket, msg, addr)

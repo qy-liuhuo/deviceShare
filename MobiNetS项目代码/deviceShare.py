@@ -14,8 +14,7 @@
 
  Author: MobiNets
 """
-
-
+import logging
 import sys
 from PyQt5.QtWidgets import QApplication, QDialog, QVBoxLayout, QPushButton
 import qt_material
@@ -69,6 +68,13 @@ class RoleSelectionDialog(QDialog):
 
 
 def main():
+    logger = logging.getLogger('deviceShare')
+    logger.setLevel(level=logging.DEBUG)
+    stream_handler = logging.StreamHandler(sys.stdout)
+    fmt = logging.Formatter('[%(asctime)s] [%(name)s] [%(levelname)s] %(message)s', '%Y-%m-%d %H:%M:%S')
+    stream_handler.setFormatter(fmt)
+    logger.addHandler(stream_handler)
+    logger.info("Starting DeviceShare")
     app = QApplication(sys.argv)
     qt_material.apply_stylesheet(app, theme='light_blue.xml')
     selected_role = 'client'
