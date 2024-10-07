@@ -173,8 +173,11 @@ class Server:
         :return:
         """
         while True:
-            client, addr = self.tcp_server.accept()
-            self.logging.info(f"Connection from {addr}")
+            try:
+                client, addr = self.tcp_server.accept()
+            except Exception as e:
+                self.logging.error(e)
+                break
             client_handler = threading.Thread(target=self.handle_client, args=(client, addr), daemon=True)
             client_handler.start()
 
