@@ -14,6 +14,7 @@
 
  Author: MobiNets
 """
+import logging
 import platform
 import threading
 import time
@@ -192,16 +193,49 @@ class MouseController:
         try:
             if suppress:
                 mouse.grab()
+            dx = 0
+            dy = 0
+            move_count = 0
             while not self.stop_event.is_set():
+                # events = mouse.read()
+                # dx = 0
+                # dy = 0
+                # for event in events:
+                #     print(event)
+                #     if event.type == ecodes.EV_REL:
+                #         if event.code == ecodes.REL_X:
+                #             dx += event.value
+                #         elif event.code == ecodes.REL_Y:
+                #             dy += event.value
+                #         elif event.code == ecodes.REL_WHEEL:
+                #             on_scroll(0, 0, 0, event.value)
+                #     elif event.type == ecodes.EV_KEY:
+                #         if event.code == ecodes.BTN_LEFT:
+                #             if event.value == 1:
+                #                 on_click(0,0,'Button.left', True)
+                #             elif event.value == 0:
+                #                 on_click(0,0,'Button.left', False)
+                #         elif event.code == ecodes.BTN_RIGHT:
+                #             if event.value == 1:
+                #                 on_click(0,0,'Button.right', True)
+                #             elif event.value == 0:
+                #                 on_click(0,0,'Button.right', False)
+                # print(dx, dy)
+                # if not on_move(dx, dy):
+                #     self.stop_event.set()
                 event = mouse.read_one()  # 非阻塞读取事件
                 if event:
                     if event.type == ecodes.EV_REL:
                         if event.code == ecodes.REL_X:
-                            if not on_move(event.value, 0):
-                                self.stop_event.set()
+                            dx += event.value
+                            move_count += 1
+                            # if not on_move(event.value, 0):
+                            #     self.stop_event.set()
                         elif event.code == ecodes.REL_Y:
-                            if not on_move(0, event.value):
-                                self.stop_event.set()
+                            dy += event.value
+                            move_count += 1
+                            # if not on_move(0, event.value):
+                            #     self.stop_event.set()
                         elif event.code == ecodes.REL_WHEEL:
                             on_scroll(0, 0, 0, event.value)
                     elif event.type == ecodes.EV_KEY:
@@ -215,12 +249,16 @@ class MouseController:
                                 on_click(0,0,'Button.right', True)
                             elif event.value == 0:
                                 on_click(0,0,'Button.right', False)
-                else:
-                    time.sleep(0.01)
+                    if move_count >= 5:
+                        if not on_move(dx, dy):
+                            self.stop_event.set()
+                        move_count = 0
+                        dx = 0
+                        dy = 0
         except KeyboardInterrupt:
             print("Stopped listening for events.")
         except Exception as e:
-            print(f"发生错误: {e}")
+            logging.getLogger("deviceShare").error(e, stack_info=True)
         finally:
             if suppress:
                 mouse.ungrab()
