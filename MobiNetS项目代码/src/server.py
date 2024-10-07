@@ -598,11 +598,26 @@ class Server:
                         keyboard_listener.stop()  # 鼠标监听结束后关闭键盘监听
                         self._mouse.focus = True
 
+    def send_offline_msg(self):
+        """
+        发送下线消息
+        :return:
+        """
+        device_storage = DeviceStorage()
+        devices = device_storage.get_all_devices()
+        offline_msg = Message(MsgType.SERVER_OFFLINE).to_bytes()
+        for device in devices:
+            tcp_client = TcpClient((device.ip, TCP_PORT))
+            tcp_client.send(offline_msg)
+            tcp_client.close()
+        device_storage.close()
+
     def close(self):
         """
         关闭,释放资源
         :return:
         """
+        self.send_offline_msg()
         self.manager_gui.exit()
         self.udp.close()
         self.tcp_server.close()

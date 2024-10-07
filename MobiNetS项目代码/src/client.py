@@ -144,6 +144,8 @@ class Client:
                 self.clipboard_controller.copy(new_text)
             elif msg.msg_type == MsgType.FILE_MSG:
                 self.file_controller.save_file(msg)
+            elif msg.msg_type == MsgType.SERVER_OFFLINE:
+                self.close()
         except Exception as e:
             self.logging.error(e)
         finally:
