@@ -506,7 +506,6 @@ class Server:
                         x, y = self._mouse.position
                         move_out = self.judge_move_out(x, y)
                         if move_out and self.cur_device is None:  # 移出且当前设备为空
-                            self._mouse.focus = False
                             self.lock.acquire()
                             device_storage_connect = DeviceStorage()
                             self.cur_device = device_storage_connect.get_device_by_position(move_out)
@@ -516,6 +515,8 @@ class Server:
                             device_storage_connect.close()
                             time.sleep(0.01)
                             if self.cur_device is not None:  # 当前设备不为空
+                                self._mouse.focus = False
+                                self._mouse.wait_for_event_puter_stop()
                                 # 发送鼠标移动消息
                                 if move_out == Position.LEFT:
                                     self.udp.sendto(Message(MsgType.MOUSE_MOVE_TO, {
@@ -534,11 +535,9 @@ class Server:
                                     self.udp.sendto(Message(MsgType.MOUSE_MOVE_TO,
                                                             {'x': x, 'y': 30}).to_bytes(),
                                                     self.cur_device.get_udp_address())
-                                self._mouse.wait_for_event_puter_stop()
-                                self._mouse.move_to((int(self.screen_size_width / 2), int(self.screen_size_height / 2)))
                                 self.lock.release()
                                 break
-                        time.sleep(0.1)
+                        time.sleep(0.01)
                 finally:
                     self._mouse.wait_for_event_puter_stop()  # 停止监听
 
@@ -583,8 +582,6 @@ class Server:
                                         self.udp.sendto(Message(MsgType.MOUSE_MOVE_TO,
                                                                 {'x': x, 'y': 30}).to_bytes(),
                                                         self.cur_device.get_udp_address())
-                                    self._mouse.move_to(
-                                        (int(self.screen_size_width / 2), int(self.screen_size_height / 2)))
                                     self.lock.release()
                                     break
 
@@ -595,6 +592,8 @@ class Server:
                         keyboard_listener.stop()
                         self._mouse.focus = True
                     else:
+                        self._mouse.move_to(
+                            (int(self.screen_size_width / 2), int(self.screen_size_height / 2)))
                         mouse_listener = self.add_mouse_listener()
                         keyboard_listener = self.add_keyboard_listener()
                         mouse_listener.join()

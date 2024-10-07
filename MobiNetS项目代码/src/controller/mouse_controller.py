@@ -189,11 +189,9 @@ class MouseController:
         :return:
         """
         from evdev import InputDevice, categorize, ecodes, list_devices, UInput
-        monitor = get_monitors()[0]
         try:
             if suppress:
                 mouse.grab()
-                self.move_to((monitor.width // 2, monitor.height // 2))
             while not self.stop_event.is_set():
                 event = mouse.read_one()  # 非阻塞读取事件
                 if event:
@@ -320,6 +318,8 @@ class MouseController:
                                                   args=(mouse, on_click, on_move, on_scroll, suppress)))
         for i in self.listener:
             i.start()
+        monitor = get_monitors()[0]
+        self.move_to((monitor.width // 2, monitor.height // 2))
         for i in self.listener:
             i.join()
 
