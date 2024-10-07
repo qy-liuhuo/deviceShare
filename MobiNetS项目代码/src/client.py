@@ -287,7 +287,7 @@ class Client:
         :param self:
         :return:
         """
-        self.gui.exit()
         self.send_offline_msg()
         self.udp.close()
         self.tcp_server.close()
+        self.gui.exit()
