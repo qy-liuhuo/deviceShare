@@ -88,7 +88,7 @@ def main():
         elif selected_role == 'client':
             Client(app).run()
     except Exception as e:
-        print(e)
+        logger.error(e)
     finally:
         app.quit()
 

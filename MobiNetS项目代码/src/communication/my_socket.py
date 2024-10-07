@@ -14,6 +14,7 @@
 
  Author: MobiNets
 """
+import logging
 import socket
 import struct
 
@@ -27,7 +28,9 @@ class Udp:
     """
     UDP通信
     """
-    packet_size = 1024 # 包大小
+    packet_size = 1024  # 包大小
+
+    logger = logging.getLogger("deviceShare.udp")
 
     def __init__(self, port=16666):
         """
@@ -66,7 +69,7 @@ class Udp:
                 self._udp.sendto(packet, target)
                 packet_id += 1
         except Exception as e:
-            print(e)
+            self.logger.error(e, stack_info=True)
             self.close()
 
     def recv(self):
@@ -93,7 +96,7 @@ class Udp:
                     data = b''.join(fragments[i] for i in range(expected_packets))
                     break
         except Exception as e:
-            print(e)
+            self.logger.error(e, stack_info=True)
             self.close()
         finally:
             return data, addr
@@ -106,12 +109,13 @@ class Udp:
         self._udp.close()
 
 
-
-
 class TcpClient:
     """
     TCP客户端
     """
+
+    logger = logging.getLogger("deviceShare.tcp")
+
     def __init__(self, target: tuple):
         """
         初始化
@@ -133,9 +137,8 @@ class TcpClient:
             # 再发送实际数据
             self._tcp.sendall(data)
         except Exception as e:
-            print(e)
+            logging.error(e, stack_info=True)
             self.close()
-
 
     def close(self):
         """
@@ -164,10 +167,8 @@ class TcpClient:
                 received_data.extend(packet)
             return received_data
         except Exception as e:
-            print(e)
+            self.logger.error(e, stack_info=True)
             self.close()
-
-
 
 
 def read_data_from_tcp_socket(client_socket):
@@ -191,8 +192,9 @@ def read_data_from_tcp_socket(client_socket):
             received_data.extend(packet)
         return received_data
     except Exception as e:
-        print(e)
+        logging.getLogger("deviceShare").error(e, stack_info=True)
         return WRONG_MESSAGE
+
 
 def send_data_to_tcp_socket(client_socket, data: bytes):
     """
@@ -208,5 +210,5 @@ def send_data_to_tcp_socket(client_socket, data: bytes):
         # 再发送实际数据
         client_socket.sendall(data)
     except Exception as e:
-        print(e)
+        logging.getLogger("deviceShare").error(e, stack_info=True)
         client_socket.close()
