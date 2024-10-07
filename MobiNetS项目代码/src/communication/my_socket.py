@@ -59,6 +59,8 @@ class Udp:
         try:
             if target is None:
                 return
+            if self.is_closed():
+                return
             total_packets = (len(data) + Udp.packet_size - 1) // Udp.packet_size
             packet_id = 0
             while data:
@@ -96,8 +98,8 @@ class Udp:
                     data = b''.join(fragments[i] for i in range(expected_packets))
                     break
         except Exception as e:
-            self.logger.error(e, stack_info=True)
             self.close()
+            self.logger.error(e)
         finally:
             return data, addr
 
@@ -108,6 +110,8 @@ class Udp:
         """
         self._udp.close()
 
+    def is_closed(self):
+        return getattr(self._udp, '_closed')
 
 class TcpClient:
     """

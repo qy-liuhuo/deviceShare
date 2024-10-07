@@ -250,7 +250,7 @@ class Client:
         :return:
         """
         try:
-            while True:
+            while not self.udp.is_closed():
                 data, addr = self.udp.recv()
                 if data is None:
                     continue
@@ -278,7 +278,7 @@ class Client:
                 elif msg.msg_type == MsgType.POSITION_CHANGE:  # 屏幕位置改变
                     self.position = Position(int(msg.data['position']))
         except Exception as e:
-            self.logging.error(e)
+            self.logging.error(e, stack_info=True)
             self.udp.close()
 
     def close(self):
