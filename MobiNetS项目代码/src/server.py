@@ -603,9 +603,9 @@ class Server:
         关闭,释放资源
         :return:
         """
+        self.manager_gui.exit()
         self.udp.close()
         self.tcp_server.close()
-        self.manager_gui.exit()
         self.zeroconf.unregister_all_services()
         self.zeroconf.close()
         delete_table()

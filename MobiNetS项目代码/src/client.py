@@ -288,6 +288,6 @@ class Client:
         :return:
         """
         self.send_offline_msg()
+        self.gui.exit()
         self.udp.close()
         self.tcp_server.close()
-        self.gui.exit()
