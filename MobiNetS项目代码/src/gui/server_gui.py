@@ -19,12 +19,12 @@ import os
 import sys
 
 from PyQt5 import QtCore, QtWidgets
-from PyQt5.QtCore import QStringListModel, Qt, QTimer, QFileInfo
+from PyQt5.QtCore import QStringListModel, Qt, QTimer, QFileInfo, QRect, pyqtProperty, QPropertyAnimation, pyqtSignal
 from PyQt5.QtWidgets import QApplication, QMainWindow, QAction, QMenu, QMessageBox, QToolBar, QLabel, QVBoxLayout, \
     QWidget, QSystemTrayIcon, QStyle, QGraphicsOpacityEffect, QGraphicsDropShadowEffect, QGraphicsEffect, QListView, \
-    QStyledItemDelegate, QPushButton
+    QStyledItemDelegate, QPushButton, QDialog, QCheckBox, QSpinBox, QDialogButtonBox, QHBoxLayout
 from PyQt5.QtGui import QIcon, QPixmap, QColor, QBrush, QPalette, QStandardItem, QStandardItemModel, QFont, QPainter, \
-    QPainterPath, QCursor
+    QPainterPath, QCursor, QPen
 from PyQt5.QtGui import QIcon, QPixmap, QColor
 from PIL import Image, ImageDraw, ImageFont
 import qt_material
@@ -55,6 +55,66 @@ class GuiMessage:
         """
         self.msg_type = msg_type
         self.data = data
+
+
+class ShareConfigurationInterface(QDialog):
+    def __init__(self, parent):
+        super().__init__()
+
+        self.setFixedSize(400, 200)
+
+        self.setWindowTitle("共享选项设置")
+        self.parent = parent
+        # self.setParent(parent)
+
+        self.layout = QVBoxLayout()
+        qr = self.frameGeometry()  # 获取对话框的几何框架
+        cp = QApplication.primaryScreen().availableGeometry().center()  # 获取屏幕中心点
+        qr.moveCenter(cp)  # 将对话框几何框架的中心移动到屏幕中心
+        self.move(qr.topLeft())  # 将对话框的左上角移动到新的位置
+        self.share_keyboard = QCheckBox("共享键盘")
+        self.share_clipboard = QCheckBox("共享剪切板")
+        self.share_file = QCheckBox("共享文件")
+        self.encryption = QCheckBox("加密传输")
+        self.transmission_granularity = QSpinBox()  # 传输粒度
+        self.transmission_granularity.setMinimum(1)
+        self.transmission_granularity.setMaximum(10)
+        spinLayout = QHBoxLayout()
+        spinLayout.addWidget(QLabel("传输粒度"))
+        spinLayout.addWidget(self.transmission_granularity)
+        self.button_box = QDialogButtonBox(QDialogButtonBox.Ok|QDialogButtonBox.Cancel, self)
+        self.button_box.accepted.connect(self.submit)
+        self.button_box.rejected.connect(self.hide)
+
+        self.layout.addWidget(self.share_keyboard)
+        self.layout.addWidget(self.share_clipboard)
+        self.layout.addWidget(self.share_file)
+        self.layout.addWidget(self.encryption)
+        # self.layout.addWidget(self.transmission_granularity)
+        self.layout.addLayout(spinLayout)
+        self.layout.addWidget(self.button_box)
+
+        self.setLayout(self.layout)
+
+        self.configuration = None
+        self.hide()
+
+    def setData(self, config):
+        self.configuration = config
+        self.share_keyboard.setChecked(self.configuration["shareKeyBoard"])
+        self.share_clipboard.setChecked(self.configuration["shareClipBoard"])
+        self.share_file.setChecked(self.configuration["shareFile"])
+        self.encryption.setChecked(self.configuration["encryption"])
+        self.transmission_granularity.setValue(self.configuration["transmissionGranularity"])
+
+    def submit(self):
+        self.configuration["shareKeyBoard"] = self.share_keyboard.isChecked()
+        self.configuration["shareClipBoard"] = self.share_clipboard.isChecked()
+        self.configuration["shareFile"] = self.share_file.isChecked()
+        self.configuration["encryption"] = self.encryption.isChecked()
+        self.configuration["transmissionGranularity"] = self.transmission_granularity.value()
+        self.parent.shareConfiguration = self.configuration
+        self.hide()
 
 
 class ClientScreen(QLabel):
@@ -537,6 +597,8 @@ class MainWindow(QMainWindow):
     """
     def __init__(self):
         super().__init__()
+        self.shareConfigurationDialog = ShareConfigurationInterface(self)
+        self.shareConfiguration = {"shareKeyBoard": True, "shareClipBoard": True, "shareFile": True, "encryption": True, "transmissionGranularity": 5}
         self.initUI()
 
     def initUI(self):
@@ -553,6 +615,9 @@ class MainWindow(QMainWindow):
         show_list = QAction('授权列表', self)
         show_list.triggered.connect(self.show_list)
         authorization_list.addAction(show_list)
+        share_configuration = QAction('共享设置', self)
+        share_configuration.triggered.connect(self.show_configuration_dialog)
+        menubar.addAction(share_configuration)
 
     def show_list(self):
         """
@@ -560,6 +625,10 @@ class MainWindow(QMainWindow):
         :return:
         """
         self.configure_interface.display_client_list()
+
+    def show_configuration_dialog(self):
+        self.shareConfigurationDialog.setData(self.shareConfiguration)
+        self.shareConfigurationDialog.show()
 
     def closeEvent(self, event):
         """
