@@ -17,6 +17,8 @@
 import enum
 import os
 import sys
+import time
+from threading import Thread
 
 from PyQt5 import QtCore, QtWidgets
 from PyQt5.QtCore import QStringListModel, Qt, QTimer, QFileInfo, QRect, pyqtProperty, QPropertyAnimation, pyqtSignal
@@ -61,13 +63,14 @@ class ShareConfigurationInterface(QDialog):
     def __init__(self, parent):
         super().__init__()
 
-        self.setFixedSize(400, 200)
+        self.setFixedSize(400, 350)
 
         self.setWindowTitle("共享选项设置")
         self.parent = parent
         # self.setParent(parent)
 
         self.layout = QVBoxLayout()
+        self.layout.setSpacing(20)
         qr = self.frameGeometry()  # 获取对话框的几何框架
         cp = QApplication.primaryScreen().availableGeometry().center()  # 获取屏幕中心点
         qr.moveCenter(cp)  # 将对话框几何框架的中心移动到屏幕中心
@@ -80,8 +83,15 @@ class ShareConfigurationInterface(QDialog):
         self.transmission_granularity.setMinimum(1)
         self.transmission_granularity.setMaximum(10)
         spinLayout = QHBoxLayout()
-        spinLayout.addWidget(QLabel("传输粒度"))
+        label = QLabel("传输粒度")
+        spinLayout.addWidget(label)
         spinLayout.addWidget(self.transmission_granularity)
+        self.share_keyboard.setStyleSheet("font-size: 24px;")
+        self.share_clipboard.setStyleSheet("font-size: 24px;")
+        self.share_file.setStyleSheet("font-size: 24px;")
+        self.encryption.setStyleSheet("font-size: 24px;")
+        self.transmission_granularity.setStyleSheet("font-size: 24px;height:40px;")
+        label.setStyleSheet("font-size: 24px;")
         self.button_box = QDialogButtonBox(QDialogButtonBox.Ok|QDialogButtonBox.Cancel, self)
         self.button_box.accepted.connect(self.submit)
         self.button_box.rejected.connect(self.hide)
@@ -113,7 +123,6 @@ class ShareConfigurationInterface(QDialog):
         self.configuration["shareFile"] = self.share_file.isChecked()
         self.configuration["encryption"] = self.encryption.isChecked()
         self.configuration["transmissionGranularity"] = self.transmission_granularity.value()
-        self.parent.shareConfiguration = self.configuration
         self.hide()
 
 
@@ -595,10 +604,10 @@ class MainWindow(QMainWindow):
     """
     MainWindow class to store main window
     """
-    def __init__(self):
+    def __init__(self, config):
         super().__init__()
         self.shareConfigurationDialog = ShareConfigurationInterface(self)
-        self.shareConfiguration = {"shareKeyBoard": True, "shareClipBoard": True, "shareFile": True, "encryption": True, "transmissionGranularity": 5}
+        self.shareConfiguration = config
         self.initUI()
 
     def initUI(self):
@@ -681,7 +690,8 @@ class MainWindow(QMainWindow):
 class ServerGUI:
     def __init__(self, app, update_flag, request_queue=None, response_queue=None):
         self.app = app
-        self.mainWin = MainWindow()
+        self.shareConfiguration = {"shareKeyBoard": True, "shareClipBoard": True, "shareFile": True, "encryption": True, "transmissionGranularity": 5}
+        self.mainWin = MainWindow(config=self.shareConfiguration)
         qt_material.apply_stylesheet(self.app, theme='light_blue.xml') # Apply the light blue theme
         self.trayIcon = QSystemTrayIcon(self.mainWin)
         self.initTrayIcon()
