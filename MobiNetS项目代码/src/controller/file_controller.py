@@ -105,8 +105,10 @@ class FileController_client(FileController):
 
     def send_to_master(self, file_msg):
         tcp_client = TcpClient((self.master_ip, TCP_PORT))
-        tcp_client.send(file_msg.to_bytes())
-        tcp_client.close()
+        try:
+            tcp_client.send(file_msg.to_bytes())
+        finally:
+            tcp_client.close()
 
     def save_file(self, file_msg: File_Message):
         self.lock.acquire()
