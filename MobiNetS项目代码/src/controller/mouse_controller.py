@@ -27,6 +27,7 @@ class MouseController:
     """
     鼠标控制器
     """
+
     def __init__(self):
         # 解决windows下缩放偏移问题
         if platform.system().lower() == 'windows':
@@ -41,7 +42,7 @@ class MouseController:
         self.ui = None
         if is_wayland():
             # 创建虚拟鼠标设备
-            from evdev import UInput, AbsInfo ,InputDevice, categorize, ecodes, list_devices
+            from evdev import UInput, AbsInfo, InputDevice, categorize, ecodes, list_devices
             monitors = get_monitors()
             # 定义鼠标设备的能力
             self.capabilities = {
@@ -63,7 +64,7 @@ class MouseController:
 
             # 创建虚拟鼠标设备
             self.ui = UInput(self.capabilities, name="virtual_mouse")
-            self.position = (0,0)
+            self.position = (0, 0)
         self.position = None
 
     def get_mouse_devices(self):
@@ -81,7 +82,7 @@ class MouseController:
                     if ecodes.BTN_LEFT in capabilities[ecodes.EV_KEY] or ecodes.BTN_RIGHT in capabilities[
                         ecodes.EV_KEY]:
                         mouse_devices.append(device)
-        return mouse_devices 
+        return mouse_devices
 
     def update_last_position(self):
         """
@@ -110,7 +111,7 @@ class MouseController:
         :param position: 绝对位置
         :return:
         """
-        if is_wayland(): # wayland单独处理
+        if is_wayland():  # wayland单独处理
             from evdev import ecodes
             self.ui.write(ecodes.EV_ABS, ecodes.ABS_X, position[0])
             self.ui.write(ecodes.EV_ABS, ecodes.ABS_Y, position[1])
@@ -126,12 +127,12 @@ class MouseController:
         :param dy: 位移
         :return:
         """
-        if is_wayland(): # wayland单独处理
+        if is_wayland():  # wayland单独处理
             from evdev import ecodes
             self.ui.write(ecodes.EV_REL, ecodes.REL_X, dx)
             self.ui.write(ecodes.EV_REL, ecodes.REL_Y, dy)
             self.position = (self.position[0] + dx, self.position[1] + dy)
-            return self.position 
+            return self.position
         else:
             self.__mouse.move(dx, dy)
             return self.__mouse.position
@@ -149,7 +150,6 @@ class MouseController:
         else:
             self.__mouse.scroll(dx, dy)
 
-
     def click(self, button, pressed):
         """
         点击
@@ -157,7 +157,7 @@ class MouseController:
         :param pressed: 是否按下
         :return:
         """
-        if is_wayland(): # wayland单独处理
+        if is_wayland():  # wayland单独处理
             from evdev import ecodes
             def get_evdev_button(button):
                 if button == 'Button.left':
@@ -179,14 +179,13 @@ class MouseController:
             else:
                 self.__mouse.release(get_click_button(button))
 
-    def run_mouse_listener(self, mouse, on_click, on_move, on_scroll, on_moves, suppress=False):
+    def run_mouse_listener(self, mouse, on_click, on_move, on_scroll, suppress=False):
         """
         运行鼠标监听
         :param mouse:
         :param on_click:
         :param on_move:
         :param on_scroll:
-        :param on_moves:
         :param suppress:
         :return:
         """
@@ -194,7 +193,6 @@ class MouseController:
         try:
             if suppress:
                 mouse.grab()
-            moves = []
             dx = 0
             dy = 0
             move_count = 0
@@ -226,63 +224,39 @@ class MouseController:
                 # if not on_move(dx, dy):
                 #     self.stop_event.set()
 
-                # event = mouse.read_one()  # 非阻塞读取事件
-                # if event:
-                #     if event.type == ecodes.EV_REL:
-                #         if event.code == ecodes.REL_X:
-                #             dx += event.value
-                #             move_count += 1
-                #             # if not on_move(event.value, 0):
-                #             #     self.stop_event.set()
-                #         elif event.code == ecodes.REL_Y:
-                #             dy += event.value
-                #             move_count += 1
-                #             # if not on_move(0, event.value):
-                #             #     self.stop_event.set()
-                #         elif event.code == ecodes.REL_WHEEL:
-                #             on_scroll(0, 0, 0, event.value)
-                #     elif event.type == ecodes.EV_KEY:
-                #         if event.code == ecodes.BTN_LEFT:
-                #             if event.value == 1:
-                #                 on_click(0,0,'Button.left', True)
-                #             elif event.value == 0:
-                #                 on_click(0,0,'Button.left', False)
-                #         elif event.code == ecodes.BTN_RIGHT:
-                #             if event.value == 1:
-                #                 on_click(0,0,'Button.right', True)
-                #             elif event.value == 0:
-                #                 on_click(0,0,'Button.right', False)
-                #     if move_count >= 5:
-                #         if not on_move(dx, dy):
-                #             self.stop_event.set()
-                #         move_count = 0
-                #         dx = 0
-                #         dy = 0
                 event = mouse.read_one()  # 非阻塞读取事件
                 if event:
                     if event.type == ecodes.EV_REL:
                         if event.code == ecodes.REL_X:
-                            moves.append([event.value, 0])
+                            dx += event.value
+                            move_count += 1
+                            # if not on_move(event.value, 0):
+                            #     self.stop_event.set()
                         elif event.code == ecodes.REL_Y:
-                            moves.append([0, event.value])
+                            dy += event.value
+                            move_count += 1
+                            # if not on_move(0, event.value):
+                            #     self.stop_event.set()
                         elif event.code == ecodes.REL_WHEEL:
                             on_scroll(0, 0, 0, event.value)
                     elif event.type == ecodes.EV_KEY:
                         if event.code == ecodes.BTN_LEFT:
                             if event.value == 1:
-                                on_click(0,0,'Button.left', True)
+                                on_click(0, 0, 'Button.left', True)
                             elif event.value == 0:
-                                on_click(0,0,'Button.left', False)
+                                on_click(0, 0, 'Button.left', False)
                         elif event.code == ecodes.BTN_RIGHT:
                             if event.value == 1:
-                                on_click(0,0,'Button.right', True)
+                                on_click(0, 0, 'Button.right', True)
                             elif event.value == 0:
-                                on_click(0,0,'Button.right', False)
+                                on_click(0, 0, 'Button.right', False)
                     if move_count >= 5:
-                        if not on_moves(moves):
+                        if not on_move(dx, dy):
                             self.stop_event.set()
                         move_count = 0
-                        moves.clear()
+                        dx = 0
+                        dy = 0
+
         except KeyboardInterrupt:
             print("Stopped listening for events.")
         except Exception as e:
@@ -291,7 +265,7 @@ class MouseController:
             if suppress:
                 mouse.ungrab()
 
-    def mouse_listener(self, on_click, on_move,on_scroll,suppress=False):
+    def mouse_listener(self, on_click, on_move, on_scroll, suppress=False):
         """
         鼠标监听
         :param on_click:
@@ -301,7 +275,8 @@ class MouseController:
         :return:
         """
         import pynput
-        self.pynput_listener = pynput.mouse.Listener(on_click=on_click, on_move=on_move, on_scroll=on_scroll,suppress=suppress)
+        self.pynput_listener = pynput.mouse.Listener(on_click=on_click, on_move=on_move, on_scroll=on_scroll,
+                                                     suppress=suppress)
         return self.pynput_listener
 
     def update_position_by_listeners(self):
@@ -312,6 +287,7 @@ class MouseController:
         from evdev import ecodes
         monitor = get_monitors()[0]
         self.stop_event_put = threading.Event()
+
         def on_move(mouse):
             if self.position is None:
                 self.move_to((monitor.width // 2, monitor.height // 2))  # 同时也更新了self.position
@@ -344,16 +320,17 @@ class MouseController:
                         new_y = 0
                     elif new_y > monitor.height:
                         new_y = monitor.height
-                    self.position = (new_x,new_y)
+                    self.position = (new_x, new_y)
             except Exception as e:
                 print(e)
             finally:
                 # mouse.ungrab()
                 pass
+
         self.event_puter = []
         for mouse in self.get_mouse_devices():
             self.event_puter.append(threading.Thread(target=on_move,
-                                                  args=(mouse,)))
+                                                     args=(mouse,)))
         for i in self.event_puter:
             i.start()
 
@@ -366,8 +343,7 @@ class MouseController:
         for i in self.event_puter:
             i.join()
 
-
-    def mouse_listener_linux(self, on_click, on_move, on_scroll, on_moves, suppress=False):
+    def mouse_listener_linux(self, on_click, on_move, on_scroll, suppress=False):
         """
         linux鼠标监听
         :param on_click:
@@ -381,7 +357,7 @@ class MouseController:
         for mouse in self.get_mouse_devices():
             # print(f"监听设备: {mouse.name} at {mouse.path}")
             self.listener.append(threading.Thread(target=self.run_mouse_listener,
-                                                  args=(mouse, on_click, on_move, on_scroll,on_moves, suppress)))
+                                                  args=(mouse, on_click, on_move, on_scroll, suppress)))
         for i in self.listener:
             i.start()
         monitor = get_monitors()[0]

@@ -405,17 +405,6 @@ class Server:
             else:
                 return False
 
-        def on_moves(moves):
-            """
-            Linux 鼠标移动集合
-            :param moves: 移动
-            :return:
-            """
-            if self.cur_device:
-                for move in moves:
-                    msg = Message(MsgType.MOUSE_MOVES, {'moves': moves})
-                    self.udp.sendto(msg.to_bytes(), self.cur_device.get_udp_address())
-
         def on_scroll(x, y, dx, dy):
             """
             Linux 鼠标滚动
@@ -429,7 +418,7 @@ class Server:
             if self.cur_device:
                 self.udp.sendto(msg.to_bytes(), self.cur_device.get_udp_address())
 
-        self._mouse.mouse_listener_linux(on_click, on_move_linux, on_scroll, on_moves, suppress=True)
+        self._mouse.mouse_listener_linux(on_click, on_move_linux, on_scroll, suppress=True)
 
     def add_keyboard_listener(self):
         """
