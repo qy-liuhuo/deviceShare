@@ -57,16 +57,19 @@ class FileController_server(FileController):
             for root, dirs, files in os.walk(self.FILE_DIR, topdown=False):
                 for name in files:
                     path = os.path.join(root, name)
-                    new_file = File(name, path, os.path.getsize(path), self.host)
-                    new_file_data = open(path, "rb").read()
-                    self.send_to_all(File_Message(new_file, new_file_data))
-                    self.file_list.append(new_file)
-                    self.file_set.add(path)
+                    if path not in self.file_set:
+                        new_file = File(name, path, os.path.getsize(path), self.host)
+                        new_file_data = open(path, "rb").read()
+                        self.send_to_all(File_Message(new_file, new_file_data))
+                        self.file_list.append(new_file)
+                        self.file_set.add(path)
             time.sleep(2)
             self.lock.release()
 
     def save_file(self, file_msg: File_Message):
         self.lock.acquire()
+        print(file_msg.file.path)
+        print(self.file_set)
         if file_msg.file.path not in self.file_set:
             save_file_to_dir(file_msg.file.path, file_msg.data)
             self.file_list.append(file_msg.file)
@@ -92,11 +95,12 @@ class FileController_client(FileController):
             for root, dirs, files in os.walk(self.FILE_DIR, topdown=False):
                 for name in files:
                     path = os.path.join(root, name)
-                    new_file = File(name, path, os.path.getsize(path), self.host)
-                    new_file_data = open(path, "rb").read()
-                    self.send_to_master(File_Message(new_file, new_file_data))
-                    self.file_list.append(new_file)
-                    self.file_set.add(path)
+                    if path not in self.file_set:
+                        new_file = File(name, path, os.path.getsize(path), self.host)
+                        new_file_data = open(path, "rb").read()
+                        self.send_to_master(File_Message(new_file, new_file_data))
+                        self.file_list.append(new_file)
+                        self.file_set.add(path)
             time.sleep(2)
             self.lock.release()
 
