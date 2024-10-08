@@ -67,10 +67,11 @@ class FileController_server(FileController):
 
     def save_file(self, file_msg: File_Message):
         self.lock.acquire()
-        save_file_to_dir(file_msg.file.path, file_msg.data)
-        self.file_list.append(file_msg.file)
-        self.file_set.add(file_msg.file.path)
-        self.send_to_all(file_msg)
+        if file_msg.file.path not in self.file_set:
+            save_file_to_dir(file_msg.file.path, file_msg.data)
+            self.file_list.append(file_msg.file)
+            self.file_set.add(file_msg.file.path)
+            self.send_to_all(file_msg)
         self.lock.release()
 
     def send_to_all(self, file_msg):
