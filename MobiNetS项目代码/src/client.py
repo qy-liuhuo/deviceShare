@@ -145,6 +145,10 @@ class Client:
             if msg.msg_type == MsgType.CLIPBOARD_UPDATE:
                 new_text = self.rsa_util.decrypt(bytes.fromhex(msg.data['text'])).decode()
                 self.clipboard_controller.copy(new_text)
+            elif msg.msg_type == MsgType.MOUSE_MOVE_TO:  # 跨屏初始位置
+                self.logging.info(f"Move to {msg.data['x']}, {msg.data['y']}")
+                self._mouse.focus = True
+                self._mouse.move_to((msg.data['x'], msg.data['y']))
             elif msg.msg_type == MsgType.FILE_MSG:
                 self.file_controller.save_file(msg)
             elif msg.msg_type == MsgType.SERVER_OFFLINE:
@@ -270,10 +274,6 @@ class Client:
                         tcp_client.send(msg.to_bytes())
                         tcp_client.close()
                         self._mouse.focus = False
-                elif msg.msg_type == MsgType.MOUSE_MOVE_TO:  # 跨屏初始位置
-                    self.logging.info(f"Move to {msg.data['x']}, {msg.data['y']}")
-                    self._mouse.focus = True
-                    self._mouse.move_to((msg.data['x'], msg.data['y']))
                 elif msg.msg_type == MsgType.MOUSE_CLICK:  # 鼠标点击
                     self._mouse.click(msg.data['button'], msg.data['pressed'])
                 elif msg.msg_type == MsgType.KEYBOARD_CLICK:  # 键盘点击

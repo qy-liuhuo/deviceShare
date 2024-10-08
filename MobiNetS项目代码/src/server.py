@@ -517,24 +517,22 @@ class Server:
                             if self.cur_device is not None:  # 当前设备不为空
                                 self._mouse.focus = False
                                 self._mouse.wait_for_event_puter_stop()
+                                tcp_client = TcpClient((self.cur_device.ip, TCP_PORT))
                                 # 发送鼠标移动消息
                                 if move_out == Position.LEFT:
-                                    self.udp.sendto(Message(MsgType.MOUSE_MOVE_TO, {
+                                    tcp_client.send(Message(MsgType.MOUSE_MOVE_TO, {
                                         'x': self.cur_device.screen.screen_width - 30,
-                                        'y': y}).to_bytes(),
-                                                    self.cur_device.get_udp_address())
+                                        'y': y}).to_bytes())
                                 elif move_out == Position.RIGHT:
-                                    self.udp.sendto(Message(MsgType.MOUSE_MOVE_TO, {'x': 30, 'y': y}).to_bytes(),
-                                                    self.cur_device.get_udp_address())
+                                    tcp_client.send(Message(MsgType.MOUSE_MOVE_TO, {'x': 30, 'y': y}).to_bytes())
                                 elif move_out == Position.TOP:
-                                    self.udp.sendto(Message(MsgType.MOUSE_MOVE_TO,
+                                    tcp_client.send(Message(MsgType.MOUSE_MOVE_TO,
                                                             {'x': x,
-                                                             'y': self.cur_device.screen.screen_height - 30}).to_bytes(),
-                                                    self.cur_device.get_udp_address())
+                                                             'y': self.cur_device.screen.screen_height - 30}).to_bytes())
                                 elif move_out == Position.BOTTOM:
-                                    self.udp.sendto(Message(MsgType.MOUSE_MOVE_TO,
-                                                            {'x': x, 'y': 30}).to_bytes(),
-                                                    self.cur_device.get_udp_address())
+                                    tcp_client.send(Message(MsgType.MOUSE_MOVE_TO,
+                                                            {'x': x, 'y': 30}).to_bytes())
+                                tcp_client.close()
                                 self.lock.release()
                                 break
                         time.sleep(0.01)
@@ -565,23 +563,22 @@ class Server:
                                 device_storage_connect.close()
                                 time.sleep(0.01)  # 不加识别不到？
                                 if self.cur_device is not None:
+                                    tcp_client = TcpClient((self.cur_device.ip, TCP_PORT))
+                                    # 发送鼠标移动消息
                                     if move_out == Position.LEFT:
-                                        self.udp.sendto(Message(MsgType.MOUSE_MOVE_TO, {
+                                        tcp_client.send(Message(MsgType.MOUSE_MOVE_TO, {
                                             'x': self.cur_device.screen.screen_width - 30,
-                                            'y': y}).to_bytes(),
-                                                        self.cur_device.get_udp_address())
+                                            'y': y}).to_bytes())
                                     elif move_out == Position.RIGHT:
-                                        self.udp.sendto(Message(MsgType.MOUSE_MOVE_TO, {'x': 30, 'y': y}).to_bytes(),
-                                                        self.cur_device.get_udp_address())
+                                        tcp_client.send(Message(MsgType.MOUSE_MOVE_TO, {'x': 30, 'y': y}).to_bytes())
                                     elif move_out == Position.TOP:
-                                        self.udp.sendto(Message(MsgType.MOUSE_MOVE_TO,
+                                        tcp_client.send(Message(MsgType.MOUSE_MOVE_TO,
                                                                 {'x': x,
-                                                                 'y': self.cur_device.screen.screen_height - 30}).to_bytes(),
-                                                        self.cur_device.get_udp_address())
+                                                                 'y': self.cur_device.screen.screen_height - 30}).to_bytes())
                                     elif move_out == Position.BOTTOM:
-                                        self.udp.sendto(Message(MsgType.MOUSE_MOVE_TO,
-                                                                {'x': x, 'y': 30}).to_bytes(),
-                                                        self.cur_device.get_udp_address())
+                                        tcp_client.send(Message(MsgType.MOUSE_MOVE_TO,
+                                                                {'x': x, 'y': 30}).to_bytes())
+                                    tcp_client.close()
                                     self.lock.release()
                                     break
 
