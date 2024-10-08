@@ -31,17 +31,17 @@ DeviceShare 是一款跨平台的多主机输入设备共享工具，支持 Wind
 演示视频：https://img.qylh.xyz/mobinets_demo.mp4
 
 
-[//]: # (**双机演示**)
+[//]: # "**双机演示**"
 
-[//]: # ()
-[//]: # (https://github.com/qy-liuhuo/deviceShare/assets/60374114/6e126292-22e0-4d91-bab9-272470689ecd)
+[//]: #
+[//]: # "https://github.com/qy-liuhuo/deviceShare/assets/60374114/6e126292-22e0-4d91-bab9-272470689ecd"
 
-[//]: # ()
-[//]: # ()
-[//]: # (**演示**)
+[//]: #
+[//]: #
+[//]: # "**演示**"
 
-[//]: # ()
-[//]: # (https://github.com/qy-liuhuo/deviceShare/assets/60374114/1b911b8a-976f-4128-9518-9c64c73a7a39)
+[//]: #
+[//]: # "https://github.com/qy-liuhuo/deviceShare/assets/60374114/1b911b8a-976f-4128-9518-9c64c73a7a39"
 
 
 
@@ -165,4 +165,6 @@ DeviceShare
 - [x] 优化代码质量，提升代码可读性，提升软件性能和稳定性
 - [x] 测试更多类型操作系统
 - [x] 优化文档
-- [ ] 文件拖拽共享功能(实现中)
+- [x] 文件拖拽共享功能(实现中)
+- [x] 鼠标移动优化
+- [ ] 软件配置功能
