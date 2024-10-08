@@ -19,8 +19,10 @@ def remove_all_files(dir_path):
 
 def send_to_device(ip, msg):
     tcp_client = TcpClient((ip, TCP_PORT))
-    tcp_client.send(msg.to_bytes())
-    tcp_client.close()
+    try:
+        tcp_client.send(msg.to_bytes())
+    finally:
+        tcp_client.close()
 
 
 def save_file_to_dir(file_path: str, file_data: bytes):
