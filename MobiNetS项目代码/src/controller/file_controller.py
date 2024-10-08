@@ -24,6 +24,7 @@ def send_to_device(ip, msg):
 
 
 def save_file_to_dir(file_path: str, file_data: bytes):
+    file_path = file_path.replace("\\", "/")
     if not os.path.exists(os.path.dirname(file_path)):
         os.makedirs(os.path.dirname(file_path))
     with open(file_path, "wb") as f:
@@ -63,15 +64,13 @@ class FileController_server(FileController):
                         self.send_to_all(File_Message(new_file, new_file_data))
                         self.file_list.append(new_file)
                         self.file_set.add(path)
-            time.sleep(2)
             self.lock.release()
+            time.sleep(2)
 
     def save_file(self, file_msg: File_Message):
         self.lock.acquire()
-        print(file_msg.file.path)
-        print(self.file_set)
         if file_msg.file.path not in self.file_set:
-            save_file_to_dir(file_msg.file.path, file_msg.data)
+            save_file_to_dir(file_msg.file.path, file_msg.file_data)
             self.file_list.append(file_msg.file)
             self.file_set.add(file_msg.file.path)
             self.send_to_all(file_msg)
@@ -101,8 +100,8 @@ class FileController_client(FileController):
                         self.send_to_master(File_Message(new_file, new_file_data))
                         self.file_list.append(new_file)
                         self.file_set.add(path)
-            time.sleep(2)
             self.lock.release()
+            time.sleep(2)
 
     def send_to_master(self, file_msg):
         tcp_client = TcpClient((self.master_ip, TCP_PORT))
@@ -116,4 +115,3 @@ class FileController_client(FileController):
             self.file_list.append(file_msg.file)
             self.file_set.add(file_msg.file.path)
         self.lock.release()
-
