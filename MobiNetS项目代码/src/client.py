@@ -290,13 +290,13 @@ class Client:
         """
         while True:
             x, y = self.mouse_move_queue.get()
-            if self.judge_move_out(x, y):
-                self.mouse_move_queue.queue.clear()
-                self.mouse_move_queue.put((x, y))
-                # self.logging.info(f"Move to {x}, {y}")
+            position = self._mouse.move(x, y)
+            if self.judge_move_out(x,y) and self.be_added and self.server_ip and self._mouse.focus:  # 鼠标移出屏幕
+                msg = Message(MsgType.MOUSE_BACK, {"x": position[0], "y": position[1]})
+                tcp_client = TcpClient((self.server_ip, TCP_PORT))
+                tcp_client.send(msg.to_bytes())
+                tcp_client.close()
                 self._mouse.focus = False
-            else:
-                self._mouse.move_to((x, y))
 
     def close(self):
         """
