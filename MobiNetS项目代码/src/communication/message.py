@@ -43,6 +43,7 @@ class MsgType(enum.IntEnum):
     WRONG_MSG = enum.auto()  # 错误消息
     FILE_MSG = enum.auto()  # 文件消息
     SERVER_OFFLINE = enum.auto()  # 服务端在线
+    MOUSE_MOVES = enum.auto()  # 鼠标移动(多个移动信息)
 
 
 class Message:
