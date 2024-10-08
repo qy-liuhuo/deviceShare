@@ -250,7 +250,7 @@ class MouseController:
                                 on_click(0, 0, 'Button.right', True)
                             elif event.value == 0:
                                 on_click(0, 0, 'Button.right', False)
-                    if move_count >= 2:
+                    if move_count >= 5:
                         if not on_move(dx, dy):
                             self.stop_event.set()
                         move_count = 0

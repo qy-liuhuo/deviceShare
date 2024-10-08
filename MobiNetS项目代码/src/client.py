@@ -18,8 +18,6 @@ import logging
 import socket
 import threading
 import time
-from queue import Queue
-
 from zeroconf import Zeroconf, ServiceBrowser
 
 from src.controller.clipboard_controller import get_clipboard_controller
@@ -53,7 +51,6 @@ class Client:
         self._mouse.focus = False  # 鼠标焦点
         self.device_id = get_device_name()  # 获取设备名称
         self.position = None  # 位置
-        self.mouse_move_queue = Queue()  # 鼠标移动队列
         self.udp = Udp(UDP_PORT)  # udp通信
         self.udp.allow_broadcast()  # 允许广播
         self.tcp_server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # tcp服务端
@@ -118,7 +115,6 @@ class Client:
         threading.Thread(target=self.clipboard_listener).start()  # 剪切板监听
         threading.Thread(target=self.tcp_listener).start()  # tcp监听
         threading.Thread(target=self.file_controller.file_listener).start()  # 文件监听
-        threading.Thread(target=self.mouse_moving).start()  # 鼠标移动
 
     def tcp_listener(self):
         """
@@ -269,7 +265,15 @@ class Client:
                     continue
                 msg = Message.from_bytes(data)
                 if msg.msg_type == MsgType.MOUSE_MOVE:  # 鼠标移动
-                    self.mouse_move_queue.put((msg.data['x'], msg.data['y']))
+                    position = self._mouse.move(msg.data['x'], msg.data['y'])
+                    if self.judge_move_out(position[0],
+                                           position[
+                                               1]) and self.be_added and self.server_ip and self._mouse.focus:  # 鼠标移出屏幕
+                        msg = Message(MsgType.MOUSE_BACK, {"x": position[0], "y": position[1]})
+                        tcp_client = TcpClient((self.server_ip, TCP_PORT))
+                        tcp_client.send(msg.to_bytes())
+                        tcp_client.close()
+                        self._mouse.focus = False
                 elif msg.msg_type == MsgType.MOUSE_CLICK:  # 鼠标点击
                     self._mouse.click(msg.data['button'], msg.data['pressed'])
                 elif msg.msg_type == MsgType.KEYBOARD_CLICK:  # 键盘点击
@@ -281,22 +285,6 @@ class Client:
         except Exception as e:
             self.logging.error(e, stack_info=True)
             self.udp.close()
-
-    def mouse_moving(self):
-        """
-        鼠标移动
-        :param self:
-        :return:
-        """
-        while True:
-            x, y = self.mouse_move_queue.get()
-            position = self._mouse.move(x, y)
-            if self.judge_move_out(x,y) and self.be_added and self.server_ip and self._mouse.focus:  # 鼠标移出屏幕
-                msg = Message(MsgType.MOUSE_BACK, {"x": position[0], "y": position[1]})
-                tcp_client = TcpClient((self.server_ip, TCP_PORT))
-                tcp_client.send(msg.to_bytes())
-                tcp_client.close()
-                self._mouse.focus = False
 
     def close(self):
         """
