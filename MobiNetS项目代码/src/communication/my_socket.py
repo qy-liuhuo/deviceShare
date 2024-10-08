@@ -93,6 +93,7 @@ class Udp:
                     expected_packets = total_packets
                 if len(fragments) > packet_id and fragments[packet_id] is not None:
                     data = WRONG_MESSAGE
+                    print("Received duplicate packet")
                 fragments[packet_id] = chunk
                 if len(fragments) == expected_packets:
                     data = b''.join(fragments[i] for i in range(expected_packets))
