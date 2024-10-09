@@ -22,7 +22,7 @@ from zeroconf import Zeroconf, ServiceBrowser
 
 from src.controller.clipboard_controller import get_clipboard_controller
 from src.controller.file_controller import FileController_client
-from src.controller.keyboard_controller import KeyboardController, get_keyboard_controller
+from src.controller.keyboard_controller import get_keyboard_controller
 from src.gui.client_gui import ClientGUI
 from src.gui.position import Position
 from src.communication.message import Message, MsgType
