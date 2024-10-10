@@ -8,3 +8,4 @@
 **/*.db
 **/.DS_Store
 /temp/
+**/shared_files
