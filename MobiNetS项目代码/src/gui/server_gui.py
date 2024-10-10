@@ -688,10 +688,9 @@ class MainWindow(QMainWindow):
 
 
 class ServerGUI:
-    def __init__(self, app, update_flag, request_queue=None, response_queue=None):
+    def __init__(self, app, update_flag, config, request_queue=None, response_queue=None):
         self.app = app
-        self.shareConfiguration = {"shareKeyBoard": True, "shareClipBoard": True, "shareFile": True, "encryption": True, "transmissionGranularity": 5}
-        self.mainWin = MainWindow(config=self.shareConfiguration)
+        self.mainWin = MainWindow(config=config)
         qt_material.apply_stylesheet(self.app, theme='light_blue.xml') # Apply the light blue theme
         self.trayIcon = QSystemTrayIcon(self.mainWin)
         self.initTrayIcon()
