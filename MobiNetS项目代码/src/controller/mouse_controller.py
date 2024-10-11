@@ -17,7 +17,6 @@
 import logging
 import platform
 import threading
-import time
 from screeninfo import get_monitors
 
 from src.utils.plantform import is_wayland
@@ -209,8 +208,6 @@ class MouseController:
                                 dy = 0
                             dx += event.value
                             move_count += 1
-                            # if not on_move(event.value, 0):
-                            #     self.stop_event.set()
                         elif event.code == ecodes.REL_Y:
                             if (dy ^ event.value) >> 31:
                                 if not on_move(dx, dy):
@@ -220,8 +217,6 @@ class MouseController:
                                 dy = 0
                             dy += event.value
                             move_count += 1
-                            # if not on_move(0, event.value):
-                            #     self.stop_event.set()
                         elif event.code == ecodes.REL_WHEEL:
                             on_scroll(0, 0, 0, event.value)
                     elif event.type == ecodes.EV_KEY:
@@ -269,7 +264,6 @@ class MouseController:
         通过监听器更新位置
         :return:
         """
-        from evdev import ecodes
         monitor = get_monitors()[0]
         self.stop_event_put = threading.Event()
 
@@ -284,11 +278,11 @@ class MouseController:
                     for i in range(100):
                         event = mouse.read_one()
                         if event:
-                            if event.type == ecodes.EV_REL:
-                                if event.code == ecodes.REL_X:
+                            if event.type == self.ecodes.EV_REL:
+                                if event.code == self.ecodes.REL_X:
                                     # self.ui.write(ecodes.EV_REL, ecodes.REL_X, event.value)
                                     dx += event.value
-                                elif event.code == ecodes.REL_Y:
+                                elif event.code == self.ecodes.REL_Y:
                                     dy += event.value
                                     # self.ui.write(ecodes.EV_REL, ecodes.REL_Y, event.value)
                             # else:
