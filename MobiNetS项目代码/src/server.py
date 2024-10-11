@@ -419,7 +419,8 @@ class Server:
             if self.cur_device:
                 self.udp.sendto(msg.to_bytes(), self.cur_device.get_udp_address())
 
-        self._mouse.mouse_listener_linux(on_click, on_move_linux, on_scroll, suppress=True)
+
+        self._mouse.mouse_listener_linux(on_click, on_move_linux, on_scroll, self.share_configuration['transmissionGranularity'], suppress=True)
 
     def add_keyboard_listener(self):
         """
