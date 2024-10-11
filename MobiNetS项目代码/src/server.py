@@ -60,7 +60,8 @@ class Server:
         self.response_queue = Queue()  # 响应队列
         self.thread_list = []  # 线程列表
         self.update_flag = threading.Event()  # 更新标志
-        self.manager_gui = ServerGUI(app, update_flag=self.update_flag, request_queue=self.request_queue,
+        self.share_configuration = {"shareKeyBoard": True, "shareClipBoard": True, "shareFile": True, "encryption": True, "transmissionGranularity": 5}
+        self.manager_gui = ServerGUI(app, update_flag=self.update_flag, request_queue=self.request_queue, config=self.share_configuration,
                                      response_queue=self.response_queue)  # 服务端GUI
         self.cur_device = None  # 当前设备
         self._mouse = MouseController()  # 鼠标控制器
