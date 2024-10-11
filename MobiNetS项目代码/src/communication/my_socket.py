@@ -215,5 +215,5 @@ def send_data_to_tcp_socket(client_socket, data: bytes):
         # 再发送实际数据
         client_socket.sendall(data)
     except Exception as e:
-        logging.getLogger("deviceShare").error(e, stack_info=True)
+        logging.getLogger("deviceShare").error(e)
         client_socket.close()

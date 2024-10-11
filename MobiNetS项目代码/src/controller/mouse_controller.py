@@ -189,7 +189,7 @@ class MouseController:
         :param suppress:
         :return:
         """
-        from evdev import InputDevice, categorize, ecodes, list_devices, UInput
+        from evdev import ecodes
         try:
             if suppress:
                 mouse.grab()
@@ -201,11 +201,23 @@ class MouseController:
                 if event:
                     if event.type == ecodes.EV_REL:
                         if event.code == ecodes.REL_X:
+                            if (dx ^ event.value) >> 31:
+                                if not on_move(dx, dy):
+                                    self.stop_event.set()
+                                move_count = 0
+                                dx = 0
+                                dy = 0
                             dx += event.value
                             move_count += 1
                             # if not on_move(event.value, 0):
                             #     self.stop_event.set()
                         elif event.code == ecodes.REL_Y:
+                            if (dy ^ event.value) >> 31:
+                                if not on_move(dx, dy):
+                                    self.stop_event.set()
+                                move_count = 0
+                                dx = 0
+                                dy = 0
                             dy += event.value
                             move_count += 1
                             # if not on_move(0, event.value):
@@ -223,7 +235,7 @@ class MouseController:
                                 on_click(0, 0, 'Button.right', True)
                             elif event.value == 0:
                                 on_click(0, 0, 'Button.right', False)
-                    if move_count >= transmissionGranularity:
+                    if move_count >= transmissionGranularity or abs(dx) + abs(dy) >= 15:
                         if not on_move(dx, dy):
                             self.stop_event.set()
                         move_count = 0
