@@ -42,6 +42,7 @@ class MsgType(enum.IntEnum):
     CLIENT_OFFLINE = enum.auto()  # 客户端离线
     WRONG_MSG = enum.auto()  # 错误消息
     FILE_MSG = enum.auto()  # 文件消息
+    SERVER_OFFLINE = enum.auto()  # 服务端在线
 
 
 class Message:

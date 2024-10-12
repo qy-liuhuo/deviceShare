@@ -22,7 +22,7 @@ from zeroconf import Zeroconf, ServiceBrowser
 
 from src.controller.clipboard_controller import get_clipboard_controller
 from src.controller.file_controller import FileController_client
-from src.controller.keyboard_controller import KeyboardController, get_keyboard_controller
+from src.controller.keyboard_controller import get_keyboard_controller
 from src.gui.client_gui import ClientGUI
 from src.gui.position import Position
 from src.communication.message import Message, MsgType
@@ -39,27 +39,28 @@ class Client:
     """
     被控机类
     """
-    def __init__(self,app):
 
-        self.logging = logging.getLogger(__name__)
-        self.init_screen_info() # 初始化屏幕信息
-        self.clipboard_controller = get_clipboard_controller() # 获取剪切板控制器
-        self._keyboard = get_keyboard_controller() # 键盘控制器
+    def __init__(self, app):
+
+        self.logging = logging.getLogger("deviceShare.Client")  # 日志
+        self.init_screen_info()  # 初始化屏幕信息
+        self.clipboard_controller = get_clipboard_controller()  # 获取剪切板控制器
+        self._keyboard = get_keyboard_controller()  # 键盘控制器
         self.file_controller = None
         self._mouse = MouseController()  # 鼠标控制器
         self._mouse.focus = False  # 鼠标焦点
-        self.device_id = get_device_name() # 获取设备名称
-        self.position = None # 位置
-        self.udp = Udp(UDP_PORT) # udp通信
-        self.udp.allow_broadcast() # 允许广播
-        self.tcp_server = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # tcp服务端
-        self.tcp_server.bind(("0.0.0.0", TCP_PORT)) # 绑定端口
-        self.tcp_server.listen(5) # 监听
-        self.be_added = False # 是否被添加到服务
-        self.rsa_util = RsaUtil() # rsa加密工具
-        self.server_ip = None # 服务端ip
-        self.zeroconf = Zeroconf() # zeroconf服务
-        self.gui = ClientGUI(app) # 客户端gui
+        self.device_id = get_device_name()  # 获取设备名称
+        self.position = None  # 位置
+        self.udp = Udp(UDP_PORT)  # udp通信
+        self.udp.allow_broadcast()  # 允许广播
+        self.tcp_server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # tcp服务端
+        self.tcp_server.bind(("0.0.0.0", TCP_PORT))  # 绑定端口
+        self.tcp_server.listen(5)  # 监听
+        self.be_added = False  # 是否被添加到服务
+        self.rsa_util = RsaUtil()  # rsa加密工具
+        self.server_ip = None  # 服务端ip
+        self.zeroconf = Zeroconf()  # zeroconf服务
+        self.gui = ClientGUI(app)  # 客户端gui
 
     def run(self):
         """
@@ -74,7 +75,6 @@ class Client:
             self.logging.error(e)
         finally:
             self.close()
-
 
     def send_offline_msg(self):
         """
@@ -123,9 +123,12 @@ class Client:
         :return:
         """
         while True:
-            client, addr = self.tcp_server.accept()
-            self.logging.info(f"Connection from {addr}")
-            client_handler = threading.Thread(target=self.handle_client, args=(client, addr), daemon=True) # 处理客户端请求线程
+            try:
+                client, addr = self.tcp_server.accept()
+            except Exception as e:
+                self.logging.error(e)
+                break
+            client_handler = threading.Thread(target=self.handle_client, args=(client, addr), daemon=True)  # 处理客户端请求线程
             client_handler.start()
 
     def handle_client(self, client_socket, addr):
@@ -142,8 +145,14 @@ class Client:
             if msg.msg_type == MsgType.CLIPBOARD_UPDATE:
                 new_text = self.rsa_util.decrypt(bytes.fromhex(msg.data['text'])).decode()
                 self.clipboard_controller.copy(new_text)
+            elif msg.msg_type == MsgType.MOUSE_MOVE_TO:  # 跨屏初始位置
+                self.logging.info(f"Move to {msg.data['x']}, {msg.data['y']}")
+                self._mouse.focus = True
+                self._mouse.move_to((msg.data['x'], msg.data['y']))
             elif msg.msg_type == MsgType.FILE_MSG:
                 self.file_controller.save_file(msg)
+            elif msg.msg_type == MsgType.SERVER_OFFLINE:
+                self.close()
         except Exception as e:
             self.logging.error(e)
         finally:
@@ -159,15 +168,16 @@ class Client:
             tcp_client = TcpClient((self.server_ip, TCP_PORT))
             try:
                 msg = Message(MsgType.SEND_PUBKEY,
-                              {"device_id": self.device_id, 'public_key': self.rsa_util.public_key.save_pkcs1().decode()})
+                              {"device_id": self.device_id,
+                               'public_key': self.rsa_util.public_key.save_pkcs1().decode()})
                 tcp_client.send(msg.to_bytes())
                 data = tcp_client.recv()
                 if data is None:
                     tcp_client.close()
                     continue
                 msg = Message.from_bytes(data)
-                if msg.msg_type == MsgType.KEY_CHECK: # 服务端返回公钥
-                    decrypt_key = self.rsa_util.decrypt(bytes.fromhex(msg.data['key'])) # 解密服务端返回的key
+                if msg.msg_type == MsgType.KEY_CHECK:  # 服务端返回公钥
+                    decrypt_key = self.rsa_util.decrypt(bytes.fromhex(msg.data['key']))  # 解密服务端返回的key
                     msg = Message(MsgType.KEY_CHECK_RESPONSE,
                                   {'key': decrypt_key.hex(), 'device_id': self.device_id,
                                    'screen_width': self.screen_size_width,
@@ -178,11 +188,11 @@ class Client:
                         tcp_client.close()
                         continue
                     msg = Message.from_bytes(data)
-                    if msg.msg_type == MsgType.ACCESS_ALLOW: # 服务端允许连接
+                    if msg.msg_type == MsgType.ACCESS_ALLOW:  # 服务端允许连接
                         self.logging.info('Access allow')
                         self.be_added = True
                         self.position = Position(int(msg.data['position']))
-                    elif msg.msg_type == MsgType.ACCESS_DENY: # 服务端拒绝连接
+                    elif msg.msg_type == MsgType.ACCESS_DENY:  # 服务端拒绝连接
                         self.logging.info('Access denied')
                         tcp_client.close()
                         break
@@ -202,8 +212,8 @@ class Client:
         :return:
         """
         while True:
-            new_clip_text = self.clipboard_controller.paste() # 获取剪切板内容
-            if new_clip_text != '' and new_clip_text != self.clipboard_controller.get_last_clipboard_text(): # 剪切板内容有变化
+            new_clip_text = self.clipboard_controller.paste()  # 获取剪切板内容
+            if new_clip_text != '' and new_clip_text != self.clipboard_controller.get_last_clipboard_text():  # 剪切板内容有变化
                 self.clipboard_controller.update_last_clipboard_text(new_clip_text)
                 # 发送剪切板内容给服务端
                 tcp_client = TcpClient((self.server_ip, TCP_PORT))
@@ -221,7 +231,7 @@ class Client:
         broadcast_data = Message(MsgType.CLIENT_HEARTBEAT, {}).to_bytes()
         while True:
             if self.server_ip:
-                self.udp.sendto(broadcast_data, (self.server_ip, UDP_PORT)) # 发送心跳包
+                self.udp.sendto(broadcast_data, (self.server_ip, UDP_PORT))  # 发送心跳包
             time.sleep(2)
 
     def judge_move_out(self, x, y):
@@ -249,34 +259,31 @@ class Client:
         :return:
         """
         try:
-            while True:
+            while not self.udp.is_closed():
                 data, addr = self.udp.recv()
                 if data is None:
                     continue
                 msg = Message.from_bytes(data)
-                if msg.msg_type == MsgType.MOUSE_MOVE: # 鼠标移动
+                if msg.msg_type == MsgType.MOUSE_MOVE:  # 鼠标移动
                     position = self._mouse.move(msg.data['x'], msg.data['y'])
                     if self.judge_move_out(position[0],
-                                           position[1]) and self.be_added and self.server_ip and self._mouse.focus: # 鼠标移出屏幕
+                                           position[
+                                               1]) and self.be_added and self.server_ip and self._mouse.focus:  # 鼠标移出屏幕
                         msg = Message(MsgType.MOUSE_BACK, {"x": position[0], "y": position[1]})
-                        tcp_client = TcpClient((self.server_ip, TCP_PORT))  
+                        tcp_client = TcpClient((self.server_ip, TCP_PORT))
                         tcp_client.send(msg.to_bytes())
                         tcp_client.close()
                         self._mouse.focus = False
-                elif msg.msg_type == MsgType.MOUSE_MOVE_TO:  # 跨屏初始位置
-                    self.logging.info(f"Move to {msg.data['x']}, {msg.data['y']}")
-                    self._mouse.focus = True
-                    self._mouse.move_to((msg.data['x'], msg.data['y']))
-                elif msg.msg_type == MsgType.MOUSE_CLICK: # 鼠标点击
+                elif msg.msg_type == MsgType.MOUSE_CLICK:  # 鼠标点击
                     self._mouse.click(msg.data['button'], msg.data['pressed'])
-                elif msg.msg_type == MsgType.KEYBOARD_CLICK: # 键盘点击
+                elif msg.msg_type == MsgType.KEYBOARD_CLICK:  # 键盘点击
                     self._keyboard.click(msg.data['type'], msg.data['keyData'])
-                elif msg.msg_type == MsgType.MOUSE_SCROLL: # 鼠标滚动
+                elif msg.msg_type == MsgType.MOUSE_SCROLL:  # 鼠标滚动
                     self._mouse.scroll(msg.data['dx'], msg.data['dy'])
-                elif msg.msg_type == MsgType.POSITION_CHANGE: # 屏幕位置改变
+                elif msg.msg_type == MsgType.POSITION_CHANGE:  # 屏幕位置改变
                     self.position = Position(int(msg.data['position']))
         except Exception as e:
-            self.logging.error(e)
+            self.logging.error(e, stack_info=True)
             self.udp.close()
 
     def close(self):
@@ -285,7 +292,7 @@ class Client:
         :param self:
         :return:
         """
-        self.gui.exit()
         self.send_offline_msg()
+        self.gui.exit()
         self.udp.close()
         self.tcp_server.close()

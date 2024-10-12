@@ -19,11 +19,14 @@ def remove_all_files(dir_path):
 
 def send_to_device(ip, msg):
     tcp_client = TcpClient((ip, TCP_PORT))
-    tcp_client.send(msg.to_bytes())
-    tcp_client.close()
+    try:
+        tcp_client.send(msg.to_bytes())
+    finally:
+        tcp_client.close()
 
 
 def save_file_to_dir(file_path: str, file_data: bytes):
+    file_path = file_path.replace("\\", "/")
     if not os.path.exists(os.path.dirname(file_path)):
         os.makedirs(os.path.dirname(file_path))
     with open(file_path, "wb") as f:
@@ -57,20 +60,22 @@ class FileController_server(FileController):
             for root, dirs, files in os.walk(self.FILE_DIR, topdown=False):
                 for name in files:
                     path = os.path.join(root, name)
-                    new_file = File(name, path, os.path.getsize(path), self.host)
-                    new_file_data = open(path, "rb").read()
-                    self.send_to_all(File_Message(new_file, new_file_data))
-                    self.file_list.append(new_file)
-                    self.file_set.add(path)
-            time.sleep(2)
+                    if path not in self.file_set:
+                        new_file = File(name, path, os.path.getsize(path), self.host)
+                        new_file_data = open(path, "rb").read()
+                        self.send_to_all(File_Message(new_file, new_file_data))
+                        self.file_list.append(new_file)
+                        self.file_set.add(path)
             self.lock.release()
+            time.sleep(2)
 
     def save_file(self, file_msg: File_Message):
         self.lock.acquire()
-        save_file_to_dir(file_msg.file.path, file_msg.data)
-        self.file_list.append(file_msg.file)
-        self.file_set.add(file_msg.file.path)
-        self.send_to_all(file_msg)
+        if file_msg.file.path not in self.file_set:
+            save_file_to_dir(file_msg.file.path, file_msg.file_data)
+            self.file_list.append(file_msg.file)
+            self.file_set.add(file_msg.file.path)
+            self.send_to_all(file_msg)
         self.lock.release()
 
     def send_to_all(self, file_msg):
@@ -91,18 +96,21 @@ class FileController_client(FileController):
             for root, dirs, files in os.walk(self.FILE_DIR, topdown=False):
                 for name in files:
                     path = os.path.join(root, name)
-                    new_file = File(name, path, os.path.getsize(path), self.host)
-                    new_file_data = open(path, "rb").read()
-                    self.send_to_master(File_Message(new_file, new_file_data))
-                    self.file_list.append(new_file)
-                    self.file_set.add(path)
-            time.sleep(2)
+                    if path not in self.file_set:
+                        new_file = File(name, path, os.path.getsize(path), self.host)
+                        new_file_data = open(path, "rb").read()
+                        self.send_to_master(File_Message(new_file, new_file_data))
+                        self.file_list.append(new_file)
+                        self.file_set.add(path)
             self.lock.release()
+            time.sleep(2)
 
     def send_to_master(self, file_msg):
         tcp_client = TcpClient((self.master_ip, TCP_PORT))
-        tcp_client.send(file_msg.to_bytes())
-        tcp_client.close()
+        try:
+            tcp_client.send(file_msg.to_bytes())
+        finally:
+            tcp_client.close()
 
     def save_file(self, file_msg: File_Message):
         self.lock.acquire()
@@ -111,4 +119,3 @@ class FileController_client(FileController):
             self.file_list.append(file_msg.file)
             self.file_set.add(file_msg.file.path)
         self.lock.release()
-
