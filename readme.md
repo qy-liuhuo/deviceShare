@@ -1,15 +1,20 @@
-# DeviceShare —— 跨平台多主机输入设备共享
+# DeviceShare —— 跨平台多主机输入设备共享跨平台、可扩展的多主机Hid-Input设备共享协同智能解决方案
 
 ## 项目介绍
-![](https://img.qylh.xyz/blog/1723181688963.png)
-DeviceShare 是一款跨平台的多主机输入设备共享工具，支持 Windows、Linux、MacOS 等操作系统,支持在Wayland环境下运行。
 
-通过 DeviceShare，您可以在多台主机之间共享鼠标、键盘、剪贴板等输入设备，实现多台主机之间的输入设备共享。
+![1728718269782.png](https://img.qylh.xyz/blog/1728718269782.png)
+
+DeviceShare 是一款跨平台的多主机输入设备共享工具，支持 Windows、Linux、MacOS 等操作系统,支持在Wayland桌面环境下运行。
+
+通过 DeviceShare，您可以在多台主机之间共享鼠标、键盘等输入设备，支持剪切板和文件共享实现多台主机之间的共享协同。
+
 
 
 ## 功能特性
 
-1. **跨平台支持**：支持 Windows、Linux、MacOS 等操作系统。
+![1728718738584.png](https://img.qylh.xyz/blog/1728718738584.png)
+
+1. **跨平台支持**：支持 Windows、Linux、MacOS 等操作系统,支持WayLand桌面环境。
 2. **多主机支持**：支持多台主机之间的输入设备共享。
 3. **鼠标共享**：支持鼠标在多台主机之间的共享。
 4. **键盘共享**：支持键盘在多台主机之间的共享。
@@ -18,6 +23,7 @@ DeviceShare 是一款跨平台的多主机输入设备共享工具，支持 Wind
 7. **主机发现机制**：支持自动发现局域网内的主机。
 8. **安全性**：支持公私钥加密机制，支持对剪贴板内容加密传输。
 9. **易用性**：支持一键启动，无需复杂配置。
+10. **高性能**：设备贡献性能优秀。
 10. **开源免费**：支持开源免费使用。
 
 
@@ -28,7 +34,7 @@ DeviceShare 是一款跨平台的多主机输入设备共享工具，支持 Wind
 
 ![1723257064070.png](https://img.qylh.xyz/blog/1723257064070.png)
 
-演示视频：https://img.qylh.xyz/mobinets_demo.mp4
+演示视频：https://img.qylh.xyz/DeviceShare.mp4
 
 
 [//]: # (**双机演示**)
@@ -80,7 +86,8 @@ DeviceShare 是一款跨平台的多主机输入设备共享工具，支持 Wind
 
 ## 系统架构
 
-![1723181787105.png](https://img.qylh.xyz/blog/1723181787105.png)
+
+![1728718486679.png](https://img.qylh.xyz/blog/1728718486679.png)
 
 项目的整体设计框架如上图所示，整体由四个部分构成：
 - 服务端为Hid Input设备的拥有者，可向其他客户端主机共享其拥有的输入设备。
@@ -100,6 +107,7 @@ DeviceShare
 │   ├── controller # 设备控制模块
 │   │   ├── clipboard_controller.py # 剪切板控制
 │   │   ├── keyboard_controller.py # 键盘控制
+│   │   ├── file_controller.py # 文件控制
 │   │   └── mouse_controller.py # 鼠标控制
 │   ├── gui # GUI界面
 │   │   ├── client_gui.py # 客户端GUI
@@ -165,4 +173,4 @@ DeviceShare
 - [x] 优化代码质量，提升代码可读性，提升软件性能和稳定性
 - [x] 测试更多类型操作系统
 - [x] 优化文档
-- [ ] 文件拖拽共享功能(实现中)
+- [x] 文件共享功能

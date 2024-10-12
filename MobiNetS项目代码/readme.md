@@ -1,43 +1,20 @@
-
-[//]: # ( This program is free software: you can redistribute it and/or modify)
-
-[//]: # ( it under the terms of the GNU General Public License as published by)
-
-[//]: # ( the Free Software Foundation, either version 3 of the License, or)
-
-[//]: # ( &#40;at your option&#41; any later version.)
-
-[//]: # ()
-[//]: # ( This program is distributed in the hope that it will be useful,)
-
-[//]: # ( but WITHOUT ANY WARRANTY; without even the implied warranty of)
-
-[//]: # ( MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the)
-
-[//]: # ( GNU General Public License for more details.)
-
-[//]: # ()
-[//]: # ( You should have received a copy of the GNU General Public License)
-
-[//]: # ( along with this program. If not, see <https://www.gnu.org/licenses/>.)
-
-[//]: # ()
-[//]: # ( Author: MobiNets)
-
-# DeviceShare —— 跨平台多主机输入设备共享
+# DeviceShare —— 跨平台多主机输入设备共享跨平台、可扩展的多主机Hid-Input设备共享协同智能解决方案
 
 ## 项目介绍
 
-![](https://img.qylh.xyz/blog/1723181688963.png)
+![1728718269782.png](https://img.qylh.xyz/blog/1728718269782.png)
 
-DeviceShare 是一款跨平台的多主机输入设备共享工具，支持 Windows、Linux、MacOS 等操作系统,支持在Wayland环境下运行。
+DeviceShare 是一款跨平台的多主机输入设备共享工具，支持 Windows、Linux、MacOS 等操作系统,支持在Wayland桌面环境下运行。
 
-通过 DeviceShare，您可以在多台主机之间共享鼠标、键盘、剪贴板等输入设备，实现多台主机之间的输入设备共享。
+通过 DeviceShare，您可以在多台主机之间共享鼠标、键盘等输入设备，支持剪切板和文件共享实现多台主机之间的共享协同。
+
 
 
 ## 功能特性
 
-1. **跨平台支持**：支持 Windows、Linux、MacOS 等操作系统。
+![1728718738584.png](https://img.qylh.xyz/blog/1728718738584.png)
+
+1. **跨平台支持**：支持 Windows、Linux、MacOS 等操作系统,支持WayLand桌面环境。
 2. **多主机支持**：支持多台主机之间的输入设备共享。
 3. **鼠标共享**：支持鼠标在多台主机之间的共享。
 4. **键盘共享**：支持键盘在多台主机之间的共享。
@@ -46,24 +23,42 @@ DeviceShare 是一款跨平台的多主机输入设备共享工具，支持 Wind
 7. **主机发现机制**：支持自动发现局域网内的主机。
 8. **安全性**：支持公私钥加密机制，支持对剪贴板内容加密传输。
 9. **易用性**：支持一键启动，无需复杂配置。
+10. **高性能**：设备贡献性能优秀。
 10. **开源免费**：支持开源免费使用。
 
-**演示环境**
-![1719817611466.png](https://img.qylh.xyz/blog/1719817611466.png)
 
-**双机演示**
-
-https://github.com/qy-liuhuo/deviceShare/assets/60374114/6e126292-22e0-4d91-bab9-272470689ecd
+## 项目演示
 
 
-**三机演示**
+项目在Windows10、Debian12、Ubuntu20.4、MacOS、openKylin等多个平台进行运行演示，服务端主机连接usb键鼠，所有主机以无线局域网的形式连接，测试环境如下图所示：
 
-https://github.com/qy-liuhuo/deviceShare/assets/60374114/1b911b8a-976f-4128-9518-9c64c73a7a39
+![1723257064070.png](https://img.qylh.xyz/blog/1723257064070.png)
+
+演示视频：https://img.qylh.xyz/DeviceShare.mp4
+
+
+[//]: # (**双机演示**)
+
+[//]: # ()
+[//]: # (https://github.com/qy-liuhuo/deviceShare/assets/60374114/6e126292-22e0-4d91-bab9-272470689ecd)
+
+[//]: # ()
+[//]: # ()
+[//]: # (**演示**)
+
+[//]: # ()
+[//]: # (https://github.com/qy-liuhuo/deviceShare/assets/60374114/1b911b8a-976f-4128-9518-9c64c73a7a39)
 
 
 
-## 使用说明
+## 说明
 针对x86架构的Windows、OpenKylin操作系统，我们打包构建了可执行程序，可在Release界面下载合适的版本。 
+
+1. 若在Linux下运行，采用脚本`run.sh`启动程序，将`run.sh`复制到dist目录下，执行`sudo chmod 777 run.sh`赋予执行权限，执行`bash run.sh`启动程序
+2. 若为windows环境,直接运行exe文件即可
+
+
+### Build说明
 
 若构建的版本无法支持目标机器，可选择源码运行或自行打包。该方案需具备Python3 环境，具体步骤如下：
 1. 获取项目代码
@@ -73,9 +68,16 @@ https://github.com/qy-liuhuo/deviceShare/assets/60374114/1b911b8a-976f-4128-9518
 5. 使用`pyinstaller`打包目标程序: `pyinstaller deviceShare.spec`
 6. 运行`dist`目录下生成的可执行文件
 7. 将`resources`目录复制到dist目录下
-8. 若在Linux下运行，采用脚本`run.sh`启动程序，将`run.sh`复制到dist目录下，执行`sudo chmod 777 run.sh`赋予执行权限，执行`bash run.sh`启动程序,windows下无需执行此步骤,直接运行exe文件即可
 
-6. 注意Kylin操作系统在安装python的evdev依赖时可能出现错误，请选择安装预编译版本evdev-binary，参考 https://python-evdev.readthedocs.io/en/latest/install.html
+**注意**Kylin操作系统在安装python的evdev依赖时可能出现错误，请选择安装预编译版本evdev-binary，参考 https://python-evdev.readthedocs.io/en/latest/install.html
+
+## 使用说明
+1. 将主控机和被控机连接到同一局域网环境下，保证两台机器能够互相ping通，分别按照要求启动软件，选择各自的角色（注意局域网防火墙配置）
+2. 右键单击主控机右下角的桌面托盘，点击设置，可以看到被控机屏幕位置示意图，可拖动修改位置，修改完成后点击确定。
+3.	在主控机上将光标移动到靠近被控机方向的边缘即可进入被控机。
+4.	在被控机上将光标移动到靠近主控机方向的边缘即可回到主控机。
+5.	在主控机和被控机上分别右键单机托盘图标选择退出即可关闭软件
+
 
 ## 控制原理
 
@@ -84,7 +86,8 @@ https://github.com/qy-liuhuo/deviceShare/assets/60374114/1b911b8a-976f-4128-9518
 
 ## 系统架构
 
-![1723181787105.png](https://img.qylh.xyz/blog/1723181787105.png)
+
+![1728718486679.png](https://img.qylh.xyz/blog/1728718486679.png)
 
 项目的整体设计框架如上图所示，整体由四个部分构成：
 - 服务端为Hid Input设备的拥有者，可向其他客户端主机共享其拥有的输入设备。
@@ -104,6 +107,7 @@ DeviceShare
 │   ├── controller # 设备控制模块
 │   │   ├── clipboard_controller.py # 剪切板控制
 │   │   ├── keyboard_controller.py # 键盘控制
+│   │   ├── file_controller.py # 文件控制
 │   │   └── mouse_controller.py # 鼠标控制
 │   ├── gui # GUI界面
 │   │   ├── client_gui.py # 客户端GUI
@@ -169,4 +173,4 @@ DeviceShare
 - [x] 优化代码质量，提升代码可读性，提升软件性能和稳定性
 - [x] 测试更多类型操作系统
 - [x] 优化文档
-- [ ] 文件拖拽共享功能(实现中)
+- [x] 文件共享功能
