@@ -12,7 +12,7 @@ DeviceShare 是一款跨平台的多主机输入设备共享工具，支持 Wind
 
 ## 功能特性
 
-![1728718738584.png](https://img.qylh.xyz/blog/1728718738584.png)
+![1728743910572.png](https://img.qylh.xyz/blog/1728743910572.png)
 
 1. **跨平台支持**：支持 Windows、Linux、MacOS 等操作系统,支持WayLand桌面环境。
 2. **多主机支持**：支持多台主机之间的输入设备共享。
@@ -32,7 +32,7 @@ DeviceShare 是一款跨平台的多主机输入设备共享工具，支持 Wind
 
 项目在Windows10、Debian12、Ubuntu20.4、MacOS、openKylin等多个平台进行运行演示，服务端主机连接usb键鼠，所有主机以无线局域网的形式连接，测试环境如下图所示：
 
-![1723257064070.png](https://img.qylh.xyz/blog/1723257064070.png)
+![1728743873093.png](https://img.qylh.xyz/blog/1728743873093.png)
 
 演示视频：https://img.qylh.xyz/DeviceShare.mp4
 
