@@ -456,7 +456,7 @@ class Server:
             return None
         else:
             # x11下
-            keyboard_listener = self._keyboard.keyboard_listener(on_press, on_release, True)
+            keyboard_listener = self._keyboard.keyboard_listener(on_press, on_release)
             keyboard_listener.start()
             return keyboard_listener
 
