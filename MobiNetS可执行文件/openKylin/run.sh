@@ -6,7 +6,7 @@ if [ -n "$WAYLAND_DISPLAY" ]; then
     echo "is wayland"
     PACKAGE="wl-clipboard"
     echo "installing wl-clipboard"
-    sudo apt install wl-clipboard
+    sudo apt install wl-clipboard >/dev/null 2>&1
     export DISPLAY=:0
     NOWUSER=$USER
     sudo touch /home/$NOWUSER/.Xauthority
