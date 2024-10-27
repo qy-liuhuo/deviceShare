@@ -3,9 +3,10 @@
 ./devices.json
 /dist/
 /build/
-*.spec
 **/*.key
 **/*.pyc
 **/*.db
-.DS_Store
+**/.DS_Store
 /temp/
+**/*.zip
+**/shared_files

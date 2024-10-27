@@ -1,9 +1,28 @@
+"""
+ This program is free software: you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation, either version 3 of the License, or
+ (at your option) any later version.
+
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ GNU General Public License for more details.
+
+ You should have received a copy of the GNU General Public License
+ along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+ Author: MobiNets
+"""
 from pynput.keyboard import Key, KeyCode
 from evdev import ecodes as e
 
 
 
 class CodeConverter:
+    """
+    用于 pynput 的键码与evdev 的键码转换
+    """
     def __init__(self):
         # 定义从 pynput 到 evdev 的键码映射
         self.pynput_to_evdev_dict = {
@@ -119,9 +138,19 @@ class CodeConverter:
         
 
     def pynput_to_evdev_key(self,pynput_key):
+        """
+        将pynput的键码转换为evdev的键码
+        :param pynput_key: pynput的键码
+        :return: evdev的键码
+        """
         return self.pynput_to_evdev_dict.get(pynput_key, None)
 
     def evdev_to_pynput_key(self,evdev_key):
+        """
+        将evdev的键码转换为pynput的键码
+        :param evdev_key: evdev的键码
+        :return: pynput的键码
+        """
         return self.evdev_to_pynput_dict.get(evdev_key, None)
 
 

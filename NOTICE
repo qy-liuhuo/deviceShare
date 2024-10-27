@@ -1,0 +1,20 @@
+NOTICE FILE
+=======================================================================
+DeviceShare
+Copyright 2014 MobiNets. All rights reserved.
+=======================================================================
+
+License: This project is licensed under the GPL-3.0 license.
+
+This project makes use of the following third-party dependencies:
+
+ - Pillow               9.5.0            Historical Permission Notice and Disclaimer (HPND)
+ - PyQt5                5.15.11          GPL v3
+ - netifaces            0.11.0           MIT License
+ - pyevdev              1.6.1            BSD License
+ - pynput               1.7.7            GNU Lesser General Public License v3 (LGPLv3)
+ - pyperclip            1.9.0            BSD License
+ - qt-material          2.14             BSD License
+ - rsa                  4.9              Apache Software License
+ - screeninfo           0.8.1            MIT License
+ - zeroconf             0.132.2          GNU Lesser General Public License v2(LGPLv2); 

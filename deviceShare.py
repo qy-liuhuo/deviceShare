@@ -1,3 +1,20 @@
+"""
+ This program is free software: you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation, either version 3 of the License, or
+ (at your option) any later version.
+
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ GNU General Public License for more details.
+
+ You should have received a copy of the GNU General Public License
+ along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+ Author: MobiNets
+"""
+import logging
 import sys
 from PyQt5.QtWidgets import QApplication, QDialog, QVBoxLayout, QPushButton
 import qt_material
@@ -6,6 +23,9 @@ from src.server import Server
 
 
 class RoleSelectionDialog(QDialog):
+    """
+    身份选择对话框
+    """
     def __init__(self):
         super().__init__()
 
@@ -31,15 +51,30 @@ class RoleSelectionDialog(QDialog):
         self.selected_role = None
 
     def select_server(self):
+        """
+        选择主控机
+        :return:
+        """
         self.selected_role = "server"
         self.accept()
 
     def select_client(self):
+        """
+        选择被控机
+        :return:
+        """
         self.selected_role = "client"
         self.accept()
 
 
 def main():
+    logger = logging.getLogger('deviceShare')
+    logger.setLevel(level=logging.DEBUG)
+    stream_handler = logging.StreamHandler(sys.stdout)
+    fmt = logging.Formatter('[%(asctime)s] [%(name)s] [%(levelname)s] %(message)s', '%Y-%m-%d %H:%M:%S')
+    stream_handler.setFormatter(fmt)
+    logger.addHandler(stream_handler)
+    logger.info("Starting DeviceShare")
     app = QApplication(sys.argv)
     qt_material.apply_stylesheet(app, theme='light_blue.xml')
     selected_role = 'client'
@@ -53,8 +88,10 @@ def main():
         elif selected_role == 'client':
             Client(app).run()
     except Exception as e:
-        print(e)
+        logger.error(e)
     finally:
         app.quit()
+
+
 if __name__ == "__main__":
     main()

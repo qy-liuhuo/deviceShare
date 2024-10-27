@@ -1,30 +1,56 @@
+"""
+ This program is free software: you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation, either version 3 of the License, or
+ (at your option) any later version.
+
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ GNU General Public License for more details.
+
+ You should have received a copy of the GNU General Public License
+ along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+ Author: MobiNets
+"""
 import enum
 import json
 
+from src.utils.file import File
+
 
 class MsgType(enum.IntEnum):
-    CLIENT_HEARTBEAT = enum.auto()
-    MOUSE_BACK = enum.auto()
-    MOUSE_MOVE = enum.auto()
-    MOUSE_MOVE_TO = enum.auto()
-    MOUSE_CLICK = enum.auto()
-    MOUSE_SCROLL = enum.auto()
-    KEYBOARD_CLICK = enum.auto()
-    CLIPBOARD_UPDATE = enum.auto()
-    POSITION_CHANGE = enum.auto()
-    SEND_PUBKEY = enum.auto()
-    TCP_ECHO = enum.auto()
-    KEY_CHECK = enum.auto()
-    KEY_CHECK_RESPONSE = enum.auto()
-    ACCESS_DENY = enum.auto()
-    ACCESS_ALLOW = enum.auto()
-    CLIENT_OFFLINE = enum.auto()
-    WRONG_MSG = enum.auto()
-
+    """
+    MsgType enum
+    """
+    CLIENT_HEARTBEAT = enum.auto()  # 客户端心跳
+    MOUSE_BACK = enum.auto()  # 鼠标返回
+    MOUSE_MOVE = enum.auto()  # 鼠标移动
+    MOUSE_MOVE_TO = enum.auto()  # 鼠标移动到
+    MOUSE_CLICK = enum.auto()  # 鼠标点击
+    MOUSE_SCROLL = enum.auto()  # 鼠标滚动
+    KEYBOARD_CLICK = enum.auto()  # 键盘点击
+    CLIPBOARD_UPDATE = enum.auto()  # 剪贴板更新
+    POSITION_CHANGE = enum.auto()  # 位置改变
+    SEND_PUBKEY = enum.auto()  # 发送公钥
+    TCP_ECHO = enum.auto()  # TCP回声
+    KEY_CHECK = enum.auto()  # 键盘检查
+    KEY_CHECK_RESPONSE = enum.auto()  # 键盘检查响应
+    ACCESS_DENY = enum.auto()  # 拒绝访问
+    ACCESS_ALLOW = enum.auto()  # 允许访问
+    CLIENT_OFFLINE = enum.auto()  # 客户端离线
+    WRONG_MSG = enum.auto()  # 错误消息
+    FILE_MSG = enum.auto()  # 文件消息
+    SERVER_OFFLINE = enum.auto()  # 服务端在线
 
 
 class Message:
+    """
+    Message
+    """
     SPLITTER = "[@~|"
+
     def __init__(self, msg_type: MsgType, data=None):
         if data is None:
             data = {}
@@ -33,9 +59,16 @@ class Message:
 
     @staticmethod
     def from_bytes(byteData: bytes):
+        """
+        从字节数据中解析消息
+        :param byteData: 字节数据
+        :return: 消息
+        """
         if isinstance(byteData, bytearray):
             byteData = bytes(byteData)
         msg_type, data = byteData.decode().split(Message.SPLITTER)
+        if int(msg_type) == MsgType.FILE_MSG:
+            return File_Message.from_bytes(byteData)
         return Message(MsgType(int(msg_type)), json.loads(data))
         #
         # if int(msg_type) == MsgType.MOUSE_MOVE:
@@ -72,10 +105,36 @@ class Message:
     #     self.msg_type,self.data = byteData.split(self.SPLITTER)
 
     def to_bytes(self):
+        """
+        转换为字节数据
+        :return:
+        """
         return bytes(f"{int(self.msg_type)}{self.SPLITTER}{json.dumps(self.data)}".encode())
 
     def __str__(self):
         return f"Message({self.msg_type},{self.data})"
 
 
+class File_Message(Message):
+
+    FILE_SPLITTER = "|~@]"
+
+    def __init__(self, file: File, file_data: bytes):
+        self.msg_type = MsgType.FILE_MSG
+        self.file = file
+        self.file_data = file_data
+
+    def to_bytes(self):
+        return bytes(f"{int(self.msg_type)}{self.SPLITTER}{json.dumps(self.file.__dict__)}{File_Message.FILE_SPLITTER + self.file_data.hex()}".encode())
+
+    def from_bytes(byteData: bytes):
+        msg_type, data = byteData.decode().split(Message.SPLITTER)
+        file, file_data = data.split(File_Message.FILE_SPLITTER)
+        return File_Message(File.from_json(file), bytes.fromhex(file_data))
+
+
+
+
+
+# 错误消息标志
 WRONG_MESSAGE = Message(MsgType.WRONG_MSG).to_bytes()

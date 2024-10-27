@@ -1,3 +1,19 @@
+"""
+ This program is free software: you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation, either version 3 of the License, or
+ (at your option) any later version.
+
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ GNU General Public License for more details.
+
+ You should have received a copy of the GNU General Public License
+ along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+ Author: MobiNets
+"""
 import sys
 import threading
 import os
@@ -10,6 +26,10 @@ _keyChars = {keyChars[i]: keyChars[i + 1] for i in range(0, len(keyChars), 2)}
 
 
 def get_keyboard_controller():
+    """
+    获取键盘控制器
+    :return:
+    """
     if is_wayland():
         return KeyboardControllerWayland()
     else:
@@ -17,6 +37,9 @@ def get_keyboard_controller():
 
 
 class KeyFactory:
+    """
+    pynput键盘编码
+    """
     keyChars = _keyChars
     keyNames = {'cmd': 'alt', 'alt_l': 'cmd'}
 
@@ -24,6 +47,11 @@ class KeyFactory:
         self.shiftRelease = True 
 
     def input(self, key):
+        """
+        输入
+        :param key: 键
+        :return: 编码结果
+        """
         if isinstance(key,str):
             key = KeyCode.from_char(key)
         if 'name' in dir(key):
@@ -40,6 +68,11 @@ class KeyFactory:
         return data
 
     def outPut(self, data):
+        """
+        输出
+        :param data: 编码
+        :return: 键
+        """
         tp, dt = data
         if tp == "name":
             if sys.platform == 'darwin':
@@ -60,18 +93,40 @@ class KeyFactory:
 
 
 class KeyboardController:
+    """
+    pynput键盘控制器
+    """
     def __init__(self):
+        """
+        初始化
+        """
         import pynput
         self.__keyboard = pynput.keyboard.Controller()
         self.keyFactory = KeyFactory()
 
     def press(self, key):
+        """
+        按下
+        :param key: 键
+        :return:
+        """
         self.__keyboard.press(key)
 
     def release(self, key):
+        """
+        释放
+        :param key: 键
+        :return:
+        """
         self.__keyboard.release(key)
 
     def click(self, click_type, keyData):
+        """
+        点击
+        :param click_type: 类型
+        :param keyData: 键
+        :return:
+        """
         key = self.keyFactory.outPut(keyData)
         if click_type == 'press':
             self.press(key)
@@ -79,18 +134,30 @@ class KeyboardController:
             self.release(key)
 
     def keyboard_listener(self, on_press, on_release):
+        """
+        键盘监听
+        :param on_press: 按下回调
+        :param on_release: 释放回调
+        :return:
+        """
         import pynput
         return pynput.keyboard.Listener(suppress=True, on_press=on_press, on_release=on_release)
 
 
 class KeyboardControllerWayland(KeyboardController):
+    """
+    Wayland键盘控制器
+    """
     def __init__(self):
+        """
+        初始化
+        """
         from src.utils.key_code import CodeConverter
         super().__init__()
         from evdev import InputDevice, ecodes, list_devices, UInput
         devices = [InputDevice(path) for path in list_devices()]
         self.stop_event = threading.Event()
-        self.keyboard_devices = []
+        self.keyboard_devices = [] # 键盘设备
         for device in devices:
             if not os.path.exists(device.path):
                 continue
@@ -99,21 +166,37 @@ class KeyboardControllerWayland(KeyboardController):
                 if ecodes.KEY_A in capabilities[ecodes.EV_KEY]:  # 检查是否有键盘按键
                     self.keyboard_devices.append(device)
         self.codeConvert = CodeConverter()
-        capabilities = { ecodes.EV_KEY: [code for code in self.codeConvert.pynput_to_evdev_dict.values()]}
-        self.ui = UInput(capabilities, name="virtual_keyboard")
+        capabilities = { ecodes.EV_KEY: [code for code in self.codeConvert.pynput_to_evdev_dict.values()]} # 键盘能力
+        self.ui = UInput(capabilities, name="virtual_keyboard") # 创建虚拟键盘
         
 
     def press(self, key):
+        """
+        按下
+        :param key:  evdev键
+        :return:
+        """
         from evdev import ecodes
         self.ui.write(ecodes.EV_KEY, key, 1)
         self.ui.syn()
 
     def release(self, key):
+        """
+        释放
+        :param key: evdev键
+        :return:
+        """
         from evdev import ecodes
         self.ui.write(ecodes.EV_KEY, key, 0)
         self.ui.syn()
 
     def click(self, click_type, keyData):
+        """
+        点击
+        :param click_type: 类型
+        :param keyData: 键
+        :return:
+        """
         key = self.codeConvert.pynput_to_evdev_key(self.keyFactory.outPut(keyData))
         if key is None:
             return
@@ -123,6 +206,14 @@ class KeyboardControllerWayland(KeyboardController):
             self.release(key)
 
     def run_keyboard_listener(self, keyboard, on_press, on_release, suppress=False):
+        """
+        运行键盘监听
+        :param keyboard: 键盘
+        :param on_press:  按下回调
+        :param on_release:  释放回调
+        :param suppress:   是否抑制输出
+        :return:
+        """
         from evdev import ecodes, categorize
         if suppress:
             keyboard.grab()
@@ -147,6 +238,13 @@ class KeyboardControllerWayland(KeyboardController):
                 keyboard.ungrab()
 
     def keyboard_listener(self, on_press, on_release, suppress=False):
+        """
+        键盘监听
+        :param on_press: 按下回调
+        :param on_release: 释放回调
+        :param suppress: 是否抑制输出
+        :return:
+        """
         self.stop_event.clear()
         self.listener = []
         for keyboard in self.keyboard_devices:
@@ -158,10 +256,18 @@ class KeyboardControllerWayland(KeyboardController):
         return self.listener
 
     def stop_listener(self):
+        """
+        停止监听
+        :return:
+        """
         self.stop_event.set()
         self.listener.clear()
 
     def __del__(self):
+        """
+        析构,关闭虚拟键盘
+        :return:
+        """
         try:
             self.ui.close()
         except:
