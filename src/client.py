@@ -164,7 +164,9 @@ class Client:
         :param self:
         :return:
         """
+
         while not self.be_added:
+
             tcp_client = TcpClient((self.server_ip, TCP_PORT))
             try:
                 msg = Message(MsgType.SEND_PUBKEY,

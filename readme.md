@@ -1,6 +1,8 @@
 # DeviceShare —— 跨平台多主机输入设备共享跨平台、可扩展的多主机Hid-Input设备共享协同智能解决方案
 
 ## 项目介绍
+![](https://img.qylh.xyz/blog/1723181688963.png)
+
 
 ![1728718269782.png](https://img.qylh.xyz/blog/1728718269782.png)
 
@@ -24,7 +26,7 @@ DeviceShare 是一款跨平台的多主机输入设备共享工具，支持 Wind
 8. **安全性**：支持公私钥加密机制，支持对剪贴板内容加密传输。
 9. **易用性**：支持一键启动，无需复杂配置。
 10. **高性能**：设备贡献性能优秀。
-10. **开源免费**：支持开源免费使用。
+
 
 
 ## 项目演示
@@ -32,10 +34,13 @@ DeviceShare 是一款跨平台的多主机输入设备共享工具，支持 Wind
 
 项目在Windows10、Debian12、Ubuntu20.4、MacOS、openKylin等多个平台进行运行演示，服务端主机连接usb键鼠，所有主机以无线局域网的形式连接，测试环境如下图所示：
 
+
 ![1728743873093.png](https://img.qylh.xyz/blog/1728743873093.png)
 
 演示视频：https://img.qylh.xyz/DeviceShare.mp4
 
+
+https://img.qylh.xyz/mobinets_demo.mp4
 
 [//]: # (**双机演示**)
 
@@ -58,6 +63,7 @@ DeviceShare 是一款跨平台的多主机输入设备共享工具，支持 Wind
 2. 若为windows环境,直接运行exe文件即可
 
 
+
 ### Build说明
 
 若构建的版本无法支持目标机器，可选择源码运行或自行打包。该方案需具备Python3 环境，具体步骤如下：
@@ -69,6 +75,7 @@ DeviceShare 是一款跨平台的多主机输入设备共享工具，支持 Wind
 6. 运行`dist`目录下生成的可执行文件
 7. 将`resources`目录复制到dist目录下
 
+
 **注意**Kylin操作系统在安装python的evdev依赖时可能出现错误，请选择安装预编译版本evdev-binary，参考 https://python-evdev.readthedocs.io/en/latest/install.html
 
 ## 使用说明
@@ -79,7 +86,6 @@ DeviceShare 是一款跨平台的多主机输入设备共享工具，支持 Wind
 5.	在主控机和被控机上分别右键单机托盘图标选择退出即可关闭软件
 
 
-## 控制原理
 
 1. 主要基于`pynput`进行鼠标和键盘的控制，基于`pyperclip`进行剪切板的控制。
 2. 在`wayland`环境下，基于`evdev`和`uinput`进行鼠标和键盘的控制，基于`wl-clipboard`进行剪切板的控制。
@@ -89,13 +95,16 @@ DeviceShare 是一款跨平台的多主机输入设备共享工具，支持 Wind
 
 ![1728718486679.png](https://img.qylh.xyz/blog/1728718486679.png)
 
+
 项目的整体设计框架如上图所示，整体由四个部分构成：
 - 服务端为Hid Input设备的拥有者，可向其他客户端主机共享其拥有的输入设备。
 - 客户端可使用主机共享的输入设备。
 - 网络通信模块用于服务端和客户端的数据传输。
 - 设备控制模块用于读取Hid Input设备信息及控制Hid Input设备。
 
+
 项目目录结构
+
 ```
 DeviceShare
 ├── resources # 资源文件
@@ -174,3 +183,4 @@ DeviceShare
 - [x] 测试更多类型操作系统
 - [x] 优化文档
 - [x] 文件共享功能
+
