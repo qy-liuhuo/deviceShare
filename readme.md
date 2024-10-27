@@ -1,7 +1,7 @@
 # DeviceShare —— 跨平台多主机输入设备共享跨平台、可扩展的多主机Hid-Input设备共享协同智能解决方案
 
 ## 项目介绍
-![](https://img.qylh.xyz/blog/1723181688963.png)
+
 
 
 ![1728718269782.png](https://img.qylh.xyz/blog/1728718269782.png)
@@ -40,7 +40,7 @@ DeviceShare 是一款跨平台的多主机输入设备共享工具，支持 Wind
 演示视频：https://img.qylh.xyz/DeviceShare.mp4
 
 
-https://img.qylh.xyz/mobinets_demo.mp4
+
 
 [//]: # (**双机演示**)
 
