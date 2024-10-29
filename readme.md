@@ -1,4 +1,4 @@
-# DeviceShare —— 跨平台、可扩展的多主机Hid-Input设备共享协同智能解决方案
+# DeviceShare: 跨平台、可扩展的多主机Hid-Input设备共享协同智能解决方案
 
 ## 项目介绍
 
